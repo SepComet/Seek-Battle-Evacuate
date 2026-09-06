@@ -2,20 +2,20 @@
   {
     "id": 1,
     "name": "低威胁",
-    "maxViewDistanceMilli": 3000,
+    "maxViewDistanceMilli": 3500,
     "alertDecayPerSecondMilli": 200,
     "distanceBands": [
       {
         "maxDistanceMilli": 1000,
+        "alertPerSecondMilli": 2000
+      },
+      {
+        "maxDistanceMilli": 2200,
+        "alertPerSecondMilli": 1200
+      },
+      {
+        "maxDistanceMilli": 3500,
         "alertPerSecondMilli": 600
-      },
-      {
-        "maxDistanceMilli": 2000,
-        "alertPerSecondMilli": 300
-      },
-      {
-        "maxDistanceMilli": 3000,
-        "alertPerSecondMilli": 150
       }
     ]
   },
@@ -27,15 +27,15 @@
     "distanceBands": [
       {
         "maxDistanceMilli": 1500,
-        "alertPerSecondMilli": 800
+        "alertPerSecondMilli": 1800
       },
       {
         "maxDistanceMilli": 3000,
-        "alertPerSecondMilli": 400
+        "alertPerSecondMilli": 1000
       },
       {
         "maxDistanceMilli": 5000,
-        "alertPerSecondMilli": 200
+        "alertPerSecondMilli": 800
       }
     ]
   },
@@ -46,16 +46,20 @@
     "alertDecayPerSecondMilli": 100,
     "distanceBands": [
       {
+        "maxDistanceMilli": 1000,
+        "alertPerSecondMilli": 8000
+      },
+      {
         "maxDistanceMilli": 2000,
-        "alertPerSecondMilli": 1000
+        "alertPerSecondMilli": 4000
       },
       {
         "maxDistanceMilli": 4000,
-        "alertPerSecondMilli": 500
+        "alertPerSecondMilli": 1000
       },
       {
         "maxDistanceMilli": 7000,
-        "alertPerSecondMilli": 250
+        "alertPerSecondMilli": 800
       }
     ]
   }

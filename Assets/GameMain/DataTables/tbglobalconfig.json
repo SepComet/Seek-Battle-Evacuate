@@ -1,7 +1,6 @@
 [
   {
     "runTimeLimitMs": 1500000,
-    "extractionRevealTimeMs": 1200000,
     "mapDefinitionPath": "MapDefinition.asset",
     "escapeProtectionMs": 2000,
     "lowThreatEnemyPartyEntity": "EnemyPartyLowThreat",
@@ -11,9 +10,14 @@
     "characterLeaderEntity": "CharacterLeader",
     "CharacterRetinueEntity": "CharacterRetinue",
     "ItemEntity": "ItemEntity",
+    "LootRangeMinRadius": 1000,
+    "LootRangeMaxRadius": 2500,
+    "evacuateTimeMs": 5000,
     "enemyLoseTargetMs": 3000,
-    "enemyFrontViewAngle": 180,
     "alertMax": 1000,
+    "chaseSpeed": 4000,
+    "patrolSpeed": 3000,
+    "playerSpeed": 4500,
     "warehouseSlotCount": 120,
     "backpackSlotCount": 30,
     "secureSlotCount": 5,

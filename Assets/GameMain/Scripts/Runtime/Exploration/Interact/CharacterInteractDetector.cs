@@ -17,6 +17,7 @@ namespace SepCore.Exploration
         private readonly List<IInteractable> _candidates = new List<IInteractable>();
         private IInteractable _currentTarget = null;
         private PlayerCharacterController _leaderController = null;
+        private IHoldInteractable _currentHoldingTarget = null;
 
         /// <summary>
         /// 当前最高优先级的可交互目标（无目标时为 null）。
@@ -48,11 +49,23 @@ namespace SepCore.Exploration
             if (_leaderController != null)
             {
                 _leaderController.OnInteractTriggered += HandleInteractTriggered;
+                _leaderController.OnInteractHeld += HandleInteractHeld;
+                _leaderController.OnInteractReleased += HandleInteractReleased;
             }
         }
 
         private void Update()
         {
+            if (_currentHoldingTarget != null)
+            {
+                bool battlePaused = GameEntry.TurnBattle != null && GameEntry.TurnBattle.IsExplorationPaused;
+                bool inputStopped = _leaderController != null && _leaderController.InputSource != null && !_leaderController.InputSource.IsInteracting;
+                if (battlePaused || inputStopped)
+                {
+                    CancelCurrentHold();
+                }
+            }
+
             CleanDeadCandidates();
             EvaluateCurrentTarget(forceNotify: false);
         }
@@ -98,9 +111,15 @@ namespace SepCore.Exploration
 
         private void OnDisable()
         {
+            CancelCurrentHold();
             _candidates.Clear();
             if (_currentTarget != null)
             {
+                if (_currentTarget.EntityGameObject != null)
+                {
+                    _currentTarget.SetHighlight(false);
+                }
+
                 _currentTarget = null;
                 NotifyTargetChanged();
             }
@@ -109,8 +128,17 @@ namespace SepCore.Exploration
         private void OnDestroy()
         {
             UnbindControllerEvents();
+            CancelCurrentHold();
             _candidates.Clear();
-            _currentTarget = null;
+            if (_currentTarget != null)
+            {
+                if (_currentTarget.EntityGameObject != null)
+                {
+                    _currentTarget.SetHighlight(false);
+                }
+
+                _currentTarget = null;
+            }
         }
 
         private void UnbindControllerEvents()
@@ -118,6 +146,9 @@ namespace SepCore.Exploration
             if (_leaderController != null)
             {
                 _leaderController.OnInteractTriggered -= HandleInteractTriggered;
+                _leaderController.OnInteractHeld -= HandleInteractHeld;
+                _leaderController.OnInteractReleased -= HandleInteractReleased;
+                CancelCurrentHold();
                 _leaderController = null;
             }
         }
@@ -141,7 +172,23 @@ namespace SepCore.Exploration
 
             if (!ReferenceEquals(_currentTarget, bestTarget) || forceNotify)
             {
+                if (_currentHoldingTarget != null && !ReferenceEquals(_currentHoldingTarget, bestTarget))
+                {
+                    CancelCurrentHold();
+                }
+
+                if (_currentTarget != null && _currentTarget.EntityGameObject != null)
+                {
+                    _currentTarget.SetHighlight(false);
+                }
+
                 _currentTarget = bestTarget;
+
+                if (_currentTarget != null && _currentTarget.EntityGameObject != null)
+                {
+                    _currentTarget.SetHighlight(true);
+                }
+
                 NotifyTargetChanged();
             }
         }
@@ -159,10 +206,61 @@ namespace SepCore.Exploration
             }
 
             GameObject interactor = _leaderController != null ? _leaderController.gameObject : gameObject;
-            _currentTarget.OnInteract(interactor);
+            if (_currentTarget is IHoldInteractable holdInteractable)
+            {
+                _currentHoldingTarget = holdInteractable;
+                _currentHoldingTarget.OnInteractStart(interactor);
+            }
+            else
+            {
+                _currentTarget.OnInteract(interactor);
+                // 交互后（例如道具被拾取或状态改变）重新评估当前目标
+                EvaluateCurrentTarget(forceNotify: false);
+            }
+        }
 
-            // 交互后（例如道具被拾取或状态改变）重新评估当前目标
-            EvaluateCurrentTarget(forceNotify: false);
+        private void HandleInteractHeld(PlayerCharacterController controller)
+        {
+            if (_currentHoldingTarget == null)
+            {
+                return;
+            }
+
+            if (!_currentHoldingTarget.CanInteract || _currentHoldingTarget.EntityGameObject == null || !_currentHoldingTarget.EntityGameObject.activeInHierarchy)
+            {
+                CancelCurrentHold();
+                EvaluateCurrentTarget(forceNotify: false);
+                return;
+            }
+
+            GameObject interactor = _leaderController != null ? _leaderController.gameObject : gameObject;
+            _currentHoldingTarget.OnInteractHold(interactor, Time.deltaTime);
+
+            if (!_currentHoldingTarget.CanInteract)
+            {
+                CancelCurrentHold();
+                EvaluateCurrentTarget(forceNotify: false);
+            }
+        }
+
+        private void HandleInteractReleased(PlayerCharacterController controller)
+        {
+            if (_currentHoldingTarget != null)
+            {
+                CancelCurrentHold();
+                EvaluateCurrentTarget(forceNotify: false);
+            }
+        }
+
+        private void CancelCurrentHold()
+        {
+            if (_currentHoldingTarget != null)
+            {
+                IHoldInteractable holdTarget = _currentHoldingTarget;
+                _currentHoldingTarget = null;
+                GameObject interactor = _leaderController != null ? _leaderController.gameObject : gameObject;
+                holdTarget.OnInteractEnd(interactor);
+            }
         }
     }
 }

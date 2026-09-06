@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using SepCore.Base;
 using SepCore.Battle;
 using SepCore.Definition;
 using SepCore.Exploration;
@@ -336,10 +337,32 @@ namespace SepCore.UI
             Refresh(step.View);
             OverlayEventStates(step.Events);
 
-            if (step.Result != null && step.Result.Outcome != BattleOutcomeType.TotalDefeat)
+            if (step.Result != null)
             {
-                StartCoroutine(CloseAfterResultDelay(step.Result));
+                if (step.Result.Outcome == BattleOutcomeType.TotalDefeat)
+                {
+                    StartCoroutine(CloseAfterTotalDefeatDelay(step.Result));
+                }
+                else
+                {
+                    StartCoroutine(CloseAfterResultDelay(step.Result));
+                }
             }
+        }
+
+        /// <summary>
+        /// 全灭结果展示停留后关闭战斗并抛出全灭事件，通知主流程进入失败结算。
+        /// </summary>
+        private System.Collections.IEnumerator CloseAfterTotalDefeatDelay(BattleResult result)
+        {
+            yield return new WaitForSecondsRealtime(ResultDisplayDelaySeconds);
+
+            if (_result == result && GameEntry.TurnBattle != null && GameEntry.TurnBattle.IsBattleActive)
+            {
+                GameEntry.TurnBattle.CloseBattle();
+            }
+
+            GameEntry.Event.Fire(this, BattleTotalDefeatEventArgs.Create());
         }
 
         /// <summary>

@@ -157,7 +157,8 @@ namespace SepCore.AsyncTask
         {
             if (index < 0)
             {
-                return Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f), pixelsPerUnit);
+                return Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height),
+                    new Vector2(0.5f, 0.5f), pixelsPerUnit, 0, SpriteMeshType.FullRect);
             }
 
             int columns = Mathf.Max(1, texture.width / tileSize);
@@ -172,7 +173,9 @@ namespace SepCore.AsyncTask
 
             float x = column * tileSize;
             float y = texture.height - (row + 1) * tileSize;
-            return Sprite.Create(texture, new Rect(x, y, tileSize, tileSize), new Vector2(0.5f, 0.5f), pixelsPerUnit);
+            // 交互描边需要完整矩形网格，才能在 Shader 中为图案四周扩展留白。
+            return Sprite.Create(texture, new Rect(x, y, tileSize, tileSize),
+                new Vector2(0.5f, 0.5f), pixelsPerUnit, 0, SpriteMeshType.FullRect);
         }
     }
 }

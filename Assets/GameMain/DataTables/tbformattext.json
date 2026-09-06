@@ -80,10 +80,6 @@
     "format": "{0} 件"
   },
   {
-    "name": "SettlementItemName",
-    "format": "{0}"
-  },
-  {
     "name": "SettlementItemQuantity",
     "format": "×{0}"
   },

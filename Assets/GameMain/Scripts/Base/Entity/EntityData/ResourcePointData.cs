@@ -14,6 +14,8 @@ namespace SepCore.Entity
     {
         [SerializeField] private int _resourcePointId;
         [SerializeField] private List<int> _itemIds;
+        [SerializeField] private float _searchProgressTime;
+        [SerializeField] private int _droppedItemCount;
 
         public ResourcePointData(int entityId, string assetName, Vector3 position, int resourcePointId, IEnumerable<int> itemIds,
             Quaternion? rotation = null) : base(assetName, entityId)
@@ -44,5 +46,29 @@ namespace SepCore.Entity
         /// 包含的物品总数
         /// </summary>
         public int ItemCount => _itemIds.Count;
+
+        /// <summary>
+        /// 当前累计搜索时间（秒）。松开按键或被打断时保留。
+        /// </summary>
+        public float SearchProgressTime
+        {
+            get => _searchProgressTime;
+            set => _searchProgressTime = Mathf.Max(0f, value);
+        }
+
+        /// <summary>
+        /// 当前已从物资点掉落到地图的道具数量。
+        /// </summary>
+        public int DroppedItemCount
+        {
+            get => _droppedItemCount;
+            set => _droppedItemCount = Mathf.Clamp(value, 0, _itemIds.Count);
+        }
+
+        /// <summary>
+        /// 物资点内部物品是否已全部掉落完毕。
+        /// 全部掉落完毕后禁止再次交互。
+        /// </summary>
+        public bool IsCompleted => _itemIds.Count == 0 || _droppedItemCount >= _itemIds.Count;
     }
 }

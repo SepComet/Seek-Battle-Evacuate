@@ -41,7 +41,7 @@ namespace SepCore.Exploration
     {
         internal MapBuildResult(DifficultyTier difficulty, Vector2 playerSpawnPoint,
             IList<ResourcePointBuildData> resourcePoints, IList<EnemyPointBuildData> enemyPoints,
-            Vector2 extractionPoint)
+            Vector2 extractionPoint, IEnumerable<RoomDefinition> rooms = null)
         {
             Difficulty = difficulty;
             PlayerSpawnPoint = playerSpawnPoint;
@@ -49,6 +49,8 @@ namespace SepCore.Exploration
                 new List<ResourcePointBuildData>(resourcePoints));
             EnemyPoints = new ReadOnlyCollection<EnemyPointBuildData>(new List<EnemyPointBuildData>(enemyPoints));
             ExtractionPoint = extractionPoint;
+            Rooms = new ReadOnlyCollection<RoomDefinition>(
+                rooms != null ? new List<RoomDefinition>(rooms) : new List<RoomDefinition>());
         }
 
         public DifficultyTier Difficulty { get; }
@@ -60,5 +62,7 @@ namespace SepCore.Exploration
         public IReadOnlyList<EnemyPointBuildData> EnemyPoints { get; }
 
         public Vector2 ExtractionPoint { get; }
+
+        public IReadOnlyList<RoomDefinition> Rooms { get; }
     }
 }

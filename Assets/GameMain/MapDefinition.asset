@@ -19,15 +19,52 @@ MonoBehaviour:
   _resourcePoints:
   - _position: {x: -4, y: 5}
     _resourcePointId: 1
-  - _position: {x: 1, y: 5}
+  - _position: {x: 1, y: -4}
     _resourcePointId: 1
   - _position: {x: 5, y: 5}
     _resourcePointId: 2
+  - _position: {x: -22, y: 2}
+    _resourcePointId: 3
+  - _position: {x: -20, y: -3}
+    _resourcePointId: 2
+  - _position: {x: -16, y: 5}
+    _resourcePointId: 4
+  - _position: {x: -3, y: 14}
+    _resourcePointId: 4
   _enemySpawnPoints:
   - {x: -19, y: 1}
   - {x: -16, y: 1}
-  - {x: -18, y: 3}
+  - {x: 0, y: 3}
+  - {x: 6, y: 14}
+  - {x: -1, y: 16}
   _extractionPoints:
-  - {x: 0, y: 14}
-  - {x: 2, y: 14}
-  - {x: 8, y: 13}
+  - {x: 30, y: -3}
+  - {x: 28, y: 2}
+  _rooms:
+  - _roomType: 0
+    _pointA: {x: -23, y: 6}
+    _pointB: {x: -13, y: -5}
+  - _roomType: 0
+    _pointA: {x: -6, y: 6}
+    _pointB: {x: 14, y: -5}
+  - _roomType: 0
+    _pointA: {x: -3, y: -12}
+    _pointB: {x: 10, y: -19}
+  - _roomType: 0
+    _pointA: {x: 23, y: 7}
+    _pointB: {x: 36, y: -5}
+  - _roomType: 0
+    _pointA: {x: -5, y: 18}
+    _pointB: {x: 11, y: 11}
+  - _roomType: 1
+    _pointA: {x: -12, y: 2}
+    _pointB: {x: -7, y: -1}
+  - _roomType: 1
+    _pointA: {x: 2, y: 10}
+    _pointB: {x: 5, y: 7}
+  - _roomType: 1
+    _pointA: {x: 2, y: -6}
+    _pointB: {x: 5, y: -11}
+  - _roomType: 1
+    _pointA: {x: 15, y: 2}
+    _pointB: {x: 22, y: -1}

@@ -14,6 +14,7 @@ namespace SepCore.Entity
         [SerializeField] private int _itemId;
         [SerializeField] private int _count;
         [SerializeField] private Rarity _rarity;
+        [SerializeField] private Vector3? _spawnFromPosition;
 
         public ItemEntityData(
             int entityId,
@@ -22,13 +23,15 @@ namespace SepCore.Entity
             int itemId,
             int count,
             Rarity rarity,
-            Quaternion? rotation = null) : base(assetName, entityId)
+            Quaternion? rotation = null,
+            Vector3? spawnFromPosition = null) : base(assetName, entityId)
         {
             Position = position;
             Rotation = rotation ?? Quaternion.identity;
             _itemId = itemId;
             _count = Mathf.Max(1, count);
             _rarity = rarity;
+            _spawnFromPosition = spawnFromPosition;
         }
 
         /// <summary>
@@ -45,5 +48,10 @@ namespace SepCore.Entity
         /// 物品稀有度。
         /// </summary>
         public Rarity Rarity => _rarity;
+
+        /// <summary>
+        /// 抛物线动画起始点坐标（若为 null 则不播放掉落动画）。
+        /// </summary>
+        public Vector3? SpawnFromPosition => _spawnFromPosition;
     }
 }

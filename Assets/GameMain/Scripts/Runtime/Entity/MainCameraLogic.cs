@@ -14,6 +14,7 @@ namespace SepCore.Entity
         [SerializeField] private float _cameraZ = -10f;
 
         private Camera _camera;
+        private Camera _minimapCamera;
         private Transform _target;
         private Vector3 _currentVelocity = Vector3.zero;
 
@@ -21,6 +22,19 @@ namespace SepCore.Entity
         /// 摄像机组件。
         /// </summary>
         public Camera Camera => _camera;
+
+        /// <summary>
+        /// 小地图相机视口覆盖的世界尺寸（宽、高）。
+        /// </summary>
+        public Vector2 MinimapViewportSize
+        {
+            get
+            {
+                float height = _minimapCamera.orthographicSize * 2f;
+                float aspect = (float)_minimapCamera.targetTexture.width / _minimapCamera.targetTexture.height;
+                return new Vector2(height * aspect, height);
+            }
+        }
 
         /// <summary>
         /// 当前跟随目标。
@@ -62,6 +76,20 @@ namespace SepCore.Entity
             if (_camera == null)
             {
                 Log.Error("MainCameraLogic on '{0}' has no Camera component attached.", gameObject.name);
+            }
+
+            foreach (Camera childCamera in GetComponentsInChildren<Camera>(true))
+            {
+                if (childCamera != _camera)
+                {
+                    _minimapCamera = childCamera;
+                    break;
+                }
+            }
+
+            if (_minimapCamera == null || _minimapCamera.targetTexture == null)
+            {
+                Log.Error("MainCameraLogic on '{0}' has no minimap camera rendering to a target texture.", gameObject.name);
             }
         }
 

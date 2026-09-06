@@ -66,7 +66,7 @@ namespace SepCore.Exploration
             Vector2 playerSpawnPoint = playerSpawnPointGenerator.Generate(mapDefinition.PlayerSpawnPoints);
 
             return new MapBuildResult(difficultyConfig.Tier, playerSpawnPoint, resourcePoints, enemyPoints,
-                extractionPoint);
+                extractionPoint, mapDefinition.Rooms);
         }
     }
 }

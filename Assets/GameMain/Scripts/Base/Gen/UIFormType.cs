@@ -52,6 +52,10 @@ namespace SepCore.Definition
         /// 局内背包面板
         /// </summary>
         RoundBackpackForm = 106,
+        /// <summary>
+        /// 局内结算面板
+        /// </summary>
+        RoundSettlementForm = 107,
     }
 
 } 

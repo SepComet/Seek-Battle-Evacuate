@@ -54,5 +54,12 @@
     "UIGroupName": "Backpack",
     "allowMultiInstance": false,
     "pauseCoveredUIForm": false
+  },
+  {
+    "id": 107,
+    "assetName": "RoundSettlementForm",
+    "UIGroupName": "Default",
+    "allowMultiInstance": false,
+    "pauseCoveredUIForm": true
   }
 ]

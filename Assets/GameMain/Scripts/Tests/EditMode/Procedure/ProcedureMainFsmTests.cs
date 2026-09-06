@@ -13,8 +13,7 @@ namespace SepCore.Tests
         public void ProcedureMain_InitialProperties_AreDefault()
         {
             ProcedureMain procedure = new ProcedureMain();
-
-            Assert.IsNull(procedure.BuildResult);
+            
             Assert.IsNull(procedure.PendingOutcome);
             Assert.AreEqual(0, procedure.RunStartTimeUtcMs);
             Assert.AreEqual(DifficultyTier.None, procedure.Difficulty);

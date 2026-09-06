@@ -1,4 +1,4 @@
-﻿//------------------------------------------------------------
+//------------------------------------------------------------
 // Game Framework
 // Copyright © 2013-2021 Jiang Yin. All rights reserved.
 // Homepage: https://gameframework.cn/
@@ -24,6 +24,9 @@ namespace SepCore.Definition
 
             public const string TargetableObjectLayerName = "Targetable Object";
             public static readonly int TargetableObjectLayerId = LayerMask.NameToLayer(TargetableObjectLayerName);
+
+            public const string LootCheckLayerName = "LootCheck";
+            public static readonly int LootCheckLayerId = LayerMask.NameToLayer(LootCheckLayerName);
         }
     }
 }

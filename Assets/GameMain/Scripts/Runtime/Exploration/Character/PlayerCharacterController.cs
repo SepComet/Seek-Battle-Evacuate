@@ -141,6 +141,22 @@ namespace SepCore.Exploration
                 return;
             }
 
+            // 处理交互触发（交互可能改变移动许可，例如进入/退出物资点长按搜索）
+            if (input.InteractTriggered)
+            {
+                OnInteractTriggered?.Invoke(this);
+            }
+
+            if (input.InteractReleased)
+            {
+                OnInteractReleased?.Invoke(this);
+            }
+
+            if (input.IsInteracting)
+            {
+                OnInteractHeld?.Invoke(this);
+            }
+
             Vector2 move = input.MoveVector;
             if (_canMove && move.sqrMagnitude > 0.0001f)
             {
@@ -156,22 +172,6 @@ namespace SepCore.Exploration
             if (_rigidbody2D == null && _currentVelocity.sqrMagnitude > 0.0001f)
             {
                 transform.position += (Vector3)(_currentVelocity * deltaTime);
-            }
-
-            // 处理交互触发
-            if (input.InteractTriggered)
-            {
-                OnInteractTriggered?.Invoke(this);
-            }
-
-            if (input.InteractReleased)
-            {
-                OnInteractReleased?.Invoke(this);
-            }
-
-            if (input.IsInteracting)
-            {
-                OnInteractHeld?.Invoke(this);
             }
         }
 

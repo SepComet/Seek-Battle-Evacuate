@@ -20,9 +20,15 @@ namespace SepCore.Tests
             public Vector3 Position { get; set; }
             public bool CanInteract { get; set; } = true;
             public GameObject EntityGameObject { get; set; } = null;
+            public bool IsHighlighted { get; private set; } = false;
 
             public void OnInteract(GameObject interactor)
             {
+            }
+
+            public void SetHighlight(bool highlight)
+            {
+                IsHighlighted = highlight;
             }
         }
 
@@ -236,6 +242,22 @@ namespace SepCore.Tests
             // 领队移动靠近 B
             Vector3 posNearB = new Vector3(9f, 0f, 0f);
             Assert.AreSame(itemB, InteractTargetSelector.SelectBestTarget(candidates, posNearB));
+        }
+
+        [Test]
+        public void MockInteractable_SetHighlight_TogglesCorrectly()
+        {
+            var item = new MockInteractable
+            {
+                InteractableType = InteractableType.Item,
+                Rarity = Rarity.Blue
+            };
+
+            Assert.IsFalse(item.IsHighlighted);
+            item.SetHighlight(true);
+            Assert.IsTrue(item.IsHighlighted);
+            item.SetHighlight(false);
+            Assert.IsFalse(item.IsHighlighted);
         }
     }
 }

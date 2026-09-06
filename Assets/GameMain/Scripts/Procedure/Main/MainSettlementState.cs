@@ -1,29 +1,85 @@
 using System;
 using System.Collections.Generic;
+using GameFramework.Event;
 using GameFramework.Fsm;
+using SepCore.Base;
 using SepCore.Definition;
+using SepCore.Exploration;
 using SepCore.Run;
+using SepCore.UI;
 using UnityGameFramework.Runtime;
 
 namespace SepCore.Procedure
 {
     /// <summary>
     /// 主流程状态：撤离结算。
-    /// 负责执行局内与局外物品结算、更新角色装备、追加 RunRecord 历史并写盘，重置战斗组件与随机源，最后返回大厅。
+    /// 负责执行局内与局外物品结算、更新角色装备、追加 RunRecord 历史并写盘，重置战斗组件与随机源，
+    /// 打开单局结算界面（RoundSettlementForm），并在玩家点击返回大厅后返回大厅菜单。
     /// </summary>
     public sealed class MainSettlementState : FsmState<ProcedureMain>
     {
+        private ProcedureMain _procedureMain;
+
         protected override void OnEnter(IFsm<ProcedureMain> fsm)
         {
             base.OnEnter(fsm);
+            _procedureMain = fsm.Owner;
             Log.Info("[ProcedureMain] Entering MainSettlementState...");
+
+            GameEntry.Event.Subscribe(RoundSettlementReturnEventArgs.EventId, OnRoundSettlementReturn);
 
             RoundResultType outcome = fsm.Owner.PendingOutcome ?? RoundResultType.TimedOut;
             ExecuteSettlement(fsm.Owner, outcome);
         }
 
+        protected override void OnLeave(IFsm<ProcedureMain> fsm, bool isShutdown)
+        {
+            GameEntry.Event.Unsubscribe(RoundSettlementReturnEventArgs.EventId, OnRoundSettlementReturn);
+            _procedureMain = null;
+            base.OnLeave(fsm, isShutdown);
+        }
+
+        private void OnRoundSettlementReturn(object sender, GameEventArgs e)
+        {
+            if (_procedureMain != null)
+            {
+                Log.Info("[ProcedureMain] Settlement return requested, returning to menu...");
+                _procedureMain.ReturnToMenu();
+            }
+        }
+
         private void ExecuteSettlement(ProcedureMain procedureMain, RoundResultType outcome)
         {
+            // 0. 预先采集结算界面展示数据（在清理单局运行时前采集）
+            int elapsedSeconds = 0;
+            if (GameEntry.TurnBattle != null)
+            {
+                elapsedSeconds = (int)(GameEntry.TurnBattle.RunElapsedMs / 1000);
+            }
+
+            List<ItemStack> broughtItems = new List<ItemStack>();
+            int totalValue = 0;
+
+            if (GameEntry.Round?.Session != null)
+            {
+                RoundSession session = GameEntry.Round.Session;
+                List<ItemStack> safeItems = session.SafeCase.ToNonEmptyList();
+                broughtItems.AddRange(safeItems);
+
+                if (outcome == RoundResultType.Extracted)
+                {
+                    List<ItemStack> backpackItems = session.Backpack.ToNonEmptyList();
+                    broughtItems.AddRange(backpackItems);
+                    totalValue = session.TotalLootValue;
+                }
+                else
+                {
+                    totalValue = session.SafeCase.TotalValue;
+                }
+            }
+
+            RoundSettlementData settlementData = new RoundSettlementData(outcome, elapsedSeconds, totalValue, broughtItems);
+
             SaveData save = GameEntry.Save.Data;
             if (save != null)
             {
@@ -97,10 +153,47 @@ namespace SepCore.Procedure
             // 7. 清理本局共享随机源
             GameEntry.Random.EndRun();
 
-            // 8. 返回大厅（若开启了自动返回）
-            if (procedureMain.AutoReturnToMenu)
+            // 8. 关闭探索常驻 UI 与辅助 UI，禁用探索输入
+            procedureMain.CloseJoystickForm();
+            procedureMain.CloseRoundHUDForm();
+            CloseAuxiliaryUIForms();
+            CharacterInputBridge.DisableInput(InputDisableReason.Custom);
+
+            // 9. 打开结算界面并等待返回大厅；若无 UI 则直接切回大厅（测试/无头环境）
+            if (GameEntry.UI != null)
+            {
+                Log.Info("[ProcedureMain] Opening RoundSettlementForm with outcome: {0}...", outcome);
+                GameEntry.UI.OpenUIForm(UIFormType.RoundSettlementForm, settlementData);
+            }
+            else if (procedureMain.AutoReturnToMenu)
             {
                 procedureMain.ReturnToMenu();
+            }
+        }
+
+        private static void CloseAuxiliaryUIForms()
+        {
+            if (GameEntry.UI == null)
+            {
+                return;
+            }
+
+            if (GameEntry.UI.HasUIForm(UIFormType.RoundBackpackForm))
+            {
+                UGuiForm backpackForm = GameEntry.UI.GetUIForm(UIFormType.RoundBackpackForm);
+                if (backpackForm != null)
+                {
+                    GameEntry.UI.CloseUIForm(backpackForm);
+                }
+            }
+
+            if (GameEntry.UI.HasUIForm(UIFormType.BattleForm))
+            {
+                UGuiForm battleForm = GameEntry.UI.GetUIForm(UIFormType.BattleForm);
+                if (battleForm != null)
+                {
+                    GameEntry.UI.CloseUIForm(battleForm);
+                }
             }
         }
 

@@ -22,6 +22,7 @@ namespace SepCore.Entity
         private CharacterInteractDetector _interactDetector;
         private SpriteRenderer _spriteRenderer;
         private int _spriteVersion;
+        private PlayerRoomTracker _roomTracker;
 
         /// <summary>
         /// 当前绑定的玩家角色实体数据。
@@ -37,6 +38,21 @@ namespace SepCore.Entity
         /// 是否为领队。
         /// </summary>
         public bool IsLeader => PartyOrder == 1;
+
+        /// <summary>
+        /// 当前激活的领队实体实例引用。
+        /// </summary>
+        public static PlayerCharacterLogic Leader { get; private set; }
+
+        /// <summary>
+        /// 当前绑定的房间追踪器（仅领队有效）。
+        /// </summary>
+        public PlayerRoomTracker RoomTracker => _roomTracker;
+
+        /// <summary>
+        /// 当前领队所在的房间索引。若不在任何房间内则为 null。
+        /// </summary>
+        public int? CurrentRoomIndex => _roomTracker?.CurrentRoomIndex;
 
         protected override void OnShow(object userData)
         {
@@ -66,6 +82,8 @@ namespace SepCore.Entity
                 return;
             }
 
+            Leader = this;
+
             // 实体组会池化复用实例，领队组件的挂载与配置均需幂等
             if (GetComponent<Rigidbody2D>() == null)
             {
@@ -81,6 +99,12 @@ namespace SepCore.Entity
 
             _leaderController.SetInputSource(CharacterInputBridge.DefaultInput);
             _leaderController.CanMove = true;
+
+            GlobalConfig global = GameEntry.Luban.Global != null ? GameEntry.Luban.Global.Data : null;
+            if (global != null && global.PlayerSpeed > 0)
+            {
+                _leaderController.MoveSpeed = global.PlayerSpeed / 1000f;
+            }
 
             _partyController = GetComponent<SnakePartyController>();
             if (_partyController == null)
@@ -105,14 +129,47 @@ namespace SepCore.Entity
             }
         }
 
+        protected override void OnUpdate(float elapseSeconds, float realElapseSeconds)
+        {
+            base.OnUpdate(elapseSeconds, realElapseSeconds);
+
+            if (IsLeader && _roomTracker != null && _leaderController != null)
+            {
+                _roomTracker.UpdatePosition(transform.position, _leaderController.IsMoving);
+            }
+        }
+
         protected override void OnHide(bool isShutdown, object userData)
         {
+            if (Leader == this)
+            {
+                Leader = null;
+            }
+
             _data = null;
             _leaderController = null;
             _partyController = null;
             _interactDetector = null;
             _spriteRenderer = null;
+            if (_roomTracker != null)
+            {
+                _roomTracker.Reset();
+                _roomTracker = null;
+            }
             base.OnHide(isShutdown, userData);
+        }
+
+        /// <summary>
+        /// 初始化领队房间追踪器，采样初始房间。
+        /// </summary>
+        public void InitializeRoomTracker(IReadOnlyList<RoomDefinition> rooms)
+        {
+            if (_roomTracker == null)
+            {
+                _roomTracker = new PlayerRoomTracker();
+            }
+
+            _roomTracker.Initialize(rooms, transform.position);
         }
 
         /// <summary>

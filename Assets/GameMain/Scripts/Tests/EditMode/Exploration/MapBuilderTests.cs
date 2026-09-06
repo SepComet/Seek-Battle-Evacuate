@@ -99,9 +99,83 @@ namespace SepCore.Tests
             Assert.AreEqual(8, random.Ranges.Count);
         }
 
+        [Test]
+        public void RoomDefinition_Contains_CorrectlyIdentifiesPoints()
+        {
+            RoomDefinition room1 = new RoomDefinition(new Vector2(-10f, -5f), new Vector2(10f, 15f));
+            RoomDefinition room2 = new RoomDefinition(new Vector2(10f, -5f), new Vector2(-10f, 15f));
+
+            Assert.AreEqual(new Vector2(-10f, -5f), room1.Min);
+            Assert.AreEqual(new Vector2(10f, 15f), room1.Max);
+            Assert.AreEqual(new Vector2(20f, 20f), room1.Size);
+            Assert.AreEqual(new Vector2(0f, 5f), room1.Center);
+
+            Assert.AreEqual(room1.Min, room2.Min);
+            Assert.AreEqual(room1.Max, room2.Max);
+
+            // Inside
+            Assert.IsTrue(room1.Contains(new Vector2(0f, 0f)));
+            Assert.IsTrue(room1.Contains(new Vector3(5f, 5f, 0f)));
+
+            // 房间覆盖瓦片 [Min, Max] 闭区间，瓦片占据 [x, x+1)，
+            // 因此连续足迹为 [Min, Max+1)：Min 侧含边界，Max 侧边界瓦片整体算房间内
+            Assert.IsTrue(room1.Contains(new Vector2(-10f, 0f)));
+            Assert.IsTrue(room1.Contains(new Vector2(0f, -5f)));
+            Assert.IsTrue(room1.Contains(new Vector2(10f, 15f)));
+            Assert.IsTrue(room1.Contains(new Vector2(10.5f, 0f)));
+            Assert.IsTrue(room1.Contains(new Vector2(0f, 15.5f)));
+
+            // Outside（Max+1 起为半开区间上界之外）
+            Assert.IsFalse(room1.Contains(new Vector2(-10.1f, 0f)));
+            Assert.IsFalse(room1.Contains(new Vector2(0f, -5.1f)));
+            Assert.IsFalse(room1.Contains(new Vector2(11f, 0f)));
+            Assert.IsFalse(room1.Contains(new Vector2(0f, 16f)));
+        }
+
+        [Test]
+        public void RoomDefinition_WithRoomType_SetsTypeAndIsCorridor()
+        {
+            RoomDefinition normal = new RoomDefinition(Vector2.zero, Vector2.one);
+            RoomDefinition corridor = new RoomDefinition(Vector2.zero, Vector2.one, RoomType.Corridor);
+
+            Assert.AreEqual(RoomType.Normal, normal.RoomType);
+            Assert.IsFalse(normal.IsCorridor);
+            Assert.AreEqual(RoomType.Corridor, corridor.RoomType);
+            Assert.IsTrue(corridor.IsCorridor);
+        }
+
+        [Test]
+        public void Build_PassesRoomsToMapBuildResult()
+        {
+            List<RoomDefinition> rooms = new List<RoomDefinition>
+            {
+                new RoomDefinition(new Vector2(-20f, -10f), new Vector2(0f, 10f)),
+                new RoomDefinition(new Vector2(5f, 5f), new Vector2(25f, 25f))
+            };
+
+            MapDefinition definition = CreateMapDefinition(
+                new List<Vector2> { Vector2.zero },
+                new List<ResourcePointDefinition>(),
+                new List<Vector2>(),
+                new List<Vector2> { Vector2.zero },
+                rooms);
+
+            DifficultyConfig difficulty = CreateDifficulty(CreateThreatWeight(EnemyPartyThreatLevel.None, 1));
+            RecordingRandomSource random = new RecordingRandomSource(0, 0);
+
+            MapBuildResult result = MapBuilder.Build(definition, difficulty,
+                new List<ResourcePointConfig>(), new List<ItemConfig>(), new List<EnemyPartyConfig>(), random);
+
+            Assert.AreEqual(2, result.Rooms.Count);
+            Assert.AreEqual(new Vector2(-20f, -10f), result.Rooms[0].Min);
+            Assert.AreEqual(new Vector2(0f, 10f), result.Rooms[0].Max);
+            Assert.AreEqual(new Vector2(5f, 5f), result.Rooms[1].Min);
+            Assert.AreEqual(new Vector2(25f, 25f), result.Rooms[1].Max);
+        }
+
         private MapDefinition CreateMapDefinition(List<Vector2> playerPoints,
             List<ResourcePointDefinition> resourcePoints, List<Vector2> enemyPoints,
-            List<Vector2> extractionPoints)
+            List<Vector2> extractionPoints, List<RoomDefinition> rooms = null)
         {
             MapDefinition definition = ScriptableObject.CreateInstance<MapDefinition>();
             _definitions.Add(definition);
@@ -109,6 +183,7 @@ namespace SepCore.Tests
             SetField(definition, "_resourcePoints", resourcePoints);
             SetField(definition, "_enemySpawnPoints", enemyPoints);
             SetField(definition, "_extractionPoints", extractionPoints);
+            SetField(definition, "_rooms", rooms ?? new List<RoomDefinition>());
             return definition;
         }
 

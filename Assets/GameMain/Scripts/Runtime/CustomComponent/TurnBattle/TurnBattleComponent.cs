@@ -29,6 +29,12 @@ namespace SepCore.Battle
         private Action<BattleStep> _stepListener;
         private Coroutine _autoAdvanceRoutine;
         private BattleOutcomeType? _lastOutcome;
+        private float _escapeProtectionRemaining;
+
+        /// <summary>
+        /// 获取最近一场战斗的终局结果。
+        /// </summary>
+        public BattleOutcomeType? LastOutcome => _lastOutcome;
 
         /// <summary>
         /// 获取本局临时角色状态列表（只读）。
@@ -56,6 +62,29 @@ namespace SepCore.Battle
         /// 战斗重复进入由此标志拒绝。
         /// </summary>
         public bool IsBattleActive => _battleActive;
+
+        /// <summary>
+        /// 获取逃跑保护期是否生效中。生效期间敌人不可发现领队、警惕值不增长且碰触不进战。
+        /// </summary>
+        public bool IsEscapeProtectionActive => _escapeProtectionRemaining > 0f;
+
+        /// <summary>
+        /// 激活逃跑保护期。
+        /// </summary>
+        public void ActivateEscapeProtection()
+        {
+            if (_config == null)
+            {
+                _config = new LubanBattleConfigProvider();
+            }
+
+            GlobalConfig global = _config.GetGlobal();
+            float durationSeconds = (global != null && global.EscapeProtectionMs > 0)
+                ? global.EscapeProtectionMs / 1000f
+                : 2.0f;
+            _escapeProtectionRemaining = durationSeconds;
+            Log.Info("Escape protection activated for {0:F1} seconds.", durationSeconds);
+        }
 
         /// <summary>
         /// 获取当前唯一的战斗运行时；仅战斗期间非 null。
@@ -243,6 +272,11 @@ namespace SepCore.Battle
 
         private void Update()
         {
+            if (_escapeProtectionRemaining > 0f && !_battleActive)
+            {
+                _escapeProtectionRemaining = Mathf.Max(0f, _escapeProtectionRemaining - Time.deltaTime);
+            }
+
             if (_timerPaused)
             {
                 return;
@@ -337,6 +371,10 @@ namespace SepCore.Battle
         {
             ApplyResultWriteback(result);
             _lastOutcome = result.Outcome;
+            if (result.Outcome == BattleOutcomeType.AllEscaped || result.Outcome == BattleOutcomeType.PartialEscapeDefeat)
+            {
+                ActivateEscapeProtection();
+            }
             LogBattleResult(result);
             Action<BattleResult> callback = _onCompleted;
             _onCompleted = null;
@@ -376,6 +414,7 @@ namespace SepCore.Battle
         {
             _players.Clear();
             _elapsedMs = 0;
+            _escapeProtectionRemaining = 0f;
             _timerPaused = false;
             _explorationPaused = false;
             _battleActive = false;

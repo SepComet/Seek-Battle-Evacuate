@@ -62,5 +62,38 @@ namespace SepCore.Definition
         /// </summary>
         /// <param name="interactor">交互发起者 GameObject（通常为领队物体）。</param>
         void OnInteract(GameObject interactor);
+
+        /// <summary>
+        /// 设置当前交互目标的选中高亮（描边）状态。
+        /// </summary>
+        /// <param name="highlight">true 为开启高亮，false 为关闭高亮。</param>
+        void SetHighlight(bool highlight);
+    }
+
+    /// <summary>
+    /// 支持长按交互的场景实体接口。
+    /// 在基础交互能力之上，扩展长按开始、每帧推进与松开/打断回调。
+    /// </summary>
+    public interface IHoldInteractable : IInteractable
+    {
+        /// <summary>
+        /// 开始长按交互。
+        /// </summary>
+        /// <param name="interactor">交互发起者 GameObject（通常为领队物体）。</param>
+        void OnInteractStart(GameObject interactor);
+
+        /// <summary>
+        /// 持续长按交互。
+        /// </summary>
+        /// <param name="interactor">交互发起者 GameObject（通常为领队物体）。</param>
+        /// <param name="deltaTime">自上一帧经过的时间（秒）。</param>
+        void OnInteractHold(GameObject interactor, float deltaTime);
+
+        /// <summary>
+        /// 结束或打断长按交互。
+        /// </summary>
+        /// <param name="interactor">交互发起者 GameObject（通常为领队物体）。</param>
+        void OnInteractEnd(GameObject interactor);
     }
 }
+

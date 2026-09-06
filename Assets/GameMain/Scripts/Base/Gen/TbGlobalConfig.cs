@@ -35,10 +35,6 @@ public partial class TbGlobalConfig
     /// </summary>
      public int RunTimeLimitMs => _data.RunTimeLimitMs;
     /// <summary>
-    /// 小地图标记撤离点的时间，毫秒
-    /// </summary>
-     public int ExtractionRevealTimeMs => _data.ExtractionRevealTimeMs;
-    /// <summary>
     /// 地图定义SO路径（相对于Assets/GameMain）
     /// </summary>
      public string MapDefinitionPath => _data.MapDefinitionPath;
@@ -75,17 +71,37 @@ public partial class TbGlobalConfig
     /// </summary>
      public string ItemEntity => _data.ItemEntity;
     /// <summary>
+    /// 资源点道具掉落最小半径，毫米
+    /// </summary>
+     public int LootRangeMinRadius => _data.LootRangeMinRadius;
+    /// <summary>
+    /// 资源点道具掉落最大半径，毫米
+    /// </summary>
+     public int LootRangeMaxRadius => _data.LootRangeMaxRadius;
+    /// <summary>
+    /// 撤离时间，毫秒
+    /// </summary>
+     public int EvacuateTimeMs => _data.EvacuateTimeMs;
+    /// <summary>
     /// 敌人丢失目标后返回巡逻的时间，毫秒
     /// </summary>
      public int EnemyLoseTargetMs => _data.EnemyLoseTargetMs;
     /// <summary>
-    /// 敌人正面视野角度
-    /// </summary>
-     public int EnemyFrontViewAngle => _data.EnemyFrontViewAngle;
-    /// <summary>
     /// 警惕值满值
     /// </summary>
      public int AlertMax => _data.AlertMax;
+    /// <summary>
+    /// 追逐速度
+    /// </summary>
+     public int ChaseSpeed => _data.ChaseSpeed;
+    /// <summary>
+    /// 巡逻速度
+    /// </summary>
+     public int PatrolSpeed => _data.PatrolSpeed;
+    /// <summary>
+    /// 玩家速度
+    /// </summary>
+     public int PlayerSpeed => _data.PlayerSpeed;
     /// <summary>
     /// 仓库格子数
     /// </summary>

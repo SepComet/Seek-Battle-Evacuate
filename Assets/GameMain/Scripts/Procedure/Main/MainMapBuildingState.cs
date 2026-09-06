@@ -85,6 +85,7 @@ namespace SepCore.Procedure
                 EnsureEntityGroup("Enemy");
                 EnsureEntityGroup("Player");
                 EnsureEntityGroup("Camera");
+                EnsureEntityGroup("Item");
 
                 // 5. 执行地图构建
                 MapBuilder builder = new MapBuilder(difficulty, GameEntry.Random.Random);
@@ -95,7 +96,6 @@ namespace SepCore.Procedure
                     return;
                 }
 
-                fsm.Owner.BuildResult = buildResult;
                 fsm.Owner.ExtractionPoint = TileToWorldPosition2D(buildResult.ExtractionPoint);
                 fsm.Owner.PlayerSpawnPoint = TileToWorldPosition2D(buildResult.PlayerSpawnPoint);
 
@@ -156,8 +156,27 @@ namespace SepCore.Procedure
 
                     int enemyEntityId = GameEntry.Entity.SerialId();
                     Vector3 enemyPos = TileToWorldPosition(enemyPoint.Position);
+
+                    int roomIndex = -1;
+                    Vector2 roomMin = Vector2.zero;
+                    Vector2 roomMax = Vector2.zero;
+                    if (buildResult.Rooms != null)
+                    {
+                        for (int r = 0; r < buildResult.Rooms.Count; r++)
+                        {
+                            if (buildResult.Rooms[r].Contains(enemyPos))
+                            {
+                                roomIndex = r;
+                                roomMin = buildResult.Rooms[r].Min;
+                                roomMax = buildResult.Rooms[r].Max;
+                                break;
+                            }
+                        }
+                    }
+
                     EnemyPartyData enemyData = new EnemyPartyData(
-                        enemyEntityId, assetName, enemyPos, enemyPoint.EnemyPartyId, enemyPoint.ThreatLevel);
+                        enemyEntityId, assetName, enemyPos, enemyPoint.EnemyPartyId, enemyPoint.ThreatLevel,
+                        roomIndex, roomMin, roomMax);
                     GameEntry.Entity.ShowEntity<EnemyPartyLogic>(enemyData, "Enemy", Constant.AssetPriority.EnemyAsset);
                 }
 
@@ -273,6 +292,7 @@ namespace SepCore.Procedure
             }
 
             partyLogics[0].BindParty(retinueLogics);
+            partyLogics[0].InitializeRoomTracker(buildResult.Rooms);
             Log.Info("[ProcedureMain] Spawned {0} player characters at spawn point '{1}'.",
                 partyPlayers.Count, spawnPos);
             return partyLogics[0];

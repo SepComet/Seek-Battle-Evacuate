@@ -17,7 +17,6 @@ public sealed partial class GlobalConfig : Luban.BeanBase
     public GlobalConfig(ByteBuf _buf) 
     {
         RunTimeLimitMs = _buf.ReadInt();
-        ExtractionRevealTimeMs = _buf.ReadInt();
         MapDefinitionPath = _buf.ReadString();
         EscapeProtectionMs = _buf.ReadInt();
         LowThreatEnemyPartyEntity = _buf.ReadString();
@@ -34,9 +33,14 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         CharacterRetinueEntity_Ref = null;
         ItemEntity = _buf.ReadString();
         ItemEntity_Ref = null;
+        LootRangeMinRadius = _buf.ReadInt();
+        LootRangeMaxRadius = _buf.ReadInt();
+        EvacuateTimeMs = _buf.ReadInt();
         EnemyLoseTargetMs = _buf.ReadInt();
-        EnemyFrontViewAngle = _buf.ReadInt();
         AlertMax = _buf.ReadInt();
+        ChaseSpeed = _buf.ReadInt();
+        PatrolSpeed = _buf.ReadInt();
+        PlayerSpeed = _buf.ReadInt();
         WarehouseSlotCount = _buf.ReadInt();
         BackpackSlotCount = _buf.ReadInt();
         SecureSlotCount = _buf.ReadInt();
@@ -66,10 +70,6 @@ public sealed partial class GlobalConfig : Luban.BeanBase
     /// 单局时间上限，毫秒
     /// </summary>
     public readonly int RunTimeLimitMs;
-    /// <summary>
-    /// 小地图标记撤离点的时间，毫秒
-    /// </summary>
-    public readonly int ExtractionRevealTimeMs;
     /// <summary>
     /// 地图定义SO路径（相对于Assets/GameMain）
     /// </summary>
@@ -114,17 +114,37 @@ public sealed partial class GlobalConfig : Luban.BeanBase
     public readonly string ItemEntity;
     public EntityConfig ItemEntity_Ref;
     /// <summary>
+    /// 资源点道具掉落最小半径，毫米
+    /// </summary>
+    public readonly int LootRangeMinRadius;
+    /// <summary>
+    /// 资源点道具掉落最大半径，毫米
+    /// </summary>
+    public readonly int LootRangeMaxRadius;
+    /// <summary>
+    /// 撤离时间，毫秒
+    /// </summary>
+    public readonly int EvacuateTimeMs;
+    /// <summary>
     /// 敌人丢失目标后返回巡逻的时间，毫秒
     /// </summary>
     public readonly int EnemyLoseTargetMs;
     /// <summary>
-    /// 敌人正面视野角度
-    /// </summary>
-    public readonly int EnemyFrontViewAngle;
-    /// <summary>
     /// 警惕值满值
     /// </summary>
     public readonly int AlertMax;
+    /// <summary>
+    /// 追逐速度
+    /// </summary>
+    public readonly int ChaseSpeed;
+    /// <summary>
+    /// 巡逻速度
+    /// </summary>
+    public readonly int PatrolSpeed;
+    /// <summary>
+    /// 玩家速度
+    /// </summary>
+    public readonly int PlayerSpeed;
     /// <summary>
     /// 仓库格子数
     /// </summary>
@@ -206,7 +226,6 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         
         
         
-        
         LowThreatEnemyPartyEntity_Ref = tables.TbEntityConfig.GetOrDefault(LowThreatEnemyPartyEntity);
         MiddleThreatEnemyPartyEntity_Ref = tables.TbEntityConfig.GetOrDefault(MiddleThreatEnemyPartyEntity);
         HighThreatEnemyPartyEntity_Ref = tables.TbEntityConfig.GetOrDefault(HighThreatEnemyPartyEntity);
@@ -235,13 +254,17 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         
         
         
+        
+        
+        
+        
+        
     }
 
     public override string ToString()
     {
         return "{ "
         + "runTimeLimitMs:" + RunTimeLimitMs + ","
-        + "extractionRevealTimeMs:" + ExtractionRevealTimeMs + ","
         + "mapDefinitionPath:" + MapDefinitionPath + ","
         + "escapeProtectionMs:" + EscapeProtectionMs + ","
         + "lowThreatEnemyPartyEntity:" + LowThreatEnemyPartyEntity + ","
@@ -251,9 +274,14 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         + "characterLeaderEntity:" + CharacterLeaderEntity + ","
         + "CharacterRetinueEntity:" + CharacterRetinueEntity + ","
         + "ItemEntity:" + ItemEntity + ","
+        + "LootRangeMinRadius:" + LootRangeMinRadius + ","
+        + "LootRangeMaxRadius:" + LootRangeMaxRadius + ","
+        + "evacuateTimeMs:" + EvacuateTimeMs + ","
         + "enemyLoseTargetMs:" + EnemyLoseTargetMs + ","
-        + "enemyFrontViewAngle:" + EnemyFrontViewAngle + ","
         + "alertMax:" + AlertMax + ","
+        + "chaseSpeed:" + ChaseSpeed + ","
+        + "patrolSpeed:" + PatrolSpeed + ","
+        + "playerSpeed:" + PlayerSpeed + ","
         + "warehouseSlotCount:" + WarehouseSlotCount + ","
         + "backpackSlotCount:" + BackpackSlotCount + ","
         + "secureSlotCount:" + SecureSlotCount + ","

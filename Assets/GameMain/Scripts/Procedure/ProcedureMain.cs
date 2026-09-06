@@ -2,7 +2,6 @@ using GameFramework.Fsm;
 using GameFramework.Procedure;
 using SepCore.Definition;
 using SepCore.Entity;
-using SepCore.Exploration;
 using SepCore.UI;
 using UnityEngine;
 using UnityGameFramework.Runtime;
@@ -22,11 +21,6 @@ namespace SepCore.Procedure
         private IFsm<ProcedureMain> _fsm;
 
         /// <summary>
-        /// 本局地图构建结果。
-        /// </summary>
-        public MapBuildResult BuildResult { get; set; }
-
-        /// <summary>
         /// 本局开放的撤离点世界坐标。
         /// </summary>
         public Vector2 ExtractionPoint { get; set; }
@@ -35,11 +29,6 @@ namespace SepCore.Procedure
         /// 本局玩家出生点世界坐标。
         /// </summary>
         public Vector2 PlayerSpawnPoint { get; set; }
-
-        /// <summary>
-        /// 撤离点是否已被揭示并标记到小地图上（20分钟达到时揭示）。
-        /// </summary>
-        public bool IsExtractionPointRevealed { get; set; }
 
         /// <summary>
         /// 本局单局难度。
@@ -82,10 +71,8 @@ namespace SepCore.Procedure
             Log.Info("[ProcedureMain] Procedure entered.");
 
             _procedureOwner = procedureOwner;
-            BuildResult = null;
             ExtractionPoint = Vector2.zero;
             PlayerSpawnPoint = Vector2.zero;
-            IsExtractionPointRevealed = false;
             PendingOutcome = null;
             MainCamera = null;
             RunStartTimeUtcMs = 0;
@@ -120,7 +107,6 @@ namespace SepCore.Procedure
             }
 
             _procedureOwner = null;
-            BuildResult = null;
             PendingOutcome = null;
             MainCamera = null;
 
@@ -165,13 +151,13 @@ namespace SepCore.Procedure
         }
 
         /// <summary>
-        /// 打开局内 HUD 界面（RoundHUDForm）。
+        /// 打开局内 HUD 界面（RoundHUDForm），并携带本局撤离点与小地图视窗数据供标记定位。
         /// </summary>
         public void OpenRoundHUDForm()
         {
             if (GameEntry.UI != null)
             {
-                GameEntry.UI.OpenUIForm(UIFormType.RoundHUDForm);
+                GameEntry.UI.OpenUIForm(UIFormType.RoundHUDForm, BuildExtractionMarkerData());
             }
         }
 
@@ -199,18 +185,22 @@ namespace SepCore.Procedure
         }
 
         /// <summary>
-        /// 揭示本局开放的撤离点（达到 20 分钟时触发）。
+        /// 组装小地图撤离点标记数据：撤离点世界坐标，以及小地图视窗来源与覆盖的世界尺寸。
         /// </summary>
-        public void RevealExtractionPoint()
+        private ExtractionMarkerData BuildExtractionMarkerData()
         {
-            if (IsExtractionPointRevealed)
+            if (MainCamera == null)
             {
-                return;
+                Log.Error("[ProcedureMain] Main camera is missing, cannot build extraction marker data.");
+                return null;
             }
 
-            IsExtractionPointRevealed = true;
-            Log.Info("[ProcedureMain] Extraction point revealed at ({0}, {1}).",
-                ExtractionPoint.x, ExtractionPoint.y);
+            return new ExtractionMarkerData
+            {
+                ExtractionPoint = ExtractionPoint,
+                MainCamera = MainCamera,
+                ViewportSize = MainCamera.MinimapViewportSize
+            };
         }
 
         /// <summary>

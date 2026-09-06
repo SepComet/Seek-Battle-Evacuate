@@ -29,6 +29,25 @@ namespace SepCore.Exploration
         private PlayerCharacterController _leader = null;
         private SnakeTrail _trail = null;
         private readonly List<Follower> _followers = new List<Follower>();
+        private bool _wasExplorationPaused = false;
+        private System.Func<bool> _isExplorationPausedProvider = null;
+
+        /// <summary>
+        /// 获取上一次物理计算记录的探索暂停状态。
+        /// </summary>
+        internal bool WasExplorationPaused => _wasExplorationPaused;
+
+        /// <summary>
+        /// 供测试注入或外部覆盖探索暂停检查。
+        /// </summary>
+        public void SetExplorationPausedProvider(System.Func<bool> provider)
+        {
+            _isExplorationPausedProvider = provider;
+        }
+
+        private bool IsExplorationPaused => _isExplorationPausedProvider != null
+            ? _isExplorationPausedProvider()
+            : (GameEntry.TurnBattle != null && GameEntry.TurnBattle.IsExplorationPaused);
 
         private sealed class Follower
         {
@@ -62,6 +81,12 @@ namespace SepCore.Exploration
             }
 
             _leader = leader;
+            _wasExplorationPaused = IsExplorationPaused;
+            if (_wasExplorationPaused)
+            {
+                _leader.CanMove = false;
+            }
+
             _followers.Clear();
             foreach (PlayerCharacterLogic retinue in retinues)
             {
@@ -96,7 +121,10 @@ namespace SepCore.Exploration
             _trail.Reset(_leader.transform.position);
         }
 
-        private void FixedUpdate()
+        /// <summary>
+        /// 供测试或固定物理周期手动推进一帧跟随计算。
+        /// </summary>
+        public void Step(float deltaTime)
         {
             // 尚未绑定编队（领队 OnShow 与 Bind 之间可能相隔数帧），此时不接管任何行为
             if (_leader == null || _trail == null)
@@ -104,15 +132,22 @@ namespace SepCore.Exploration
                 return;
             }
 
-            // 探索暂停（战斗等）期间锁定领队移动并冻结随从
-            bool explorationPaused = GameEntry.TurnBattle.IsExplorationPaused;
-            _leader.CanMove = !explorationPaused;
+            // 探索暂停（战斗等）期间锁定领队移动并冻结随从；
+            // 仅在暂停状态变化（离开暂停）时恢复 CanMove，避免正常探索中覆盖物资点搜索等逻辑置为 false 的移动锁定。
+            bool explorationPaused = IsExplorationPaused;
             if (explorationPaused)
             {
+                _wasExplorationPaused = true;
+                _leader.CanMove = false;
                 return;
             }
 
-            float deltaTime = Time.fixedDeltaTime;
+            if (_wasExplorationPaused)
+            {
+                _wasExplorationPaused = false;
+                _leader.CanMove = true;
+            }
+
             _trail.Append(_leader.transform.position);
             _trail.Trim(GetTrailMaxLength());
 
@@ -130,6 +165,11 @@ namespace SepCore.Exploration
                 UpdateFacing(follower, targetPosition);
                 follower.Rigidbody.MovePosition(targetPosition);
             }
+        }
+
+        private void FixedUpdate()
+        {
+            Step(Time.fixedDeltaTime);
         }
 
         /// <summary>

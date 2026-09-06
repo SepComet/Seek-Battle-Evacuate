@@ -1,4 +1,5 @@
 using Cysharp.Threading.Tasks;
+using DG.Tweening;
 using SepCore.AsyncTask;
 using SepCore.Base;
 using SepCore.Definition;
@@ -15,11 +16,19 @@ namespace SepCore.Entity
     /// </summary>
     public sealed class ItemEntityLogic : EntityBase, IInteractable
     {
+        private const float DropParabolaDuration = 0.45f;
+        private const float DropParabolaJumpPower = 0.75f;
+
         private ItemEntityData _data = null;
         private ItemConfig _config = null;
         private SpriteRenderer _spriteRenderer = null;
+        private Material _originalMaterial = null;
+        private MaterialPropertyBlock _propertyBlock = null;
         private int _spriteVersion = 0;
         private bool _isBeingPickedUp = false;
+        private bool _isHighlighted = false;
+        private bool _isFlying = false;
+        private Sequence _dropAnimationSequence = null;
 
         /// <summary>
         /// 实体数据。
@@ -37,9 +46,39 @@ namespace SepCore.Entity
 
         public Vector3 Position => transform.position;
 
-        public bool CanInteract => _data != null && !_isBeingPickedUp;
+        public bool CanInteract => _data != null && !_isBeingPickedUp && !_isFlying;
 
         public GameObject EntityGameObject => gameObject;
+
+        public void SetHighlight(bool highlight)
+        {
+            _isHighlighted = highlight;
+            if (_spriteRenderer == null)
+            {
+                _spriteRenderer = GetComponentInChildren<SpriteRenderer>();
+            }
+
+            Color outlineColor = GetRarityOutlineColor(Rarity);
+            Exploration.SpriteOutlineApplier.ApplyOutline(
+                _spriteRenderer,
+                ref _originalMaterial,
+                ref _propertyBlock,
+                highlight,
+                outlineColor);
+        }
+
+        private static Color GetRarityOutlineColor(Rarity rarity)
+        {
+            return rarity switch
+            {
+                Rarity.Red => new Color(1f, 0.25f, 0.25f, 1f),
+                Rarity.Gold => new Color(1f, 0.85f, 0.2f, 1f),
+                Rarity.Blue => new Color(0.3f, 0.7f, 1f, 1f),
+                Rarity.Green => new Color(0.3f, 1f, 0.4f, 1f),
+                Rarity.White => new Color(0.95f, 0.95f, 0.95f, 1f),
+                _ => new Color(1f, 0.9f, 0.2f, 1f)
+            };
+        }
 
         public void OnInteract(GameObject interactor)
         {
@@ -116,15 +155,59 @@ namespace SepCore.Entity
 
             _spriteVersion++;
             ShowItemSpriteAsync(_spriteVersion).Forget();
+
+            if (_data.SpawnFromPosition.HasValue)
+            {
+                PlayDropParabolaAnimation(_data.SpawnFromPosition.Value, _data.Position);
+            }
         }
 
         protected override void OnHide(bool isShutdown, object userData)
         {
+            KillDropAnimation();
+            SetHighlight(false);
             _isBeingPickedUp = false;
             _data = null;
             _config = null;
             _spriteRenderer = null;
+            _originalMaterial = null;
             base.OnHide(isShutdown, userData);
+        }
+
+        private void PlayDropParabolaAnimation(Vector3 startPos, Vector3 targetPos)
+        {
+            KillDropAnimation();
+            _isFlying = true;
+            transform.position = startPos;
+            transform.localScale = Vector3.one * 0.4f;
+
+            _dropAnimationSequence = DOTween.Sequence();
+            _dropAnimationSequence.Append(
+                transform.DOJump(targetPos, DropParabolaJumpPower, 1, DropParabolaDuration)
+                    .SetEase(Ease.Linear));
+            _dropAnimationSequence.Join(
+                transform.DOScale(Vector3.one, DropParabolaDuration)
+                    .SetEase(Ease.OutQuad));
+            _dropAnimationSequence.Append(
+                transform.DOPunchScale(new Vector3(0.2f, -0.2f, 0f), 0.15f, 6, 0.5f));
+            _dropAnimationSequence.OnComplete(() =>
+            {
+                _isFlying = false;
+                _dropAnimationSequence = null;
+            });
+        }
+
+        private void KillDropAnimation()
+        {
+            if (_dropAnimationSequence != null)
+            {
+                _dropAnimationSequence.Kill();
+                _dropAnimationSequence = null;
+            }
+
+            transform.DOKill();
+            transform.localScale = Vector3.one;
+            _isFlying = false;
         }
 
         private async UniTaskVoid ShowItemSpriteAsync(int version)
@@ -141,6 +224,10 @@ namespace SepCore.Entity
             }
 
             _spriteRenderer.sprite = sprite;
+            if (_isHighlighted)
+            {
+                SetHighlight(true);
+            }
         }
     }
 }
