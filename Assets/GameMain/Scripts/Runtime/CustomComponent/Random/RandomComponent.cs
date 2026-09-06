@@ -12,7 +12,7 @@ namespace SepCore.CustomComponent
     public class RandomComponent : GameFrameworkComponent
     {
         private int _seed;
-        private IRunRandomSource _random;
+        private IRoundRandomSource _random;
 
         /// <summary>
         /// 获取本局随机种子；未开始单局时为 0。
@@ -22,7 +22,7 @@ namespace SepCore.CustomComponent
         /// <summary>
         /// 获取本局共享随机源；未开始单局时为 null。
         /// </summary>
-        public IRunRandomSource Random => _random;
+        public IRoundRandomSource Random => _random;
 
         /// <summary>
         /// 开始一局新的单局：使用局外带入的种子初始化共享随机源。
@@ -31,7 +31,7 @@ namespace SepCore.CustomComponent
         public void BeginRun(int seed)
         {
             _seed = seed;
-            _random = new RunRandomSource(seed);
+            _random = new RoundRandomSource(seed);
         }
 
         /// <summary>

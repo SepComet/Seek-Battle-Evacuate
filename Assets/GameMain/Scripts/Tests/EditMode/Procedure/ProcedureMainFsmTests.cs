@@ -26,17 +26,17 @@ namespace SepCore.Tests
         {
             ProcedureMain procedure = new ProcedureMain();
 
-            procedure.TriggerSettlement(RunResultType.Extracted);
-            Assert.AreEqual(RunResultType.Extracted, procedure.PendingOutcome);
+            procedure.TriggerSettlement(RoundResultType.Extracted);
+            Assert.AreEqual(RoundResultType.Extracted, procedure.PendingOutcome);
 
-            procedure.TriggerSettlement(RunResultType.Defeated);
-            Assert.AreEqual(RunResultType.Defeated, procedure.PendingOutcome);
+            procedure.TriggerSettlement(RoundResultType.Defeated);
+            Assert.AreEqual(RoundResultType.Defeated, procedure.PendingOutcome);
 
-            procedure.TriggerSettlement(RunResultType.TimedOut);
-            Assert.AreEqual(RunResultType.TimedOut, procedure.PendingOutcome);
+            procedure.TriggerSettlement(RoundResultType.TimedOut);
+            Assert.AreEqual(RoundResultType.TimedOut, procedure.PendingOutcome);
 
-            procedure.TriggerSettlement(RunResultType.Quit);
-            Assert.AreEqual(RunResultType.Quit, procedure.PendingOutcome);
+            procedure.TriggerSettlement(RoundResultType.Quit);
+            Assert.AreEqual(RoundResultType.Quit, procedure.PendingOutcome);
         }
 
         [Test]
@@ -48,12 +48,12 @@ namespace SepCore.Tests
                 {
                     new CharacterSave(1, 1001, 2001)
                 },
-                runHistory = new List<RunRecord>()
+                runHistory = new List<RoundRecord>()
             };
 
             // 模拟结算：成功撤离保留装备
-            RunResultType outcome = RunResultType.Extracted;
-            if (outcome != RunResultType.Extracted && save.characters != null)
+            RoundResultType outcome = RoundResultType.Extracted;
+            if (outcome != RoundResultType.Extracted && save.characters != null)
             {
                 for (int i = 0; i < save.characters.Count; i++)
                 {
@@ -68,10 +68,10 @@ namespace SepCore.Tests
             Assert.AreEqual(2001, save.characters[0].armorItemId);
         }
 
-        [TestCase(RunResultType.Defeated)]
-        [TestCase(RunResultType.TimedOut)]
-        [TestCase(RunResultType.Quit)]
-        public void Settlement_NonExtracted_ClearsEquippedItems(RunResultType outcome)
+        [TestCase(RoundResultType.Defeated)]
+        [TestCase(RoundResultType.TimedOut)]
+        [TestCase(RoundResultType.Quit)]
+        public void Settlement_NonExtracted_ClearsEquippedItems(RoundResultType outcome)
         {
             SaveData save = new SaveData
             {
@@ -80,11 +80,11 @@ namespace SepCore.Tests
                     new CharacterSave(1, 1001, 2001),
                     new CharacterSave(2, 1002, 0)
                 },
-                runHistory = new List<RunRecord>()
+                runHistory = new List<RoundRecord>()
             };
 
             // 模拟结算：非撤离清空装备
-            if (outcome != RunResultType.Extracted && save.characters != null)
+            if (outcome != RoundResultType.Extracted && save.characters != null)
             {
                 for (int i = 0; i < save.characters.Count; i++)
                 {
@@ -106,19 +106,19 @@ namespace SepCore.Tests
         {
             SaveData save = new SaveData
             {
-                runHistory = new List<RunRecord>()
+                runHistory = new List<RoundRecord>()
             };
 
             long startedAt = 1000000;
             long endedAt = 1200000;
             long seed = 12345678;
             DifficultyTier difficulty = DifficultyTier.Tier2;
-            RunResultType outcome = RunResultType.Extracted;
+            RoundResultType outcome = RoundResultType.Extracted;
 
-            save.runHistory.Add(new RunRecord(outcome, difficulty, seed, startedAt, endedAt));
+            save.runHistory.Add(new RoundRecord(outcome, difficulty, seed, startedAt, endedAt));
 
             Assert.AreEqual(1, save.runHistory.Count);
-            RunRecord record = save.runHistory[0];
+            RoundRecord record = save.runHistory[0];
             Assert.AreEqual(outcome, record.outcome);
             Assert.AreEqual(difficulty, record.difficultyId);
             Assert.AreEqual(seed, record.seed);

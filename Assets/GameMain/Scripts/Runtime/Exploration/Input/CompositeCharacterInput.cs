@@ -10,6 +10,16 @@ namespace SepCore.Exploration
     public sealed class CompositeCharacterInput : ICharacterInput
     {
         private readonly List<ICharacterInput> _sources = new List<ICharacterInput>();
+        private bool _enabled = true;
+
+        /// <summary>
+        /// 是否启用输入。禁用时 MoveVector 归零，所有交互状态返回 false。
+        /// </summary>
+        public bool Enabled
+        {
+            get => _enabled;
+            set => _enabled = value;
+        }
 
         public IReadOnlyList<ICharacterInput> Sources => _sources;
 
@@ -35,6 +45,11 @@ namespace SepCore.Exploration
         {
             get
             {
+                if (!_enabled)
+                {
+                    return Vector2.zero;
+                }
+
                 Vector2 combined = Vector2.zero;
                 for (int i = 0; i < _sources.Count; i++)
                 {
@@ -59,6 +74,11 @@ namespace SepCore.Exploration
         {
             get
             {
+                if (!_enabled)
+                {
+                    return false;
+                }
+
                 for (int i = 0; i < _sources.Count; i++)
                 {
                     if (_sources[i] != null && _sources[i].IsInteracting)
@@ -75,6 +95,11 @@ namespace SepCore.Exploration
         {
             get
             {
+                if (!_enabled)
+                {
+                    return false;
+                }
+
                 for (int i = 0; i < _sources.Count; i++)
                 {
                     if (_sources[i] != null && _sources[i].InteractTriggered)
@@ -91,6 +116,11 @@ namespace SepCore.Exploration
         {
             get
             {
+                if (!_enabled)
+                {
+                    return false;
+                }
+
                 for (int i = 0; i < _sources.Count; i++)
                 {
                     if (_sources[i] != null && _sources[i].InteractReleased)
@@ -103,6 +133,6 @@ namespace SepCore.Exploration
             }
         }
 
-        public bool HasInput => MoveVector.sqrMagnitude > 0.0001f || IsInteracting || InteractTriggered || InteractReleased;
+        public bool HasInput => _enabled && (MoveVector.sqrMagnitude > 0.0001f || IsInteracting || InteractTriggered || InteractReleased);
     }
 }

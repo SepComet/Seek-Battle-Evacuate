@@ -1,4 +1,4 @@
-﻿using SepCore.Battle;
+using SepCore.Battle;
 using SepCore.CustomComponent;
 using UnityEngine;
 
@@ -17,6 +17,8 @@ public partial class GameEntry : MonoBehaviour
 
     public static TurnBattleComponent TurnBattle { get; private set; }
 
+    public static RoundComponent Round { get; private set; }
+
     private static void InitCustomComponents()
     {
         BuiltinData = UnityGameFramework.Runtime.GameEntry.GetComponent<BuiltinDataComponent>();
@@ -24,5 +26,15 @@ public partial class GameEntry : MonoBehaviour
         Save = UnityGameFramework.Runtime.GameEntry.GetComponent<SaveComponent>();
         Random = UnityGameFramework.Runtime.GameEntry.GetComponent<RandomComponent>();
         TurnBattle = UnityGameFramework.Runtime.GameEntry.GetComponent<TurnBattleComponent>();
+        Round = UnityGameFramework.Runtime.GameEntry.GetComponent<RoundComponent>();
+        if (Round == null)
+        {
+            GameObject runGo = new GameObject("Run");
+            if (TurnBattle != null && TurnBattle.transform.parent != null)
+            {
+                runGo.transform.SetParent(TurnBattle.transform.parent);
+            }
+            Round = runGo.AddComponent<RoundComponent>();
+        }
     }
 }

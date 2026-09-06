@@ -14,7 +14,7 @@ namespace SepCore.Definition
     /// <summary>
     /// 单局结算类型
     /// </summary>
-    public enum RunResultType : byte
+    public enum RoundResultType : byte
     {
         /// <summary>
         /// 无

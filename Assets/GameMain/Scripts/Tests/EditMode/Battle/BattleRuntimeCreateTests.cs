@@ -49,7 +49,7 @@ namespace SepCore.Tests
             PlayerUnitState playerUnit = TestBattle.Player();
             BattleEncounter encounter = TestBattle.Encounter();
             TestConfigProvider config = TestConfigProvider.Standard1v1();
-            IRunRandomSource random = new TestRandomSource();
+            IRoundRandomSource random = new TestRandomSource();
 
             Assert.Null(BattleRuntime.Create(null, new List<PlayerUnitState> { playerUnit }, config, random));
             Assert.Null(BattleRuntime.Create(encounter, null, config, random));

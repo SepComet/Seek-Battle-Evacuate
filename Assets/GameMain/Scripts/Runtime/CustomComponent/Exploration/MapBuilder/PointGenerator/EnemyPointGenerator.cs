@@ -9,9 +9,9 @@ namespace SepCore.Exploration
     internal sealed class EnemyPointGenerator
     {
         private readonly IReadOnlyList<EnemyPartyConfig> _enemyPartyConfigs;
-        private readonly IRunRandomSource _random;
+        private readonly IRoundRandomSource _random;
 
-        public EnemyPointGenerator(IReadOnlyList<EnemyPartyConfig> enemyPartyConfigs, IRunRandomSource random)
+        public EnemyPointGenerator(IReadOnlyList<EnemyPartyConfig> enemyPartyConfigs, IRoundRandomSource random)
         {
             _enemyPartyConfigs = enemyPartyConfigs;
             _random = random;

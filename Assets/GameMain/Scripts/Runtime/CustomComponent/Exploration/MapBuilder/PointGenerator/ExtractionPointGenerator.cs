@@ -7,9 +7,9 @@ namespace SepCore.Exploration
 {
     internal sealed class ExtractionPointGenerator
     {
-        private readonly IRunRandomSource _random;
+        private readonly IRoundRandomSource _random;
 
-        public ExtractionPointGenerator(IRunRandomSource random)
+        public ExtractionPointGenerator(IRoundRandomSource random)
         {
             _random = random;
         }

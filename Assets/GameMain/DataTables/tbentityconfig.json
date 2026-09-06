@@ -1,5 +1,9 @@
 [
   {
+    "assetName": "ItemEntity",
+    "prefabPath": "ItemEntity.prefab"
+  },
+  {
     "assetName": "ResourcePoint1",
     "prefabPath": "ResourcePoint/ResourcePoint1.prefab"
   },

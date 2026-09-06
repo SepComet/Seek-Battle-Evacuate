@@ -19,6 +19,7 @@ namespace SepCore.Entity
         private PlayerCharacterData _data;
         private PlayerCharacterController _leaderController;
         private SnakePartyController _partyController;
+        private CharacterInteractDetector _interactDetector;
         private SpriteRenderer _spriteRenderer;
         private int _spriteVersion;
 
@@ -86,6 +87,22 @@ namespace SepCore.Entity
             {
                 _partyController = gameObject.AddComponent<SnakePartyController>();
             }
+
+            Transform triggerTransform = transform.Find("InteractTrigger");
+            if (triggerTransform != null)
+            {
+                _interactDetector = triggerTransform.GetComponent<CharacterInteractDetector>();
+                if (_interactDetector == null)
+                {
+                    _interactDetector = triggerTransform.gameObject.AddComponent<CharacterInteractDetector>();
+                }
+
+                _interactDetector.Initialize(_leaderController);
+            }
+            else
+            {
+                Log.Warning("Player leader entity has no 'InteractTrigger' child object.");
+            }
         }
 
         protected override void OnHide(bool isShutdown, object userData)
@@ -93,6 +110,7 @@ namespace SepCore.Entity
             _data = null;
             _leaderController = null;
             _partyController = null;
+            _interactDetector = null;
             _spriteRenderer = null;
             base.OnHide(isShutdown, userData);
         }

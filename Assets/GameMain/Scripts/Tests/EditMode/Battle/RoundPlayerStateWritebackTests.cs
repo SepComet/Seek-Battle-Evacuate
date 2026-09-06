@@ -6,7 +6,7 @@ using SepCore.Definition;
 namespace SepCore.Tests
 {
     [TestFixture]
-    public class RunPlayerStateWritebackTests
+    public class RoundPlayerStateWritebackTests
     {
         [Test]
         public void Apply_Victory_KeepsSurvivorsAndRevivesDefeated()
@@ -23,7 +23,7 @@ namespace SepCore.Tests
                     new BattlePlayerResult(1002, 0, 0, true, false),
                 });
 
-            RunPlayerStateWriteback.Apply(players, result, 1, 1);
+            RoundPlayerStateWriteback.Apply(players, result, 1, 1);
 
             Assert.AreEqual(80, players[0].CurrentHp);
             Assert.AreEqual(25, players[0].CurrentMp);
@@ -44,7 +44,7 @@ namespace SepCore.Tests
                     new BattlePlayerResult(1001, 60, 10, false, true),
                 });
 
-            RunPlayerStateWriteback.Apply(players, result, 1, 1);
+            RoundPlayerStateWriteback.Apply(players, result, 1, 1);
 
             Assert.AreEqual(60, players[0].CurrentHp);
             Assert.AreEqual(10, players[0].CurrentMp);
@@ -65,7 +65,7 @@ namespace SepCore.Tests
                     new BattlePlayerResult(1002, 0, 0, true, false),
                 });
 
-            RunPlayerStateWriteback.Apply(players, result, 1, 1);
+            RoundPlayerStateWriteback.Apply(players, result, 1, 1);
 
             Assert.AreEqual(90, players[0].CurrentHp);
             Assert.AreEqual(30, players[0].CurrentMp);
@@ -86,7 +86,7 @@ namespace SepCore.Tests
                     new BattlePlayerResult(1001, 0, 0, true, false),
                 });
 
-            RunPlayerStateWriteback.Apply(players, result, 1, 1);
+            RoundPlayerStateWriteback.Apply(players, result, 1, 1);
 
             Assert.AreEqual(50, players[0].CurrentHp);
             Assert.AreEqual(20, players[0].CurrentMp);
@@ -105,7 +105,7 @@ namespace SepCore.Tests
                     new BattlePlayerResult(9999, 10, 10, false, false),
                 });
 
-            Assert.DoesNotThrow(() => RunPlayerStateWriteback.Apply(players, result, 1, 1));
+            Assert.DoesNotThrow(() => RoundPlayerStateWriteback.Apply(players, result, 1, 1));
             Assert.AreEqual(120, players[0].CurrentHp);
         }
 
@@ -119,8 +119,8 @@ namespace SepCore.Tests
             BattleResult result = new BattleResult(1, BattleOutcomeType.Victory,
                 new List<BattlePlayerResult>());
 
-            Assert.DoesNotThrow(() => RunPlayerStateWriteback.Apply(null, result, 1, 1));
-            Assert.DoesNotThrow(() => RunPlayerStateWriteback.Apply(players, null, 1, 1));
+            Assert.DoesNotThrow(() => RoundPlayerStateWriteback.Apply(null, result, 1, 1));
+            Assert.DoesNotThrow(() => RoundPlayerStateWriteback.Apply(players, null, 1, 1));
         }
     }
 }

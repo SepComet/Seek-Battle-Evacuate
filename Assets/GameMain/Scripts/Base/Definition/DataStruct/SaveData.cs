@@ -43,7 +43,7 @@ namespace SepCore.Definition
         /// <summary>
         /// 已结束单局的结算记录。
         /// </summary>
-        public List<RunRecord> runHistory;
+        public List<RoundRecord> runHistory;
 
         /// <summary>
         /// 序列化为 JSON 字符串。
@@ -97,7 +97,7 @@ namespace SepCore.Definition
 
             if (runHistory == null)
             {
-                runHistory = new List<RunRecord>();
+                runHistory = new List<RoundRecord>();
             }
         }
     }

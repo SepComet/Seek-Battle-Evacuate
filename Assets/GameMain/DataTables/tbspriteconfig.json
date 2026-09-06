@@ -135,53 +135,418 @@
     "spriteIndex": 11
   },
   {
-    "key": "旧硬币",
+    "key": "铜币",
     "atlasPath": "Items.png",
-    "spriteIndex": 264
+    "spriteIndex": 128
   },
   {
-    "key": "宝石碎片",
+    "key": "银币",
     "atlasPath": "Items.png",
-    "spriteIndex": 275
+    "spriteIndex": 129
   },
   {
-    "key": "古代零件",
+    "key": "金币",
     "atlasPath": "Items.png",
-    "spriteIndex": 176
+    "spriteIndex": 130
   },
   {
-    "key": "精致核心",
+    "key": "铂币",
     "atlasPath": "Items.png",
-    "spriteIndex": 238
+    "spriteIndex": 131
   },
   {
-    "key": "神秘遗物",
-    "atlasPath": "Items.png",
-    "spriteIndex": 182
-  },
-  {
-    "key": "训练剑",
-    "atlasPath": "Items.png",
-    "spriteIndex": 0
-  },
-  {
-    "key": "法杖",
-    "atlasPath": "Items.png",
-    "spriteIndex": 110
-  },
-  {
-    "key": "布甲",
+    "key": "全币",
     "atlasPath": "Items.png",
     "spriteIndex": 132
   },
   {
-    "key": "术士长袍",
+    "key": "骨头 I",
     "atlasPath": "Items.png",
-    "spriteIndex": 134
+    "spriteIndex": 224
   },
   {
-    "key": "恢复药",
+    "key": "骨头 II",
     "atlasPath": "Items.png",
-    "spriteIndex": 220
+    "spriteIndex": 225
+  },
+  {
+    "key": "骨头 III",
+    "atlasPath": "Items.png",
+    "spriteIndex": 226
+  },
+  {
+    "key": "骨头 IV",
+    "atlasPath": "Items.png",
+    "spriteIndex": 227
+  },
+  {
+    "key": "骨头 V",
+    "atlasPath": "Items.png",
+    "spriteIndex": 228
+  },
+  {
+    "key": "骨头 VI",
+    "atlasPath": "Items.png",
+    "spriteIndex": 229
+  },
+  {
+    "key": "骨头 VII",
+    "atlasPath": "Items.png",
+    "spriteIndex": 230
+  },
+  {
+    "key": "骨头 VIII",
+    "atlasPath": "Items.png",
+    "spriteIndex": 231
+  },
+  {
+    "key": "骨头 IX",
+    "atlasPath": "Items.png",
+    "spriteIndex": 232
+  },
+  {
+    "key": "符文 I",
+    "atlasPath": "Items.png",
+    "spriteIndex": 320
+  },
+  {
+    "key": "符文 II",
+    "atlasPath": "Items.png",
+    "spriteIndex": 321
+  },
+  {
+    "key": "符文 III",
+    "atlasPath": "Items.png",
+    "spriteIndex": 322
+  },
+  {
+    "key": "符文 IV",
+    "atlasPath": "Items.png",
+    "spriteIndex": 323
+  },
+  {
+    "key": "符文 V",
+    "atlasPath": "Items.png",
+    "spriteIndex": 324
+  },
+  {
+    "key": "符文 VI",
+    "atlasPath": "Items.png",
+    "spriteIndex": 325
+  },
+  {
+    "key": "符文 VII",
+    "atlasPath": "Items.png",
+    "spriteIndex": 326
+  },
+  {
+    "key": "符文 VIII",
+    "atlasPath": "Items.png",
+    "spriteIndex": 327
+  },
+  {
+    "key": "符文 IX",
+    "atlasPath": "Items.png",
+    "spriteIndex": 328
+  },
+  {
+    "key": "种子 I",
+    "atlasPath": "Items.png",
+    "spriteIndex": 416
+  },
+  {
+    "key": "种子 II",
+    "atlasPath": "Items.png",
+    "spriteIndex": 417
+  },
+  {
+    "key": "种子 III",
+    "atlasPath": "Items.png",
+    "spriteIndex": 418
+  },
+  {
+    "key": "种子 IV",
+    "atlasPath": "Items.png",
+    "spriteIndex": 419
+  },
+  {
+    "key": "种子 V",
+    "atlasPath": "Items.png",
+    "spriteIndex": 420
+  },
+  {
+    "key": "种子 VI",
+    "atlasPath": "Items.png",
+    "spriteIndex": 421
+  },
+  {
+    "key": "种子 VII",
+    "atlasPath": "Items.png",
+    "spriteIndex": 422
+  },
+  {
+    "key": "种子 VIII",
+    "atlasPath": "Items.png",
+    "spriteIndex": 423
+  },
+  {
+    "key": "种子 IX",
+    "atlasPath": "Items.png",
+    "spriteIndex": 424
+  },
+  {
+    "key": "宝石 I",
+    "atlasPath": "Items.png",
+    "spriteIndex": 2128
+  },
+  {
+    "key": "宝石 II",
+    "atlasPath": "Items.png",
+    "spriteIndex": 2129
+  },
+  {
+    "key": "宝石 III",
+    "atlasPath": "Items.png",
+    "spriteIndex": 2130
+  },
+  {
+    "key": "宝石 IV",
+    "atlasPath": "Items.png",
+    "spriteIndex": 2131
+  },
+  {
+    "key": "宝石 V",
+    "atlasPath": "Items.png",
+    "spriteIndex": 2132
+  },
+  {
+    "key": "宝石 VI",
+    "atlasPath": "Items.png",
+    "spriteIndex": 2133
+  },
+  {
+    "key": "宝石 VII",
+    "atlasPath": "Items.png",
+    "spriteIndex": 2134
+  },
+  {
+    "key": "宝石 VIII",
+    "atlasPath": "Items.png",
+    "spriteIndex": 2135
+  },
+  {
+    "key": "宝石 IX",
+    "atlasPath": "Items.png",
+    "spriteIndex": 2136
+  },
+  {
+    "key": "收集品 I",
+    "atlasPath": "Items.png",
+    "spriteIndex": 672
+  },
+  {
+    "key": "收集品 II",
+    "atlasPath": "Items.png",
+    "spriteIndex": 673
+  },
+  {
+    "key": "收集品 III",
+    "atlasPath": "Items.png",
+    "spriteIndex": 674
+  },
+  {
+    "key": "收集品 IV",
+    "atlasPath": "Items.png",
+    "spriteIndex": 675
+  },
+  {
+    "key": "收集品 V",
+    "atlasPath": "Items.png",
+    "spriteIndex": 676
+  },
+  {
+    "key": "收集品 VI",
+    "atlasPath": "Items.png",
+    "spriteIndex": 677
+  },
+  {
+    "key": "收集品 VII",
+    "atlasPath": "Items.png",
+    "spriteIndex": 678
+  },
+  {
+    "key": "收集品 VIII",
+    "atlasPath": "Items.png",
+    "spriteIndex": 679
+  },
+  {
+    "key": "收集品 IX",
+    "atlasPath": "Items.png",
+    "spriteIndex": 680
+  },
+  {
+    "key": "短剑 I",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1440
+  },
+  {
+    "key": "短剑 II",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1520
+  },
+  {
+    "key": "短剑 III",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1600
+  },
+  {
+    "key": "菜刀 I",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1441
+  },
+  {
+    "key": "菜刀 II",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1521
+  },
+  {
+    "key": "菜刀 III",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1601
+  },
+  {
+    "key": "阔剑 I",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1448
+  },
+  {
+    "key": "阔剑 II",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1528
+  },
+  {
+    "key": "阔剑 III",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1608
+  },
+  {
+    "key": "小法杖 I",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1488
+  },
+  {
+    "key": "小法杖 II",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1568
+  },
+  {
+    "key": "小法杖 III",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1648
+  },
+  {
+    "key": "中法杖 I",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1489
+  },
+  {
+    "key": "中法杖 II",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1569
+  },
+  {
+    "key": "中法杖 III",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1649
+  },
+  {
+    "key": "大法杖 I",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1490
+  },
+  {
+    "key": "大法杖 II",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1570
+  },
+  {
+    "key": "大法杖 III",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1650
+  },
+  {
+    "key": "头盔 I",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1904
+  },
+  {
+    "key": "头盔 II",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1905
+  },
+  {
+    "key": "头盔 III",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1906
+  },
+  {
+    "key": "头盔 IV",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1907
+  },
+  {
+    "key": "头盔 V",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1908
+  },
+  {
+    "key": "术士长袍 I",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1968
+  },
+  {
+    "key": "术士长袍 II",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1969
+  },
+  {
+    "key": "术士长袍 III",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1970
+  },
+  {
+    "key": "术士长袍 IV",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1971
+  },
+  {
+    "key": "术士长袍 V",
+    "atlasPath": "Items.png",
+    "spriteIndex": 1972
+  },
+  {
+    "key": "小药",
+    "atlasPath": "Items.png",
+    "spriteIndex": 272
+  },
+  {
+    "key": "中小药",
+    "atlasPath": "Items.png",
+    "spriteIndex": 273
+  },
+  {
+    "key": "中药",
+    "atlasPath": "Items.png",
+    "spriteIndex": 274
+  },
+  {
+    "key": "中大药",
+    "atlasPath": "Items.png",
+    "spriteIndex": 275
+  },
+  {
+    "key": "大药",
+    "atlasPath": "Items.png",
+    "spriteIndex": 276
   }
 ]

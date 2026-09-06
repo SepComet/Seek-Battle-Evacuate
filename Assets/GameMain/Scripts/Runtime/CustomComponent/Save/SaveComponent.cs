@@ -110,7 +110,7 @@ namespace SepCore.CustomComponent
                 mainWarehouse = CreateInitialWarehouse(),
                 characters = new List<CharacterSave>(),
                 loadout = new LoadoutSave(),
-                runHistory = new List<RunRecord>(),
+                runHistory = new List<RoundRecord>(),
             };
 
             foreach (int characterId in global.NewGameCharacterIds)

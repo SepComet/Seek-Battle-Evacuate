@@ -66,8 +66,16 @@ namespace SepCore.Procedure
                     GameEntry.Random.BeginRun(fallbackSeed);
                 }
 
-                // 3. 构建并装配本局出战角色状态（包含装备加成）
-                List<PlayerUnitState> partyPlayers = PlayerPartyBuilder.Build(GameEntry.Save.Data, GameEntry.Luban.Tables);
+                // 3. 初始化单局数据层（共享背包、保险箱、出战队伍状态）
+                if (GameEntry.Round != null)
+                {
+                    GameEntry.Round.BeginRun(difficulty, GameEntry.Random.Seed);
+                }
+
+                // 4. 构建并装配本局出战角色状态（优先使用 RunSession 导出）
+                List<PlayerUnitState> partyPlayers = GameEntry.Round?.Session != null
+                    ? GameEntry.Round.Session.ToPlayerUnitStates()
+                    : PlayerPartyBuilder.Build(GameEntry.Save.Data, GameEntry.Luban.Tables);
                 GameEntry.TurnBattle.ReplacePlayers(partyPlayers);
                 Log.Info("[ProcedureMain] Initialized {0} party players for exploration.", partyPlayers.Count);
 

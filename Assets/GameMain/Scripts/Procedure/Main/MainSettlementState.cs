@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using GameFramework.Fsm;
 using SepCore.Definition;
+using SepCore.Run;
 using UnityGameFramework.Runtime;
 
 namespace SepCore.Procedure
@@ -17,17 +18,44 @@ namespace SepCore.Procedure
             base.OnEnter(fsm);
             Log.Info("[ProcedureMain] Entering MainSettlementState...");
 
-            RunResultType outcome = fsm.Owner.PendingOutcome ?? RunResultType.TimedOut;
+            RoundResultType outcome = fsm.Owner.PendingOutcome ?? RoundResultType.TimedOut;
             ExecuteSettlement(fsm.Owner, outcome);
         }
 
-        private void ExecuteSettlement(ProcedureMain procedureMain, RunResultType outcome)
+        private void ExecuteSettlement(ProcedureMain procedureMain, RoundResultType outcome)
         {
             SaveData save = GameEntry.Save.Data;
             if (save != null)
             {
-                // 1. 死亡/超时/主动退出时，已穿戴装备随角色丢失（保留保险箱内容）
-                if (outcome != RunResultType.Extracted && save.characters != null)
+                // 1. 结算单局战利品与背包/保险箱内容回写主仓库
+                if (GameEntry.Round?.Session != null)
+                {
+                    RoundSession session = GameEntry.Round.Session;
+                    if (save.mainWarehouse == null)
+                    {
+                        save.mainWarehouse = new List<ItemStack>();
+                    }
+
+                    // 保险箱物品无论胜败全部带出
+                    List<ItemStack> safeItems = session.SafeCase.ToNonEmptyList();
+                    foreach (ItemStack item in safeItems)
+                    {
+                        MergeIntoWarehouse(save.mainWarehouse, item);
+                    }
+
+                    // 背包物品仅撤离成功时带出
+                    if (outcome == RoundResultType.Extracted)
+                    {
+                        List<ItemStack> backpackItems = session.Backpack.ToNonEmptyList();
+                        foreach (ItemStack item in backpackItems)
+                        {
+                            MergeIntoWarehouse(save.mainWarehouse, item);
+                        }
+                    }
+                }
+
+                // 2. 死亡/超时/主动退出时，已穿戴装备随角色丢失（保留保险箱内容）
+                if (outcome != RoundResultType.Extracted && save.characters != null)
                 {
                     for (int i = 0; i < save.characters.Count; i++)
                     {
@@ -38,7 +66,7 @@ namespace SepCore.Procedure
                     }
                 }
 
-                // 2. 追加本局历史结算记录
+                // 3. 追加本局历史结算记录
                 long endedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 long startedAt = procedureMain.RunStartTimeUtcMs > 0 ? procedureMain.RunStartTimeUtcMs : endedAt;
                 long seed = GameEntry.Random.Seed;
@@ -46,27 +74,69 @@ namespace SepCore.Procedure
 
                 if (save.runHistory == null)
                 {
-                    save.runHistory = new List<RunRecord>();
+                    save.runHistory = new List<RoundRecord>();
                 }
 
-                save.runHistory.Add(new RunRecord(outcome, difficulty, seed, startedAt, endedAt));
+                save.runHistory.Add(new RoundRecord(outcome, difficulty, seed, startedAt, endedAt));
 
-                // 3. 写入磁盘
+                // 4. 写入磁盘
                 GameEntry.Save.Save();
                 Log.Info("[ProcedureMain] Run record saved to disk. Outcome: {0}, Difficulty: {1}, Seed: {2}.",
                     outcome, difficulty, seed);
             }
 
-            // 4. 清理战斗组件单局临时状态与计时器
+            // 5. 清理单局数据层
+            if (GameEntry.Round != null)
+            {
+                GameEntry.Round.EndRun();
+            }
+
+            // 6. 清理战斗组件单局临时状态与计时器
             GameEntry.TurnBattle.EndRun();
 
-            // 5. 清理本局共享随机源
+            // 7. 清理本局共享随机源
             GameEntry.Random.EndRun();
 
-            // 6. 返回大厅（若开启了自动返回）
+            // 8. 返回大厅（若开启了自动返回）
             if (procedureMain.AutoReturnToMenu)
             {
                 procedureMain.ReturnToMenu();
+            }
+        }
+
+        private static void MergeIntoWarehouse(List<ItemStack> warehouse, ItemStack stack)
+        {
+            if (warehouse == null || stack.itemId <= 0 || stack.count <= 0)
+            {
+                return;
+            }
+
+            ItemConfig config = GameEntry.Luban.Get<ItemConfig>(stack.itemId);
+            int stackLimit = config != null && config.StackLimit > 0 ? config.StackLimit : 1;
+            int remaining = stack.count;
+
+            for (int i = 0; i < warehouse.Count; i++)
+            {
+                if (warehouse[i].itemId == stack.itemId && warehouse[i].count < stackLimit)
+                {
+                    int space = stackLimit - warehouse[i].count;
+                    int toAdd = Math.Min(space, remaining);
+                    ItemStack s = warehouse[i];
+                    s.count += toAdd;
+                    warehouse[i] = s;
+                    remaining -= toAdd;
+                    if (remaining <= 0)
+                    {
+                        return;
+                    }
+                }
+            }
+
+            while (remaining > 0)
+            {
+                int toAdd = Math.Min(stackLimit, remaining);
+                warehouse.Add(new ItemStack(stack.itemId, toAdd));
+                remaining -= toAdd;
             }
         }
     }

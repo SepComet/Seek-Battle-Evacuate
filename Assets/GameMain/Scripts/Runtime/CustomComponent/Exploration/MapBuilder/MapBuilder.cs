@@ -15,9 +15,9 @@ namespace SepCore.Exploration
     public sealed class MapBuilder
     {
         private readonly DifficultyTier _difficulty;
-        private readonly IRunRandomSource _random;
+        private readonly IRoundRandomSource _random;
 
-        public MapBuilder(DifficultyTier difficulty, IRunRandomSource random)
+        public MapBuilder(DifficultyTier difficulty, IRoundRandomSource random)
         {
             _difficulty = difficulty;
             _random = random ?? throw new ArgumentNullException(nameof(random));
@@ -49,7 +49,7 @@ namespace SepCore.Exploration
 
         internal static MapBuildResult Build(MapDefinition mapDefinition, DifficultyConfig difficultyConfig,
             IReadOnlyList<ResourcePointConfig> resourceConfigs, IReadOnlyList<ItemConfig> itemConfigs,
-            IReadOnlyList<EnemyPartyConfig> enemyPartyConfigs, IRunRandomSource random)
+            IReadOnlyList<EnemyPartyConfig> enemyPartyConfigs, IRoundRandomSource random)
         {
             ResourcePointGenerator resourcePointGenerator = new ResourcePointGenerator(
                 resourceConfigs, itemConfigs, random);

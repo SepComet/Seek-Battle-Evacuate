@@ -71,6 +71,10 @@ public partial class TbGlobalConfig
     /// </summary>
      public string CharacterRetinueEntity => _data.CharacterRetinueEntity;
     /// <summary>
+    /// 局内道具实体
+    /// </summary>
+     public string ItemEntity => _data.ItemEntity;
+    /// <summary>
     /// 敌人丢失目标后返回巡逻的时间，毫秒
     /// </summary>
      public int EnemyLoseTargetMs => _data.EnemyLoseTargetMs;

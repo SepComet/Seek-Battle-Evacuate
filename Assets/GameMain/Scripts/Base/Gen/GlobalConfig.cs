@@ -32,6 +32,8 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         CharacterLeaderEntity_Ref = null;
         CharacterRetinueEntity = _buf.ReadString();
         CharacterRetinueEntity_Ref = null;
+        ItemEntity = _buf.ReadString();
+        ItemEntity_Ref = null;
         EnemyLoseTargetMs = _buf.ReadInt();
         EnemyFrontViewAngle = _buf.ReadInt();
         AlertMax = _buf.ReadInt();
@@ -106,6 +108,11 @@ public sealed partial class GlobalConfig : Luban.BeanBase
     /// </summary>
     public readonly string CharacterRetinueEntity;
     public EntityConfig CharacterRetinueEntity_Ref;
+    /// <summary>
+    /// 局内道具实体
+    /// </summary>
+    public readonly string ItemEntity;
+    public EntityConfig ItemEntity_Ref;
     /// <summary>
     /// 敌人丢失目标后返回巡逻的时间，毫秒
     /// </summary>
@@ -206,6 +213,7 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         EvacuatePointEntity_Ref = tables.TbEntityConfig.GetOrDefault(EvacuatePointEntity);
         CharacterLeaderEntity_Ref = tables.TbEntityConfig.GetOrDefault(CharacterLeaderEntity);
         CharacterRetinueEntity_Ref = tables.TbEntityConfig.GetOrDefault(CharacterRetinueEntity);
+        ItemEntity_Ref = tables.TbEntityConfig.GetOrDefault(ItemEntity);
         
         
         
@@ -242,6 +250,7 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         + "evacuatePointEntity:" + EvacuatePointEntity + ","
         + "characterLeaderEntity:" + CharacterLeaderEntity + ","
         + "CharacterRetinueEntity:" + CharacterRetinueEntity + ","
+        + "ItemEntity:" + ItemEntity + ","
         + "enemyLoseTargetMs:" + EnemyLoseTargetMs + ","
         + "enemyFrontViewAngle:" + EnemyFrontViewAngle + ","
         + "alertMax:" + AlertMax + ","

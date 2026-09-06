@@ -54,7 +54,7 @@ namespace SepCore.Procedure
         /// <summary>
         /// 待处理的单局结算结果。
         /// </summary>
-        public RunResultType? PendingOutcome { get; private set; }
+        public RoundResultType? PendingOutcome { get; private set; }
 
         /// <summary>
         /// 本局主摄像机实体逻辑引用。
@@ -165,9 +165,35 @@ namespace SepCore.Procedure
         }
 
         /// <summary>
+        /// 打开局内 HUD 界面（RoundHUDForm）。
+        /// </summary>
+        public void OpenRoundHUDForm()
+        {
+            if (GameEntry.UI != null)
+            {
+                GameEntry.UI.OpenUIForm(UIFormType.RoundHUDForm);
+            }
+        }
+
+        /// <summary>
+        /// 关闭局内 HUD 界面（RoundHUDForm）。
+        /// </summary>
+        public void CloseRoundHUDForm()
+        {
+            if (GameEntry.UI != null)
+            {
+                UGuiForm roundHUDForm = GameEntry.UI.GetUIForm(UIFormType.RoundHUDForm);
+                if (roundHUDForm != null)
+                {
+                    GameEntry.UI.CloseUIForm(roundHUDForm);
+                }
+            }
+        }
+
+        /// <summary>
         /// 触发单局结算，设置结果并在下一个生命周期切换至结算状态。
         /// </summary>
-        public void TriggerSettlement(RunResultType outcome)
+        public void TriggerSettlement(RoundResultType outcome)
         {
             PendingOutcome = outcome;
         }

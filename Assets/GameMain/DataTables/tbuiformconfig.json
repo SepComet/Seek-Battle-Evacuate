@@ -40,5 +40,19 @@
     "UIGroupName": "Input",
     "allowMultiInstance": false,
     "pauseCoveredUIForm": false
+  },
+  {
+    "id": 105,
+    "assetName": "RoundHUDForm",
+    "UIGroupName": "Default",
+    "allowMultiInstance": false,
+    "pauseCoveredUIForm": true
+  },
+  {
+    "id": 106,
+    "assetName": "RoundBackpackForm",
+    "UIGroupName": "Backpack",
+    "allowMultiInstance": false,
+    "pauseCoveredUIForm": false
   }
 ]

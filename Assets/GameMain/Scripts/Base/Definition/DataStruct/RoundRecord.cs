@@ -4,12 +4,12 @@ namespace SepCore.Definition
     /// 已结束单局的结算记录。
     /// </summary>
     [System.Serializable]
-    public struct RunRecord
+    public struct RoundRecord
     {
         /// <summary>
         /// 结算结果。
         /// </summary>
-        public RunResultType outcome;
+        public RoundResultType outcome;
 
         /// <summary>
         /// 本局难度。
@@ -31,7 +31,7 @@ namespace SepCore.Definition
         /// </summary>
         public long endedAt;
 
-        public RunRecord(RunResultType outcome, DifficultyTier difficultyId, long seed, long startedAt, long endedAt)
+        public RoundRecord(RoundResultType outcome, DifficultyTier difficultyId, long seed, long startedAt, long endedAt)
         {
             this.outcome = outcome;
             this.difficultyId = difficultyId;

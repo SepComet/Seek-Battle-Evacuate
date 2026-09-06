@@ -7,14 +7,14 @@ namespace SepCore.CustomComponent
     /// 由 TurnBattleComponent 以单局 seed 创建，供地图生成、敌人 AI、逃跑与掉落共用。
     /// EditMode 测试使用可注入的序列随机源，不依赖本类。
     /// </summary>
-    public sealed class RunRandomSource : IRunRandomSource
+    public sealed class RoundRandomSource : IRoundRandomSource
     {
         private readonly Random _random;
 
         /// <summary>
         /// 使用指定种子创建随机源。
         /// </summary>
-        public RunRandomSource(int seed)
+        public RoundRandomSource(int seed)
         {
             _random = new Random(seed);
         }

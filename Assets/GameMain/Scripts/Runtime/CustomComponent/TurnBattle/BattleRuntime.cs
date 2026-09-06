@@ -57,7 +57,7 @@ namespace SepCore.Battle
         /// </summary>
         public BattleResult Result;
 
-        private readonly IRunRandomSource _random;
+        private readonly IRoundRandomSource _random;
         private readonly IBattleConfigProvider _config;
 
         /// <summary>
@@ -71,7 +71,7 @@ namespace SepCore.Battle
         public BattleUnit CurrentActor => GetUnit(CurrentActorUnitId);
 
         private BattleRuntime(int encounterId, BattleUnit[] units, bool isPreemptive,
-            IRunRandomSource random, IBattleConfigProvider config)
+            IRoundRandomSource random, IBattleConfigProvider config)
         {
             EncounterId = encounterId;
             Units = units;
@@ -85,7 +85,7 @@ namespace SepCore.Battle
         /// 任一必要输入缺失或配置缺失时返回 null，表示启动失败且不产生任何副作用。
         /// </summary>
         public static BattleRuntime Create(BattleEncounter encounter, IReadOnlyList<PlayerUnitState> players,
-            IBattleConfigProvider config, IRunRandomSource random)
+            IBattleConfigProvider config, IRoundRandomSource random)
         {
             if (encounter == null || players == null || players.Count == 0 || config == null || random == null)
             {

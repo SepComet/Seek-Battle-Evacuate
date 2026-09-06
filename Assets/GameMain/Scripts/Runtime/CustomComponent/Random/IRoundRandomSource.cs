@@ -5,7 +5,7 @@ namespace SepCore.CustomComponent
     /// 同一单局的地图生成、敌人 AI、逃跑和敌人掉落依次消费同一个实例；
     /// 战斗不能根据 EncounterId、回合数或当前时间重新播种。
     /// </summary>
-    public interface IRunRandomSource
+    public interface IRoundRandomSource
     {
         /// <summary>
         /// 返回 [minInclusive, maxExclusive) 范围内的随机整数。

@@ -22,6 +22,7 @@ namespace SepCore.Procedure
             }
 
             fsm.Owner.OpenJoystickForm();
+            fsm.Owner.OpenRoundHUDForm();
         }
 
         protected override void OnUpdate(IFsm<ProcedureMain> fsm, float elapseSeconds, float realElapseSeconds)
@@ -56,7 +57,7 @@ namespace SepCore.Procedure
                 {
                     Log.Info("[ProcedureMain] Run timed out: {0} ms / {1} ms exploration limit reached.",
                         explorationElapsedMs, global.RunTimeLimitMs);
-                    fsm.Owner.TriggerSettlement(RunResultType.TimedOut);
+                    fsm.Owner.TriggerSettlement(RoundResultType.TimedOut);
                     ChangeState<MainSettlementState>(fsm);
                     return;
                 }
@@ -66,6 +67,7 @@ namespace SepCore.Procedure
         protected override void OnLeave(IFsm<ProcedureMain> fsm, bool isShutdown)
         {
             fsm.Owner.CloseJoystickForm();
+            fsm.Owner.CloseRoundHUDForm();
             base.OnLeave(fsm, isShutdown);
         }
     }

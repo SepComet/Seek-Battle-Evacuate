@@ -187,7 +187,7 @@ namespace SepCore.Tests
     /// <summary>
     /// 可注入序列的测试随机源；用尽后返回 minInclusive。
     /// </summary>
-    internal sealed class TestRandomSource : IRunRandomSource
+    internal sealed class TestRandomSource : IRoundRandomSource
     {
         private readonly Queue<int> _values = new Queue<int>();
 
@@ -264,7 +264,7 @@ namespace SepCore.Tests
         /// 创建标准 1v1 运行时。
         /// </summary>
         public static BattleRuntime Create1v1(PlayerUnitState playerUnit, IBattleConfigProvider config = null,
-            IRunRandomSource random = null)
+            IRoundRandomSource random = null)
         {
             return BattleRuntime.Create(Encounter(), new List<PlayerUnitState> { playerUnit },
                 config ?? TestConfigProvider.Standard1v1(), random ?? new TestRandomSource());

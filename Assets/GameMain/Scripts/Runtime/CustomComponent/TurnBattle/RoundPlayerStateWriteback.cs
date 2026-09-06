@@ -8,7 +8,7 @@ namespace SepCore.Battle
     /// 非 TotalDefeat 结果把战后 HP/MP 写回单局临时状态；阵亡者按复活值恢复；
     /// TotalDefeat 不回写。战斗中的状态与速度修改只存在于 BattleRuntime，不进入下一场。
     /// </summary>
-    internal static class RunPlayerStateWriteback
+    internal static class RoundPlayerStateWriteback
     {
         public static void Apply(IList<PlayerUnitState> players, BattleResult result, int reviveHp, int reviveMp)
         {

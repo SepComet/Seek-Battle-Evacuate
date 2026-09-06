@@ -20,6 +20,7 @@ public sealed partial class ItemConfig : Luban.BeanBase
         Name = _buf.ReadString();
         ItemType = (ItemType)_buf.ReadInt();
         Rarity = (Rarity)_buf.ReadInt();
+        Value = _buf.ReadInt();
         StackLimit = _buf.ReadInt();
         EquipSlot = (EquipmentSlotType)_buf.ReadInt();
         MaxHpBonus = _buf.ReadInt();
@@ -52,6 +53,10 @@ public sealed partial class ItemConfig : Luban.BeanBase
     /// 稀有度
     /// </summary>
     public readonly Rarity Rarity;
+    /// <summary>
+    /// 价值
+    /// </summary>
+    public readonly int Value;
     /// <summary>
     /// 单格堆叠上限
     /// </summary>
@@ -102,6 +107,7 @@ public sealed partial class ItemConfig : Luban.BeanBase
         
         
         
+        
         Icon_Ref = tables.TbSpriteConfig.GetOrDefault(Icon);
     }
 
@@ -112,6 +118,7 @@ public sealed partial class ItemConfig : Luban.BeanBase
         + "name:" + Name + ","
         + "itemType:" + ItemType + ","
         + "rarity:" + Rarity + ","
+        + "value:" + Value + ","
         + "stackLimit:" + StackLimit + ","
         + "equipSlot:" + EquipSlot + ","
         + "maxHpBonus:" + MaxHpBonus + ","

@@ -7,9 +7,9 @@ namespace SepCore.Exploration
 {
     internal sealed class PlayerSpawnPointGenerator
     {
-        private readonly IRunRandomSource _random;
+        private readonly IRoundRandomSource _random;
 
-        public PlayerSpawnPointGenerator(IRunRandomSource random)
+        public PlayerSpawnPointGenerator(IRoundRandomSource random)
         {
             _random = random;
         }

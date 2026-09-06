@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using SepCore.Battle;
 using SepCore.Definition;
+using SepCore.Exploration;
 using UnityEngine;
 using UnityGameFramework.Runtime;
 
@@ -41,6 +42,8 @@ namespace SepCore.UI
         {
             base.OnOpen(userData);
 
+            CharacterInputBridge.DisableInput(InputDisableReason.Battle);
+
             // UIForm 实例复用：每次打开都重新注册按钮监听（OnClose 会移除）
             View.attackButton.onClick.AddListener(OnAttackButtonClick);
             View.skillButton.onClick.AddListener(OnSkillButtonClick);
@@ -66,6 +69,8 @@ namespace SepCore.UI
 
         protected override void OnClose(bool isShutdown, object userData)
         {
+            CharacterInputBridge.EnableInput(InputDisableReason.Battle);
+
             if (GameEntry.TurnBattle != null)
             {
                 GameEntry.TurnBattle.SetStepListener(null);

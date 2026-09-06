@@ -1,13 +1,15 @@
 using SepCore.Definition;
 using UnityGameFramework.Runtime;
 
+using UnityEngine;
+
 namespace SepCore.Entity
 {
     /// <summary>
     /// 资源点实体逻辑。
-    /// 当前为最小业务实体，负责挂载与读取资源点静态与生成数据，暂不包含长按搜索等交互逻辑。
+    /// 实现 IInteractable 接口，支持被领队探测器识别为最高优先级可交互对象。
     /// </summary>
-    public sealed class ResourcePointLogic : EntityBase
+    public sealed class ResourcePointLogic : EntityBase, IInteractable
     {
         private ResourcePointData _data;
         private ResourcePointConfig _config;
@@ -21,6 +23,22 @@ namespace SepCore.Entity
         /// 当前资源点对应的 Luban 静态配置。
         /// </summary>
         public ResourcePointConfig Config => _config;
+
+        public InteractableType InteractableType => InteractableType.ResourcePoint;
+
+        public Rarity Rarity => Rarity.None;
+
+        public Vector3 Position => transform.position;
+
+        public bool CanInteract => _data != null;
+
+        public GameObject EntityGameObject => gameObject;
+
+        public void OnInteract(GameObject interactor)
+        {
+            Log.Info("Interacting with ResourcePoint '{0}' (ConfigId: {1}).",
+                Entity.Id, _data != null ? _data.ResourcePointId : 0);
+        }
 
         protected override void OnShow(object userData)
         {

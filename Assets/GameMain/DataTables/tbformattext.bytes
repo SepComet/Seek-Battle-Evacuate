@@ -1,1 +1,3 @@
-ATKFormatText	ATK   {0}MATFormatText	MAT   {0}SPDFormatText	SPD   {0}HPFormatTextHP   {0}MPFormatTextMP   {0}STAFormatText	STA   {0}WarehouseCapacity{0} ITEMS   /   {1} TOTAL UNITSBattleBarText	{0} / {1}
+ATKFormatText	ATK   {0}MATFormatText	MAT   {0}SPDFormatText	SPD   {0}HPFormatTextHP   {0}MPFormatTextMP   {0}STAFormatText	STA   {0}WarehouseCapacity{0} ITEMS   /   {1} TOTAL UNITSBattleBarText	{0} / {1}RoundHUDRemainingTime{0:00}:{1:00}RoundHUDNorthLabelNRoundHUDFreeSlots	{0} / {1}RoundHUDLootValue{0:N0}BackpackSafeCapacity	{0} / {1}BackpackMemberHp
+HP {0}/{1}BackpackMemberMp
+MP {0}/{1}BackpackItemName{0} x{1}SettlementResult{0}SettlementTotalValue{0:N0}SettlementElapsed{0:00}:{1:00}SettlementRedLootCount{0} 件SettlementItemName{0}SettlementItemQuantity×{0}SettlementItemValue价值  {0:N0}

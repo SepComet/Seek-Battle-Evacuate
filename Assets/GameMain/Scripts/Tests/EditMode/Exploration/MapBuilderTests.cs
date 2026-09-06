@@ -196,7 +196,7 @@ namespace SepCore.Tests
             }
         }
 
-        private sealed class RecordingRandomSource : IRunRandomSource
+        private sealed class RecordingRandomSource : IRoundRandomSource
         {
             private readonly Queue<int> _values;
 

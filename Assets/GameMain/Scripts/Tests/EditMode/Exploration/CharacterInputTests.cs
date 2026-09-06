@@ -259,5 +259,86 @@ namespace SepCore.Tests
                 Object.DestroyImmediate(go);
             }
         }
+
+        [Test]
+        public void CompositeCharacterInput_EnabledFalse_ZerosMoveAndInteractions()
+        {
+            CompositeCharacterInput composite = new CompositeCharacterInput();
+            VirtualCharacterInput source = new VirtualCharacterInput();
+            composite.AddSource(source);
+
+            source.MoveVector = new Vector2(1f, 0f);
+            source.InteractTriggered = true;
+            source.IsInteracting = true;
+            source.InteractReleased = true;
+
+            Assert.IsTrue(composite.HasInput);
+            Assert.AreEqual(1f, composite.MoveVector.x, 0.0001f);
+            Assert.IsTrue(composite.InteractTriggered);
+            Assert.IsTrue(composite.IsInteracting);
+            Assert.IsTrue(composite.InteractReleased);
+
+            composite.Enabled = false;
+
+            Assert.IsFalse(composite.HasInput);
+            Assert.AreEqual(Vector2.zero, composite.MoveVector);
+            Assert.IsFalse(composite.InteractTriggered);
+            Assert.IsFalse(composite.IsInteracting);
+            Assert.IsFalse(composite.InteractReleased);
+
+            composite.Enabled = true;
+
+            Assert.IsTrue(composite.HasInput);
+            Assert.AreEqual(1f, composite.MoveVector.x, 0.0001f);
+            Assert.IsTrue(composite.InteractTriggered);
+            Assert.IsTrue(composite.IsInteracting);
+            Assert.IsTrue(composite.InteractReleased);
+        }
+
+        [Test]
+        public void CharacterInputBridge_DisableAndEnableInput_ControlsDefaultInput()
+        {
+            VirtualCharacterInput uiInput = new VirtualCharacterInput();
+            CharacterInputBridge.RegisterUIInput(uiInput);
+            uiInput.MoveVector = new Vector2(0.5f, 0.5f);
+            uiInput.InteractTriggered = true;
+
+            Assert.IsTrue(CharacterInputBridge.IsInputEnabled);
+            Assert.IsTrue(CharacterInputBridge.DefaultInput.HasInput);
+
+            CharacterInputBridge.DisableInput(InputDisableReason.Backpack);
+
+            Assert.IsFalse(CharacterInputBridge.IsInputEnabled);
+            Assert.AreEqual(InputDisableReason.Backpack, CharacterInputBridge.DisableReasons);
+            Assert.IsFalse(CharacterInputBridge.DefaultInput.HasInput);
+            Assert.AreEqual(Vector2.zero, CharacterInputBridge.DefaultInput.MoveVector);
+            Assert.IsFalse(CharacterInputBridge.DefaultInput.InteractTriggered);
+
+            CharacterInputBridge.EnableInput(InputDisableReason.Backpack);
+
+            Assert.IsTrue(CharacterInputBridge.IsInputEnabled);
+            Assert.AreEqual(InputDisableReason.None, CharacterInputBridge.DisableReasons);
+            Assert.IsTrue(CharacterInputBridge.DefaultInput.HasInput);
+        }
+
+        [Test]
+        public void CharacterInputBridge_MultipleDisableReasons_RequiresAllClearedToEnable()
+        {
+            CharacterInputBridge.DisableInput(InputDisableReason.Backpack);
+            CharacterInputBridge.DisableInput(InputDisableReason.Battle);
+
+            Assert.IsFalse(CharacterInputBridge.IsInputEnabled);
+            Assert.AreEqual(InputDisableReason.Backpack | InputDisableReason.Battle, CharacterInputBridge.DisableReasons);
+
+            // 仅关闭背包，战斗仍在继续
+            CharacterInputBridge.EnableInput(InputDisableReason.Backpack);
+            Assert.IsFalse(CharacterInputBridge.IsInputEnabled);
+            Assert.AreEqual(InputDisableReason.Battle, CharacterInputBridge.DisableReasons);
+
+            // 战斗结束，全部原因解除后恢复输入
+            CharacterInputBridge.EnableInput(InputDisableReason.Battle);
+            Assert.IsTrue(CharacterInputBridge.IsInputEnabled);
+            Assert.AreEqual(InputDisableReason.None, CharacterInputBridge.DisableReasons);
+        }
     }
 }

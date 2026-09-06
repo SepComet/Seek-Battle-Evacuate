@@ -44,6 +44,14 @@ namespace SepCore.Definition
         /// 输入面板
         /// </summary>
         JoystickForm = 104,
+        /// <summary>
+        /// 局内HUD面板
+        /// </summary>
+        RoundHUDForm = 105,
+        /// <summary>
+        /// 局内背包面板
+        /// </summary>
+        RoundBackpackForm = 106,
     }
 
 } 

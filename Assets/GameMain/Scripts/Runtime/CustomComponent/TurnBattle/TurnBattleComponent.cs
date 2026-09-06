@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using SepCore.Definition;
+using SepCore.Exploration;
 using SepCore.UI;
 using UnityEngine;
 using UnityGameFramework.Runtime;
@@ -133,6 +134,8 @@ namespace SepCore.Battle
             _explorationPaused = true;
             _timerPaused = true;
 
+            CharacterInputBridge.DisableInput(InputDisableReason.Battle);
+
             GameEntry.UI.OpenUIForm(UIFormType.BattleForm);
             Log.Info("Battle started with encounter '{0}'.", encounter.EncounterId);
 
@@ -213,6 +216,8 @@ namespace SepCore.Battle
                 _explorationPaused = false;
                 _timerPaused = false;
             }
+
+            CharacterInputBridge.EnableInput(InputDisableReason.Battle);
 
             _battleActive = false;
             Log.Info("Battle closed.");
@@ -344,7 +349,11 @@ namespace SepCore.Battle
         private void ApplyResultWriteback(BattleResult result)
         {
             GlobalConfig global = _config.GetGlobal();
-            RunPlayerStateWriteback.Apply(_players, result, global.ReviveHp, global.ReviveMp);
+            RoundPlayerStateWriteback.Apply(_players, result, global.ReviveHp, global.ReviveMp);
+            if (GameEntry.Round?.Session != null)
+            {
+                GameEntry.Round.ApplyBattleResult(result, global.ReviveHp, global.ReviveMp);
+            }
         }
 
         private static void LogBattleResult(BattleResult result)
@@ -375,6 +384,7 @@ namespace SepCore.Battle
             _lastOutcome = null;
             StopAutoAdvance();
             _stepListener = null;
+            CharacterInputBridge.EnableInput(InputDisableReason.Battle);
         }
     }
 }

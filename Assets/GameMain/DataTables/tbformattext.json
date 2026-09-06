@@ -30,5 +30,65 @@
   {
     "name": "BattleBarText",
     "format": "{0} / {1}"
+  },
+  {
+    "name": "RoundHUDRemainingTime",
+    "format": "{0:00}:{1:00}"
+  },
+  {
+    "name": "RoundHUDNorthLabel",
+    "format": "N"
+  },
+  {
+    "name": "RoundHUDFreeSlots",
+    "format": "{0} / {1}"
+  },
+  {
+    "name": "RoundHUDLootValue",
+    "format": "{0:N0}"
+  },
+  {
+    "name": "BackpackSafeCapacity",
+    "format": "{0} / {1}"
+  },
+  {
+    "name": "BackpackMemberHp",
+    "format": "HP {0}/{1}"
+  },
+  {
+    "name": "BackpackMemberMp",
+    "format": "MP {0}/{1}"
+  },
+  {
+    "name": "BackpackItemName",
+    "format": "{0} x{1}"
+  },
+  {
+    "name": "SettlementResult",
+    "format": "{0}"
+  },
+  {
+    "name": "SettlementTotalValue",
+    "format": "{0:N0}"
+  },
+  {
+    "name": "SettlementElapsed",
+    "format": "{0:00}:{1:00}"
+  },
+  {
+    "name": "SettlementRedLootCount",
+    "format": "{0} 件"
+  },
+  {
+    "name": "SettlementItemName",
+    "format": "{0}"
+  },
+  {
+    "name": "SettlementItemQuantity",
+    "format": "×{0}"
+  },
+  {
+    "name": "SettlementItemValue",
+    "format": "价值  {0:N0}"
   }
 ]

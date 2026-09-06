@@ -18,10 +18,10 @@ namespace SepCore.Exploration
 
         private readonly IReadOnlyList<ResourcePointConfig> _resourceConfigs;
         private readonly IReadOnlyList<ItemConfig> _itemConfigs;
-        private readonly IRunRandomSource _random;
+        private readonly IRoundRandomSource _random;
 
         public ResourcePointGenerator(IReadOnlyList<ResourcePointConfig> resourceConfigs,
-            IReadOnlyList<ItemConfig> itemConfigs, IRunRandomSource random)
+            IReadOnlyList<ItemConfig> itemConfigs, IRoundRandomSource random)
         {
             _resourceConfigs = resourceConfigs;
             _itemConfigs = itemConfigs;
