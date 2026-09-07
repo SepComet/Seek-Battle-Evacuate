@@ -57,7 +57,7 @@ namespace SepCore.UI
 
         private void EnsureCachedOriginalTransform()
         {
-            if (_hasCachedOriginalTransform || icon == null)
+            if (_hasCachedOriginalTransform)
             {
                 return;
             }
@@ -94,12 +94,6 @@ namespace SepCore.UI
         /// <param name="onComplete">单个卡片入场嵌合完成回调。</param>
         public void PlayEnterAnimation(Vector3 startScreenPos, float delay, Action onComplete = null)
         {
-            if (icon == null)
-            {
-                onComplete?.Invoke();
-                return;
-            }
-
             EnsureCachedOriginalTransform();
             ResetVisualState();
 
@@ -119,7 +113,8 @@ namespace SepCore.UI
                 icon.rectTransform.localPosition = _iconOriginalLocalPos;
             }
 
-            icon.rectTransform.localScale = _iconOriginalScale * 0.35f;
+            GlobalConfig global = GameEntry.Luban.Global.Data;
+            icon.rectTransform.localScale = _iconOriginalScale * (global.BattleInScale / 1000f);
             SetDetailsVisible(false);
 
             _enterSequence?.Kill();
@@ -130,13 +125,15 @@ namespace SepCore.UI
                 _enterSequence.AppendInterval(delay);
             }
 
-            _enterSequence.Append(icon.rectTransform.DOLocalMove(_iconOriginalLocalPos, 0.42f).SetEase(Ease.OutCubic));
-            _enterSequence.Join(icon.rectTransform.DOScale(_iconOriginalScale, 0.42f).SetEase(Ease.OutBack));
+            float inDuration = global.BattleInDurationMs / 1000f;
+            _enterSequence.Append(icon.rectTransform.DOLocalMove(_iconOriginalLocalPos, inDuration).SetEase(Ease.OutCubic));
+            _enterSequence.Join(icon.rectTransform.DOScale(_iconOriginalScale, inDuration).SetEase(Ease.OutBack));
 
             _enterSequence.AppendCallback(() =>
             {
                 SetDetailsVisible(true);
-                icon.rectTransform.DOPunchScale(new Vector3(0.12f, -0.12f, 0f), 0.15f);
+                float punchScale = global.BattleInPunchScale / 1000f;
+                icon.rectTransform.DOPunchScale(new Vector3(punchScale, -punchScale, 0f), 0.15f);
             });
 
             _enterSequence.AppendInterval(0.15f);
@@ -168,9 +165,11 @@ namespace SepCore.UI
                 _fadeSequence.AppendInterval(delay);
             }
 
-            // 微幅上浮 20px 并淡出 0.35s
-            _fadeSequence.Append(group.DOFade(0f, 0.35f).SetEase(Ease.OutQuad));
-            _fadeSequence.Join(transform.DOLocalMoveY(_slotOriginalLocalPos.y + 20f, 0.35f).SetEase(Ease.OutQuad));
+            GlobalConfig global = GameEntry.Luban.Global.Data;
+            float outDuration = global.BattleOutDurationMs / 1000f;
+            float outPixels = global.BattleEnemyCardOutPixels;
+            _fadeSequence.Append(group.DOFade(0f, outDuration).SetEase(Ease.OutQuad));
+            _fadeSequence.Join(transform.DOLocalMoveY(_slotOriginalLocalPos.y + outPixels, outDuration).SetEase(Ease.OutQuad));
             _fadeSequence.OnComplete(() =>
             {
                 _fadeSequence = null;
@@ -195,7 +194,7 @@ namespace SepCore.UI
                 _fadeSequence = null;
             }
 
-            if (icon != null && _hasCachedOriginalTransform)
+            if (_hasCachedOriginalTransform)
             {
                 icon.rectTransform.DOKill();
                 icon.rectTransform.localPosition = _iconOriginalLocalPos;

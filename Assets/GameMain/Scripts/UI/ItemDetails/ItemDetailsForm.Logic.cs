@@ -21,11 +21,6 @@ namespace SepCore.UI
         {
             _iconVersion++;
             ItemDetailsView view = View;
-            if (view == null)
-            {
-                Log.Warning("ItemDetailsForm view is not configured.");
-                return;
-            }
 
             ItemConfig config = GameEntry.Luban.Get<ItemConfig>(itemId);
             if (config == null)
@@ -35,80 +30,26 @@ namespace SepCore.UI
                 return;
             }
 
-            if (view.itemDetailNameText != null)
-            {
-                view.itemDetailNameText.text = config.Name;
-            }
-
-            if (view.itemDetailTypeText != null)
-            {
-                view.itemDetailTypeText.text = GetItemTypeName(config.ItemType) + "  /  " + GetRarityName(config.Rarity);
-            }
-
-            if (view.hpFormatText != null)
-            {
-                view.hpFormatText.Set(config.MaxHpBonus);
-            }
-
-            if (view.atkFormatText != null)
-            {
-                view.atkFormatText.Set(config.AtkBonus);
-            }
-
-            if (view.mpFormatText != null)
-            {
-                view.mpFormatText.Set(config.MaxMpBonus);
-            }
-
-            if (view.matFormatText != null)
-            {
-                view.matFormatText.Set(config.MatBonus);
-            }
-
-            if (view.speedFormatText != null)
-            {
-                view.speedFormatText.Set(0);
-            }
-
-            if (view.stackFormatText != null)
-            {
-                view.stackFormatText.Set(config.StackLimit);
-            }
-
-            if (view.itemDetailDescriptionText != null)
-            {
-                view.itemDetailDescriptionText.text = string.Empty;
-            }
-
-            if (view.itemDetailIcon != null)
-            {
-                view.itemDetailIcon.gameObject.SetActive(false);
-            }
+            view.itemDetailNameText.text = config.Name;
+            view.itemDetailTypeText.text = GetItemTypeName(config.ItemType) + "  /  " + GetRarityName(config.Rarity);
+            view.hpFormatText.Set(config.MaxHpBonus);
+            view.atkFormatText.Set(config.AtkBonus);
+            view.mpFormatText.Set(config.MaxMpBonus);
+            view.matFormatText.Set(config.MatBonus);
+            view.speedFormatText.Set(0);
+            view.stackFormatText.Set(config.StackLimit);
+            view.itemDetailDescriptionText.text = string.Empty;
+            view.itemDetailIcon.gameObject.SetActive(false);
 
             ShowIconAsync(config.Icon_Ref, _iconVersion).Forget();
         }
 
         private static void ClearDetails(ItemDetailsView view)
         {
-            if (view.itemDetailNameText != null)
-            {
-                view.itemDetailNameText.text = string.Empty;
-            }
-
-            if (view.itemDetailTypeText != null)
-            {
-                view.itemDetailTypeText.text = string.Empty;
-            }
-
-            if (view.itemDetailDescriptionText != null)
-            {
-                view.itemDetailDescriptionText.text = string.Empty;
-            }
-
-            if (view.itemDetailIcon != null)
-            {
-                view.itemDetailIcon.gameObject.SetActive(false);
-            }
+            view.itemDetailNameText.text = string.Empty;
+            view.itemDetailTypeText.text = string.Empty;
+            view.itemDetailDescriptionText.text = string.Empty;
+            view.itemDetailIcon.gameObject.SetActive(false);
         }
 
         /// <summary>
@@ -116,7 +57,7 @@ namespace SepCore.UI
         /// </summary>
         private async UniTaskVoid ShowIconAsync(SpriteConfig iconConfig, int iconVersion)
         {
-            if (iconConfig == null || View == null || View.itemDetailIcon == null)
+            if (iconConfig == null)
             {
                 return;
             }

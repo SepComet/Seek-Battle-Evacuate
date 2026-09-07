@@ -29,6 +29,7 @@ namespace SepCore.Entity
         private bool _isHighlighted = false;
         private bool _isFlying = false;
         private Sequence _dropAnimationSequence = null;
+        private Sequence _pickupAnimationSequence = null;
 
         /// <summary>
         /// 实体数据。
@@ -112,8 +113,8 @@ namespace SepCore.Entity
 
                 if (addedCount >= _data.Count)
                 {
-                    // 全部放入，回收场景实体
-                    GameEntry.Entity.HideEntity(this);
+                    // 全部放入，播放拾取反馈后回收场景实体
+                    PlayPickupFeedbackAndHide(interactor, addedCount);
                 }
                 else
                 {
@@ -128,11 +129,83 @@ namespace SepCore.Entity
             }
         }
 
+        private void PlayPickupFeedbackAndHide(GameObject interactor, int addedCount)
+        {
+            SetHighlight(false);
+            Collider2D collider2D = GetComponent<Collider2D>();
+            if (collider2D != null)
+            {
+                collider2D.enabled = false;
+            }
+
+            int totalValue = (_config != null ? _config.Value : 0) * addedCount;
+            if (totalValue > 0)
+            {
+                SpawnWorldFloatText(totalValue);
+            }
+
+            KillDropAnimation();
+            KillPickupAnimation();
+
+            if (interactor != null)
+            {
+                Vector3 targetPos = interactor.transform.position;
+                _pickupAnimationSequence = DOTween.Sequence();
+                _pickupAnimationSequence.Append(
+                    transform.DOMove(targetPos, 0.18f).SetEase(Ease.InQuad));
+                _pickupAnimationSequence.Join(
+                    transform.DOScale(Vector3.zero, 0.18f).SetEase(Ease.InQuad));
+                _pickupAnimationSequence.OnComplete(() =>
+                {
+                    _pickupAnimationSequence = null;
+                    GameEntry.Entity.HideEntity(this);
+                });
+            }
+            else
+            {
+                GameEntry.Entity.HideEntity(this);
+            }
+        }
+
+        private void SpawnWorldFloatText(int totalValue)
+        {
+            string assetName = GameEntry.Luban?.Global?.WorldFloatTextEntity;
+            if (string.IsNullOrEmpty(assetName))
+            {
+                return;
+            }
+
+            if (GameEntry.Entity != null && !GameEntry.Entity.HasEntityGroup("WorldFloatText"))
+            {
+                GameEntry.Entity.AddEntityGroup("WorldFloatText", 60f, 32, 60f, 0);
+            }
+
+            int serialId = GameEntry.Entity.SerialId();
+            Color textColor = GetRarityOutlineColor(Rarity);
+            WorldFloatTextData floatTextData = new WorldFloatTextData(
+                serialId,
+                assetName,
+                transform.position,
+                $"+{totalValue:N0}",
+                textColor);
+
+            GameEntry.Entity.ShowEntity<WorldFloatTextLogic>(floatTextData, "WorldFloatText", Constant.AssetPriority.SceneAsset);
+        }
+
         protected override void OnShow(object userData)
         {
             base.OnShow(userData);
 
+            KillPickupAnimation();
             _isBeingPickedUp = false;
+            transform.localScale = Vector3.one;
+
+            Collider2D collider2D = GetComponent<Collider2D>();
+            if (collider2D != null)
+            {
+                collider2D.enabled = true;
+            }
+
             _data = userData as ItemEntityData;
             if (_data == null)
             {
@@ -165,6 +238,7 @@ namespace SepCore.Entity
         protected override void OnHide(bool isShutdown, object userData)
         {
             KillDropAnimation();
+            KillPickupAnimation();
             SetHighlight(false);
             _isBeingPickedUp = false;
             _data = null;
@@ -172,6 +246,18 @@ namespace SepCore.Entity
             _spriteRenderer = null;
             _originalMaterial = null;
             base.OnHide(isShutdown, userData);
+        }
+
+        private void KillPickupAnimation()
+        {
+            if (_pickupAnimationSequence != null)
+            {
+                _pickupAnimationSequence.Kill();
+                _pickupAnimationSequence = null;
+            }
+
+            transform.DOKill();
+            transform.localScale = Vector3.one;
         }
 
         private void PlayDropParabolaAnimation(Vector3 startPos, Vector3 targetPos)

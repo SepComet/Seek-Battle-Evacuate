@@ -12,50 +12,40 @@ namespace SepCore.UI
     /// </summary>
     public partial class LobbyForm : UGuiForm
     {
-        private const float SelectionMarkerMoveDuration = 0.25f;
-        private GameObject _loadoutPage;
-        private LoadoutForm _loadoutForm;
-        private LobbyPage _currentPage = LobbyPage.CombatReadiness;
-
-        private enum LobbyPage
-        {
-            CombatReadiness,
-            Warehouse,
-            Loadout,
-        }
+        private LobbyPageType _currentPageType = LobbyPageType.Home;
+        private Vector2 _markerInitialAnchoredPosition;
 
         protected override void OnInit(object userData)
         {
             base.OnInit(userData);
-
-            _loadoutPage = transform.Find("SafeFrame/LoadoutForm").gameObject;
-            if (_loadoutPage != null)
-            {
-                _loadoutForm = _loadoutPage.GetComponent<LoadoutForm>();
-            }
-
-            View.homeToggle.onValueChanged.AddListener(OnHomeToggleValueChanged);
-            View.warehouseToggle.onValueChanged.AddListener(OnWarehouseToggleValueChanged);
-            View.loadoutToggle.onValueChanged.AddListener(OnLoadoutToggleValueChanged);
+            _markerInitialAnchoredPosition = View.selectionMarkerObject.anchoredPosition;
         }
 
         protected override void OnOpen(object userData)
         {
             base.OnOpen(userData);
-            SwitchPage(LobbyPage.CombatReadiness, View.homeToggle);
+
+            _currentPageType = LobbyPageType.Home;
+            View.homeToggle.isOn = true;
+            
+            View.homeToggle.onValueChanged.AddListener(OnHomeToggleValueChanged);
+            View.warehouseToggle.onValueChanged.AddListener(OnWarehouseToggleValueChanged);
+            View.loadoutToggle.onValueChanged.AddListener(OnLoadoutToggleValueChanged);
+
+            RefreshStorageStatus();
+            SwitchPage(LobbyPageType.Home, View.homeToggle);
         }
 
         protected override void OnClose(bool isShutdown, object userData)
         {
-            if (_currentPage == LobbyPage.Loadout)
+            if (_currentPageType == LobbyPageType.Loadout)
             {
                 GameEntry.Save.Save();
             }
 
-            if (View.selectionMarkerObject != null)
-            {
-                View.selectionMarkerObject.DOKill();
-            }
+            View.selectionMarkerObject.DOKill();
+            View.selectionMarkerObject.SetParent(View.homeToggle.transform, false);
+            View.selectionMarkerObject.anchoredPosition = _markerInitialAnchoredPosition;
 
             View.homeToggle.onValueChanged.RemoveListener(OnHomeToggleValueChanged);
             View.warehouseToggle.onValueChanged.RemoveListener(OnWarehouseToggleValueChanged);
@@ -68,7 +58,7 @@ namespace SepCore.UI
         {
             if (isOn)
             {
-                SwitchPage(LobbyPage.CombatReadiness, View.homeToggle);
+                SwitchPage(LobbyPageType.Home, View.homeToggle);
             }
         }
 
@@ -76,7 +66,7 @@ namespace SepCore.UI
         {
             if (isOn)
             {
-                SwitchPage(LobbyPage.Warehouse, View.warehouseToggle);
+                SwitchPage(LobbyPageType.Warehouse, View.warehouseToggle);
             }
         }
 
@@ -84,39 +74,31 @@ namespace SepCore.UI
         {
             if (isOn)
             {
-                SwitchPage(LobbyPage.Loadout, View.loadoutToggle);
+                SwitchPage(LobbyPageType.Loadout, View.loadoutToggle);
             }
         }
 
-        private void SwitchPage(LobbyPage page, Toggle activeToggle)
+        private void SwitchPage(LobbyPageType pageType, Toggle activeToggle)
         {
-            if (_currentPage == LobbyPage.Loadout && page != LobbyPage.Loadout)
+            if (_currentPageType == LobbyPageType.Loadout && pageType != LobbyPageType.Loadout)
             {
                 GameEntry.Save.Save();
             }
 
-            _currentPage = page;
-            bool showCombatReadiness = page == LobbyPage.CombatReadiness;
-            bool showWarehouse = page == LobbyPage.Warehouse;
-            bool showLoadout = page == LobbyPage.Loadout;
+            _currentPageType = pageType;
+            bool showHome = pageType == LobbyPageType.Home;
+            bool showWarehouse = pageType == LobbyPageType.Warehouse;
+            bool showLoadout = pageType == LobbyPageType.Loadout;
 
-            _loadoutPage.SetActive(showLoadout);
-
-            if (View.homeForm != null)
-            {
-                View.homeForm.gameObject.SetActive(showCombatReadiness);
-            }
-
-            if (View.warehouseForm != null)
-            {
-                View.warehouseForm.gameObject.SetActive(showWarehouse);
-            }
+            View.homeForm.gameObject.SetActive(showHome);
+            View.warehouseForm.gameObject.SetActive(showWarehouse);
+            View.loadoutForm.gameObject.SetActive(showLoadout);
 
             MoveSelectionMarker(activeToggle.transform as RectTransform);
 
-            if (showCombatReadiness)
+            if (showHome)
             {
-                RefreshCombatReadiness();
+                RefreshHome();
             }
 
             if (showWarehouse)
@@ -133,7 +115,7 @@ namespace SepCore.UI
         private void MoveSelectionMarker(RectTransform targetToggle)
         {
             RectTransform marker = View.selectionMarkerObject;
-            if (marker == null || targetToggle == null || marker.parent == targetToggle)
+            if (targetToggle == null || marker.parent == targetToggle)
             {
                 return;
             }
@@ -141,69 +123,50 @@ namespace SepCore.UI
             // 把标记相对目标 Toggle 锚点(anchorMin)的偏移，换算到 Toggle pivot 的局部坐标空间：
             // 锚点相对 pivot 的偏移 = (anchor - pivot) * rect 尺寸。
             Vector3 targetLocalPosition = new Vector3(
-                marker.anchoredPosition.x + (marker.anchorMin.x - targetToggle.pivot.x) * targetToggle.rect.width,
-                marker.anchoredPosition.y + (marker.anchorMin.y - targetToggle.pivot.y) * targetToggle.rect.height,
+                _markerInitialAnchoredPosition.x + (marker.anchorMin.x - targetToggle.pivot.x) * targetToggle.rect.width,
+                _markerInitialAnchoredPosition.y + (marker.anchorMin.y - targetToggle.pivot.y) * targetToggle.rect.height,
                 0f);
             Vector3 targetWorldPosition = targetToggle.TransformPoint(targetLocalPosition);
             marker.DOKill();
-            marker.DOMove(targetWorldPosition, SelectionMarkerMoveDuration)
+            float duration = GameEntry.Luban.Global.Data.LobbySelectionMarkerMoveDurationMs / 1000f;
+            marker.DOMove(targetWorldPosition, duration)
                 .SetEase(Ease.OutCubic)
-                .OnComplete(() => marker.SetParent(targetToggle, true));
+                .OnComplete(() =>
+                {
+                    marker.SetParent(targetToggle, true);
+                    marker.anchoredPosition = _markerInitialAnchoredPosition;
+                });
         }
 
-        private void RefreshCombatReadiness()
+        private void RefreshHome()
         {
-            HomeForm form = View.homeForm;
-            if (form == null)
-            {
-                Log.Warning("LobbyForm combat readiness form is not configured.");
-                return;
-            }
-
             SaveData save = GameEntry.Save.Data;
-            if (save == null || form.View == null || form.View.squadForm == null)
+            if (save == null)
             {
-                Log.Warning("LobbyForm can not refresh combat readiness.");
+                Log.Error("Save data is null, cannot refresh home.");
                 return;
             }
 
-            if (form.View.squadForm != null)
-            {
-                form.View.squadForm.RefreshCharacterList(save.characters);
-            }
-
-            if (form.View.deploymentForm != null)
-            {
-                form.View.deploymentForm.Refresh();
-            }
+            View.homeForm.Refresh(save);
         }
 
         private void RefreshWarehouse()
         {
-            if (View.warehouseForm == null)
-            {
-                Log.Warning("LobbyForm warehouse form is not configured.");
-                return;
-            }
-
             SaveData save = GameEntry.Save.Data;
             View.warehouseForm.Refresh(save != null ? save.mainWarehouse : null);
+            RefreshStorageStatus();
+        }
+
+        private void RefreshStorageStatus()
+        {
+            SaveData save = GameEntry.Save.Data;
+            int count = save != null && save.mainWarehouse != null ? save.mainWarehouse.Count : 0;
+            View.storageFormatText.Set(count);
         }
 
         private void RefreshLoadout()
         {
-            if (_loadoutForm == null && _loadoutPage != null)
-            {
-                _loadoutForm = _loadoutPage.GetComponent<LoadoutForm>();
-            }
-
-            if (_loadoutForm == null)
-            {
-                Log.Warning("LobbyForm loadout form component is not configured.");
-                return;
-            }
-
-            _loadoutForm.Refresh();
+            View.loadoutForm.Refresh();
         }
     }
 }

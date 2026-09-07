@@ -1,4 +1,5 @@
 using System;
+using DG.Tweening;
 using GameFramework.Event;
 using SepCore.Base;
 using SepCore.Definition;
@@ -17,6 +18,7 @@ namespace SepCore.UI
     {
         private int _lastRemainingSeconds = -1;
         private ExtractionMarkerData _extractionMarkerData;
+        private int _lastLootValue = -1;
 
         protected override void OnOpen(object userData)
         {
@@ -27,6 +29,7 @@ namespace SepCore.UI
 
             _lastRemainingSeconds = -1;
             _extractionMarkerData = null;
+            _lastLootValue = GameEntry.Round?.Session?.TotalLootValue ?? -1;
             UpdateRemainingTime(force: true);
             UpdateBackpackStats();
             ApplyExtractionMarker(userData);
@@ -36,6 +39,9 @@ namespace SepCore.UI
         {
             View.backpackButton.onClick.RemoveListener(OnBackpackButtonClick);
             GameEntry.Event.Unsubscribe(RoundBackpackChangedEventArgs.EventId, OnBackpackChanged);
+
+            View.lootValueText.transform.DOKill();
+            View.lootValueText.transform.localScale = Vector3.one;
 
             base.OnClose(isShutdown, userData);
         }
@@ -157,17 +163,20 @@ namespace SepCore.UI
             }
 
             RoundSession session = GameEntry.Round.Session;
-            if (View.freeSlotsValue != null)
+            View.freeSlotsValue.Set(session.FreeBackpackSlots, session.Backpack.MaxSlots);
+
+            FormatText format = GameEntry.Luban.Tables?.TbFormatText?.GetOrDefault("RoundHUDLootValue");
+            int totalLoot = session.TotalLootValue;
+            View.lootValueText.SetText(format != null ? string.Format(format.Format, totalLoot) : totalLoot.ToString("N0"));
+
+            if (_lastLootValue >= 0 && totalLoot > _lastLootValue)
             {
-                View.freeSlotsValue.Set(session.FreeBackpackSlots, session.Backpack.MaxSlots);
+                View.lootValueText.transform.DOKill();
+                View.lootValueText.transform.localScale = Vector3.one;
+                View.lootValueText.transform.DOPunchScale(new Vector3(0.25f, 0.25f, 0f), 0.2f, 5, 0.5f);
             }
 
-            if (View.lootValueText != null)
-            {
-                FormatText format = GameEntry.Luban.Tables?.TbFormatText?.GetOrDefault("RoundHUDLootValue");
-                int totalLoot = session.TotalLootValue;
-                View.lootValueText.SetText(format != null ? string.Format(format.Format, totalLoot) : totalLoot.ToString("N0"));
-            }
+            _lastLootValue = totalLoot;
         }
     }
 }

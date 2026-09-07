@@ -61,5 +61,19 @@
     "UIGroupName": "Default",
     "allowMultiInstance": false,
     "pauseCoveredUIForm": true
+  },
+  {
+    "id": 108,
+    "assetName": "DeploymentBriefingForm",
+    "UIGroupName": "Backpack",
+    "allowMultiInstance": false,
+    "pauseCoveredUIForm": false
+  },
+  {
+    "id": 109,
+    "assetName": "FadeForm",
+    "UIGroupName": "Backpack",
+    "allowMultiInstance": false,
+    "pauseCoveredUIForm": false
   }
 ]

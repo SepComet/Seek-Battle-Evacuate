@@ -86,7 +86,7 @@ namespace SepCore.CustomComponent
                 },
                 {
                     typeof(EnemyDropConfig),
-                    Accessor(tables => id => tables.TbEnemyDropConfig.GetOrDefault(id),
+                    Accessor(tables => id => tables.TbEnemyDropConfig.GetOrDefault((EnemyPartyThreatLevel)id),
                         tables => tables.TbEnemyDropConfig.DataList)
                 },
                 {

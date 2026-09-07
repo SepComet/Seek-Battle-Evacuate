@@ -22,7 +22,32 @@ namespace SepCore.UI
         private Action _onMoveToSafeClicked;
 
         /// <summary>
-        /// 注册移入保险箱按钮点击回调。
+        /// 当前选中的出战角色下标（0~3）。
+        /// </summary>
+        public int SelectedCharacterIndex => _selectedCharacterIndex;
+
+        /// <summary>
+        /// 请求卸下当前选中角色的武器事件。
+        /// </summary>
+        public event Action OnUnequipWeaponRequested;
+
+        /// <summary>
+        /// 请求卸下当前选中角色的防具事件。
+        /// </summary>
+        public event Action OnUnequipArmorRequested;
+
+        /// <summary>
+        /// 移动按钮点击事件（在背包与保险箱之间转移）。
+        /// </summary>
+        public event Action OnMoveClicked;
+
+        /// <summary>
+        /// 丢弃按钮点击事件（丢弃到地图生成实体）。
+        /// </summary>
+        public event Action OnThrowClicked;
+
+        /// <summary>
+        /// 注册移入保险箱按钮点击回调（兼容旧接口）。
         /// </summary>
         public void SetOnMoveToSafeClicked(Action callback)
         {
@@ -53,9 +78,9 @@ namespace SepCore.UI
         }
 
         /// <summary>
-        /// 刷新右侧物品详情面板与移入保险箱按钮状态。
+        /// 刷新右侧物品详情面板与移动/丢弃按钮状态。
         /// </summary>
-        public void RefreshSelectedItem(ItemStack stack, bool isBackpackSlot, bool canMoveToSafe)
+        public void RefreshSelectedItem(ItemStack stack, bool canMove, bool canThrow)
         {
             if (stack.itemId <= 0 || stack.count <= 0)
             {
@@ -76,18 +101,20 @@ namespace SepCore.UI
             View.selectedItemNameFormatText.Set(config.Name, stack.count);
             View.selectedItemRarityText.SetText(config.Rarity.ToString());
 
-            View.moveToSafeButton.interactable = isBackpackSlot && canMoveToSafe;
+            View.moveButton.interactable = canMove;
+            View.throwButton.interactable = canThrow;
         }
 
         /// <summary>
-        /// 清空物品详情展示并禁用转移按钮。
+        /// 清空物品详情展示并禁用移动与丢弃按钮。
         /// </summary>
         public void ClearSelectedItem()
         {
             View.selectedItemIcon.gameObject.SetActive(false);
             View.selectedItemNameFormatText.Clear();
             View.selectedItemRarityText.SetText(string.Empty);
-            View.moveToSafeButton.interactable = false;
+            View.moveButton.interactable = false;
+            View.throwButton.interactable = false;
         }
 
         private void EnsureListenersBound()
@@ -104,12 +131,31 @@ namespace SepCore.UI
             View.characterTab03Toggle.onValueChanged.AddListener(isOn => { if (isOn) SelectCharacter(2); });
             View.characterTab04Toggle.onValueChanged.AddListener(isOn => { if (isOn) SelectCharacter(3); });
 
-            View.moveToSafeButton.onClick.AddListener(OnMoveToSafeButtonClick);
+            View.weaponSlotButton.onClick.AddListener(OnWeaponSlotButtonClick);
+            View.armorSlotButton.onClick.AddListener(OnArmorSlotButtonClick);
+            View.moveButton.onClick.AddListener(OnMoveButtonClick);
+            View.throwButton.onClick.AddListener(OnThrowButtonClick);
         }
 
-        private void OnMoveToSafeButtonClick()
+        private void OnWeaponSlotButtonClick()
         {
+            OnUnequipWeaponRequested?.Invoke();
+        }
+
+        private void OnArmorSlotButtonClick()
+        {
+            OnUnequipArmorRequested?.Invoke();
+        }
+
+        private void OnMoveButtonClick()
+        {
+            OnMoveClicked?.Invoke();
             _onMoveToSafeClicked?.Invoke();
+        }
+
+        private void OnThrowButtonClick()
+        {
+            OnThrowClicked?.Invoke();
         }
 
         private void SelectCharacter(int index)
@@ -224,13 +270,13 @@ namespace SepCore.UI
 
         private async UniTaskVoid ShowSpriteAsync(SpriteConfig spriteConfig, Image targetImage)
         {
-            if (spriteConfig == null || targetImage == null)
+            if (spriteConfig == null)
             {
                 return;
             }
 
             Sprite sprite = await SpriteLoader.LoadSpriteAsync(spriteConfig);
-            if (sprite != null && targetImage != null)
+            if (sprite != null)
             {
                 targetImage.sprite = sprite;
                 targetImage.gameObject.SetActive(true);

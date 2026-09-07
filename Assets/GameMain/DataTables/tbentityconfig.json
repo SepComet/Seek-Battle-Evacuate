@@ -4,6 +4,10 @@
     "prefabPath": "ItemEntity.prefab"
   },
   {
+    "assetName": "WorldFloatText",
+    "prefabPath": "WorldFloatText.prefab"
+  },
+  {
     "assetName": "ResourcePoint1",
     "prefabPath": "ResourcePoint/ResourcePoint1.prefab"
   },

@@ -24,8 +24,16 @@
     "format": "STA   {0}"
   },
   {
+    "name": "LobbyFooterStatus",
+    "format": "主仓库   {0} 道具"
+  },
+  {
     "name": "WarehouseCapacity",
     "format": "{0} ITEMS   /   {1} TOTAL UNITS"
+  },
+  {
+    "name": "SquadMemberText",
+    "format": "{0} / {1} Selected"
   },
   {
     "name": "BattleBarText",

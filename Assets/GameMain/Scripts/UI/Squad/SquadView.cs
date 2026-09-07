@@ -6,7 +6,7 @@ namespace SepCore.UI
     [DisallowMultipleComponent]
     public partial class SquadView : MonoBehaviour
     {
-        [SerializeField] public global::TMPro.TextMeshProUGUI squadMemberText;
+        [SerializeField] public global::SepCore.UI.FormatTextUI squadMemberFormatText;
         [SerializeField] public global::UnityEngine.RectTransform characterSlotRoot;
         [SerializeField] public global::SepCore.UI.CharacterSlotItem characterSlotTemplate;
     }

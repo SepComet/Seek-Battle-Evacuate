@@ -36,6 +36,8 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         LootRangeMinRadius = _buf.ReadInt();
         LootRangeMaxRadius = _buf.ReadInt();
         EvacuateTimeMs = _buf.ReadInt();
+        WorldFloatTextEntity = _buf.ReadString();
+        WorldFloatTextEntity_Ref = null;
         EnemyLoseTargetMs = _buf.ReadInt();
         AlertMax = _buf.ReadInt();
         ChaseSpeed = _buf.ReadInt();
@@ -59,6 +61,15 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         CardStateTextDurationMs = _buf.ReadInt();
         CardStateTextFloatPx = _buf.ReadInt();
         {int n0 = System.Math.Min(_buf.ReadSize(), _buf.Size);NewGameCharacterIds = new System.Collections.Generic.List<int>(n0);for(var i0 = 0 ; i0 < n0 ; i0++) { int _e0;  _e0 = _buf.ReadInt(); NewGameCharacterIds.Add(_e0);}}
+        LobbySelectionMarkerMoveDurationMs = _buf.ReadInt();
+        BattleResultDisplayDelayMs = _buf.ReadInt();
+        BattleInDurationMs = _buf.ReadInt();
+        BattleInScale = _buf.ReadInt();
+        BattleInPunchScale = _buf.ReadInt();
+        BattleOutDurationMs = _buf.ReadInt();
+        BattleActorCardOutPixels = _buf.ReadInt();
+        BattleEnemyCardOutPixels = _buf.ReadInt();
+        BattleInMoveIntervalMs = _buf.ReadInt();
     }
 
     public static GlobalConfig DeserializeGlobalConfig(ByteBuf _buf)
@@ -125,6 +136,11 @@ public sealed partial class GlobalConfig : Luban.BeanBase
     /// 撤离时间，毫秒
     /// </summary>
     public readonly int EvacuateTimeMs;
+    /// <summary>
+    /// 世界漂浮文本实体
+    /// </summary>
+    public readonly string WorldFloatTextEntity;
+    public EntityConfig WorldFloatTextEntity_Ref;
     /// <summary>
     /// 敌人丢失目标后返回巡逻的时间，毫秒
     /// </summary>
@@ -217,6 +233,42 @@ public sealed partial class GlobalConfig : Luban.BeanBase
     /// 新存档直接拥有的角色
     /// </summary>
     public readonly System.Collections.Generic.List<int> NewGameCharacterIds;
+    /// <summary>
+    /// LobbyForm选中标记移动动画持续时间，毫秒
+    /// </summary>
+    public readonly int LobbySelectionMarkerMoveDurationMs;
+    /// <summary>
+    /// BattleForm结算等待时间，毫秒
+    /// </summary>
+    public readonly int BattleResultDisplayDelayMs;
+    /// <summary>
+    /// 战斗入场动画时间，毫秒
+    /// </summary>
+    public readonly int BattleInDurationMs;
+    /// <summary>
+    /// 战斗入场缩放系数
+    /// </summary>
+    public readonly int BattleInScale;
+    /// <summary>
+    /// 战斗入场Punch操作缩放系数
+    /// </summary>
+    public readonly int BattleInPunchScale;
+    /// <summary>
+    /// 战斗离场动画时间，毫秒
+    /// </summary>
+    public readonly int BattleOutDurationMs;
+    /// <summary>
+    /// BattleActorCard战斗离场动画跳跃距离，像素
+    /// </summary>
+    public readonly int BattleActorCardOutPixels;
+    /// <summary>
+    /// EnemyCard战斗离场动画上浮距离，像素
+    /// </summary>
+    public readonly int BattleEnemyCardOutPixels;
+    /// <summary>
+    /// 战斗入场卡片动画开始间隔
+    /// </summary>
+    public readonly int BattleInMoveIntervalMs;
    
     public const int __ID__ = -958250779;
     public override int GetTypeId() => __ID__;
@@ -233,6 +285,16 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         CharacterLeaderEntity_Ref = tables.TbEntityConfig.GetOrDefault(CharacterLeaderEntity);
         CharacterRetinueEntity_Ref = tables.TbEntityConfig.GetOrDefault(CharacterRetinueEntity);
         ItemEntity_Ref = tables.TbEntityConfig.GetOrDefault(ItemEntity);
+        
+        
+        
+        WorldFloatTextEntity_Ref = tables.TbEntityConfig.GetOrDefault(WorldFloatTextEntity);
+        
+        
+        
+        
+        
+        
         
         
         
@@ -277,6 +339,7 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         + "LootRangeMinRadius:" + LootRangeMinRadius + ","
         + "LootRangeMaxRadius:" + LootRangeMaxRadius + ","
         + "evacuateTimeMs:" + EvacuateTimeMs + ","
+        + "WorldFloatTextEntity:" + WorldFloatTextEntity + ","
         + "enemyLoseTargetMs:" + EnemyLoseTargetMs + ","
         + "alertMax:" + AlertMax + ","
         + "chaseSpeed:" + ChaseSpeed + ","
@@ -300,6 +363,15 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         + "cardStateTextDurationMs:" + CardStateTextDurationMs + ","
         + "cardStateTextFloatPx:" + CardStateTextFloatPx + ","
         + "newGameCharacterIds:" + Luban.StringUtil.CollectionToString(NewGameCharacterIds) + ","
+        + "LobbySelectionMarkerMoveDurationMs:" + LobbySelectionMarkerMoveDurationMs + ","
+        + "BattleResultDisplayDelayMs:" + BattleResultDisplayDelayMs + ","
+        + "BattleInDurationMs:" + BattleInDurationMs + ","
+        + "BattleInScale:" + BattleInScale + ","
+        + "BattleInPunchScale:" + BattleInPunchScale + ","
+        + "BattleOutDurationMs:" + BattleOutDurationMs + ","
+        + "BattleActorCardOutPixels:" + BattleActorCardOutPixels + ","
+        + "BattleEnemyCardOutPixels:" + BattleEnemyCardOutPixels + ","
+        + "BattleInMoveIntervalMs:" + BattleInMoveIntervalMs + ","
         + "}";
     }
 }

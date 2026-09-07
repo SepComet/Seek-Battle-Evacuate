@@ -57,10 +57,7 @@ namespace SepCore.UI
             quantityText.text = stack.count.ToString();
             ShowIconAsync(config.Icon_Ref, _iconVersion).Forget();
             BindClick();
-            if (button != null)
-            {
-                button.interactable = true;
-            }
+            button.interactable = true;
         }
 
         /// <summary>
@@ -73,10 +70,7 @@ namespace SepCore.UI
             rarity.color = RarityEmpty;
             quantityText.text = string.Empty;
             HideIcon();
-            if (button != null)
-            {
-                button.interactable = false;
-            }
+            button.interactable = false;
         }
 
         /// <summary>
@@ -84,15 +78,12 @@ namespace SepCore.UI
         /// </summary>
         public void SetSelected(bool selected)
         {
-            if (bg != null)
-            {
-                bg.color = selected ? SelectedBgColor : Color.white;
-            }
+            bg.color = selected ? SelectedBgColor : Color.white;
         }
 
         private void BindClick()
         {
-            if (_clickBound || button == null)
+            if (_clickBound)
             {
                 return;
             }
@@ -113,11 +104,6 @@ namespace SepCore.UI
 
         private void HideIcon()
         {
-            if (icon == null)
-            {
-                return;
-            }
-
             icon.sprite = null;
             icon.gameObject.SetActive(false);
         }
@@ -127,7 +113,7 @@ namespace SepCore.UI
         /// </summary>
         private async UniTaskVoid ShowIconAsync(SpriteConfig iconConfig, int iconVersion)
         {
-            if (iconConfig == null || icon == null)
+            if (iconConfig == null)
             {
                 return;
             }

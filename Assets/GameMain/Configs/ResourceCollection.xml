@@ -2,16 +2,26 @@
 <UnityGameFramework>
   <ResourceCollection>
     <Resources>
-      <Resource Name="Configs" FileSystem="GameData" LoadType="0" Packed="True" ResourceGroups="Base" />
-      <Resource Name="DataTables" FileSystem="GameData" LoadType="0" Packed="True" ResourceGroups="Base" />
+      <Resource Name="Configs" FileSystem="GameData" LoadType="0" Packed="True"
+        ResourceGroups="Base" />
+      <Resource Name="DataTables" FileSystem="GameData" LoadType="0" Packed="True"
+        ResourceGroups="Base" />
+      <Resource Name="Entities" LoadType="0" Packed="True" />
       <Resource Name="Fonts" FileSystem="UI" LoadType="0" Packed="True" ResourceGroups="Base" />
-      <Resource Name="Localization/Dictionaries" Variant="en-us" FileSystem="UI" LoadType="0" Packed="True" ResourceGroups="Base" />
-      <Resource Name="Localization/Dictionaries" Variant="ko-kr" FileSystem="UI" LoadType="0" Packed="True" ResourceGroups="Base" />
-      <Resource Name="Localization/Dictionaries" Variant="zh-cn" FileSystem="UI" LoadType="0" Packed="True" ResourceGroups="Base" />
-      <Resource Name="Localization/Dictionaries" Variant="zh-tw" FileSystem="UI" LoadType="0" Packed="True" ResourceGroups="Base" />
-      <Resource Name="Music/About" FileSystem="Resources" LoadType="0" Packed="True" ResourceGroups="Music" />
-      <Resource Name="Music/Background" FileSystem="Resources" LoadType="0" Packed="True" ResourceGroups="Music" />
-      <Resource Name="Music/Menu" FileSystem="Resources" LoadType="0" Packed="True" ResourceGroups="Music" />
+      <Resource Name="Localization/Dictionaries" Variant="en-us" FileSystem="UI" LoadType="0"
+        Packed="True" ResourceGroups="Base" />
+      <Resource Name="Localization/Dictionaries" Variant="ko-kr" FileSystem="UI" LoadType="0"
+        Packed="True" ResourceGroups="Base" />
+      <Resource Name="Localization/Dictionaries" Variant="zh-cn" FileSystem="UI" LoadType="0"
+        Packed="True" ResourceGroups="Base" />
+      <Resource Name="Localization/Dictionaries" Variant="zh-tw" FileSystem="UI" LoadType="0"
+        Packed="True" ResourceGroups="Base" />
+      <Resource Name="Music/About" FileSystem="Resources" LoadType="0" Packed="True"
+        ResourceGroups="Music" />
+      <Resource Name="Music/Background" FileSystem="Resources" LoadType="0" Packed="True"
+        ResourceGroups="Music" />
+      <Resource Name="Music/Menu" FileSystem="Resources" LoadType="0" Packed="True"
+        ResourceGroups="Music" />
       <Resource Name="Scenes" FileSystem="Resources" LoadType="0" Packed="True" />
       <Resource Name="SceneSettings" LoadType="0" Packed="False" />
       <Resource Name="Sounds" FileSystem="Resources" LoadType="0" Packed="True" />
@@ -25,6 +35,7 @@
       <Resource Name="UI/UISprites/Logos" FileSystem="UI" LoadType="0" Packed="True" />
     </Resources>
     <Assets>
+      <Asset Guid="010a6e5305fa7004f89c5d317b7b47d4" ResourceName="UI/UISprites/Common" />
       <Asset Guid="012ad24354ddc4ed291af994013abaf4" ResourceName="Tilemap" />
       <Asset Guid="0179316b5fc7c2946a67c5877c02fc30" ResourceName="UI/UISprites/Common" />
       <Asset Guid="02c371af69b524e15a3254d2da6a159b" ResourceName="Tilemap" />
@@ -36,36 +47,44 @@
       <Asset Guid="079e2d2f4bc2c43fc96bd4e0e8b5697b" ResourceName="Tilemap" />
       <Asset Guid="07fb80411448c434baf717977d44f1b7" ResourceName="DataTables" />
       <Asset Guid="080d0a21005e04c96bd8ee9eb63ff291" ResourceName="UI/UIForms" />
+      <Asset Guid="085185b08a40a924985bc0e4176edea6" ResourceName="UI/UISprites/Common" />
+      <Asset Guid="08c1fa6351174a9439d97cfc9d3307cc" ResourceName="UI/UISprites/Common" />
       <Asset Guid="093f8873cfe371d41b854ed9fb6bff69" ResourceName="Music/About" />
+      <Asset Guid="097782735540f2d4db5606eae04ae6a7" ResourceName="UI/UISprites/Common" />
       <Asset Guid="09cc3b8a4a51445c8893d29cdddfdac1" ResourceName="Tilemap" />
       <Asset Guid="0a65a68c01a76ea4b8b574827a6467aa" ResourceName="UI/UISprites/Common" />
       <Asset Guid="0c020476737b54e378eae9feb4d4b2b2" ResourceName="Tilemap" />
       <Asset Guid="0c182b185d9a14720941276dac40c806" ResourceName="UI/UIForms" />
       <Asset Guid="0e76e31a29c3b47199f27f62805232cf" ResourceName="DataTables" />
       <Asset Guid="0f92765f37f7040a3a05e341b682a8b7" ResourceName="UI/UIForms" />
-      <Asset Guid="1053b0070685be347ab58587156842dc" ResourceName="Localization/Dictionaries" ResourceVariant="zh-tw" />
+      <Asset Guid="1053b0070685be347ab58587156842dc" ResourceName="Localization/Dictionaries"
+        ResourceVariant="zh-tw" />
       <Asset Guid="10cc3e4630e6847519f26b17e4c4a0f9" ResourceName="Tilemap" />
       <Asset Guid="10e09fb5fc9104fd98e1b11949d7bd57" ResourceName="Tilemap" />
       <Asset Guid="11d78bd16728a654cb788ca5f8af6f25" ResourceName="SceneSettings" />
       <Asset Guid="1476488c9b8a94cbc9bcc31074b05f7f" ResourceName="DataTables" />
-      <Asset Guid="14869ac0d4433f04db1704e39d03412e" ResourceName="Localization/Dictionaries" ResourceVariant="en-us" />
+      <Asset Guid="14869ac0d4433f04db1704e39d03412e" ResourceName="Localization/Dictionaries"
+        ResourceVariant="en-us" />
+      <Asset Guid="14d2847a015c1914d8e3b83050e23e16" ResourceName="UI/UIForms" />
       <Asset Guid="155aab19ac1b941428b69ff91f491fb2" ResourceName="DataTables" />
       <Asset Guid="156d241f796508c4da4fc354a7fbf5a8" ResourceName="UI/UISprites/Common" />
       <Asset Guid="169d626849430451698ac0064d0dad13" ResourceName="Tilemap" />
       <Asset Guid="1795882d6668341db98ef8dd3f837a4a" ResourceName="Tilemap" />
       <Asset Guid="1813da3c7eca1469dbd98d0863f17340" ResourceName="Tilemap" />
+      <Asset Guid="18492df19f0fe4babbc3054c7321ae8b" ResourceName="Entities" />
       <Asset Guid="185b38a6aeba3431ebd35416981d5da9" ResourceName="Tilemap" />
       <Asset Guid="186005cd01585485a8235cd809833c38" ResourceName="Tilemap" />
       <Asset Guid="187405e189d5c4ff6b37ddd88fd7731c" ResourceName="Tilemap" />
+      <Asset Guid="1bccdb498891d384a88430c70f381e4f" ResourceName="Entities" />
       <Asset Guid="1be4472894949437694aead55c6da60f" ResourceName="Sounds" />
       <Asset Guid="1dfd197ed35f046509ba2fe4ae81a43b" ResourceName="DataTables" />
       <Asset Guid="1f51d6cdd56b946c984148f40daf5dff" ResourceName="Tilemap" />
       <Asset Guid="1f7bb9c440dac4e07bc99c6e9e8a680f" ResourceName="Tilemap" />
       <Asset Guid="20affe2e1cef94a1bb4a7b19c04ccd45" ResourceName="Tilemap" />
+      <Asset Guid="215a239c8a50b00408aef779e3715f97" ResourceName="UI/UIForms" />
       <Asset Guid="21dbd8d7eaa3a43ee95cd0f5210f82e7" ResourceName="Tilemap" />
       <Asset Guid="235af103fb17b480b8672a27b3b7a185" ResourceName="Tilemap" />
       <Asset Guid="236433a27ce40a7429b87d14d8fa3035" ResourceName="UI/UISprites/Common" />
-      <Asset Guid="24010037cce874155b9dde590b568547" ResourceName="Tilemap" />
       <Asset Guid="24ca310f92a6796408f1db7647ec4e55" ResourceName="UI/UISprites/Common" />
       <Asset Guid="24d913ea6f7524b7481857a2cfb47389" ResourceName="Tilemap" />
       <Asset Guid="24e09d594ee1f490887831b80731a316" ResourceName="Tilemap" />
@@ -74,6 +93,7 @@
       <Asset Guid="281e9cb76b560430d9f04197a6d6b9ba" ResourceName="DataTables" />
       <Asset Guid="28430169d506b4f8fbc452a05a7e9537" ResourceName="Tilemap" />
       <Asset Guid="2a1654cca7e304532aa7a8cda01b0536" ResourceName="Tilemap" />
+      <Asset Guid="2a1f3cba20f3e11498474a705db12fde" ResourceName="UI/UISprites/Common" />
       <Asset Guid="2bc089bd516724d7e8f92a5db52ac215" ResourceName="UI/UIForms" />
       <Asset Guid="2c1696082d6ec4522a9b8ccf285d90f3" ResourceName="Tilemap" />
       <Asset Guid="2cf7d130c7a744fa185cda7357a9b9e9" ResourceName="Tilemap" />
@@ -84,12 +104,16 @@
       <Asset Guid="2fdafc6b5cb0b4fb18cfab4dbd4facf0" ResourceName="UI/UISprites/Common" />
       <Asset Guid="30ea5c623ad88483c8fd282575a5ca6c" ResourceName="UI/UISprites/Common" />
       <Asset Guid="3274154f1f2bc4255af0f40474bc52e5" ResourceName="Tilemap" />
+      <Asset Guid="329f7a763a2a44b599edf4cab9879de6" ResourceName="Entities" />
       <Asset Guid="32a5fc98067684b5a9cb595766c86ecb" ResourceName="Tilemap" />
       <Asset Guid="3333ede41bcdf4825be51eb1f24d9c59" ResourceName="DataTables" />
       <Asset Guid="3374b3da6f8494c0ea9553d79cbdf0e4" ResourceName="DataTables" />
+      <Asset Guid="35a3a594cc737854587e6b3e50d8c160" ResourceName="UI/UIForms" />
       <Asset Guid="35bb7b267ca73468fa2de127b5813693" ResourceName="Tilemap" />
       <Asset Guid="37620799d96fb400b8015d9b961f65ea" ResourceName="UI/UIItems" />
+      <Asset Guid="3a74f678ee8f3bd49aacf3de1ae4bcaa" ResourceName="UI/UISprites/Common" />
       <Asset Guid="3be3fac3611f4584695662c4889f722d" ResourceName="UI/UISprites/Common" />
+      <Asset Guid="3bf6d9f920f7458448a390f80318ebe6" ResourceName="UI/UISprites/Common" />
       <Asset Guid="3dc7455402dfa462b89a4bbd513955e9" ResourceName="Sounds" />
       <Asset Guid="3e54a13cf87bc4a949f64da904c8fcc6" ResourceName="Tilemap" />
       <Asset Guid="3f54fcfdac53aec42ae18a6a1c6d8cb1" ResourceName="UI/UISprites/Common" />
@@ -100,7 +124,11 @@
       <Asset Guid="44fc44b804ee04c5980c723ad21aa15e" ResourceName="Tilemap" />
       <Asset Guid="46799a2d030104fa9a457645b7bfabcc" ResourceName="Tilemap" />
       <Asset Guid="46d296a931fe84d31af1c8fc0dc19233" ResourceName="DataTables" />
+      <Asset Guid="47ac86305cc0b1045af7ff5562b72b32" ResourceName="UI/UIItems" />
+      <Asset Guid="47b97733378c9e14585b3e952e6574a2" ResourceName="UI/UIForms" />
+      <Asset Guid="48c0d4d6bebaa934384b07aa1e2f8184" ResourceName="UI/UISprites/Common" />
       <Asset Guid="495534eb4fd254a25be0545a08c2a5b8" ResourceName="DataTables" />
+      <Asset Guid="4cbc879550e5e374a925e2e0a84d6f3c" ResourceName="UI/UISprites/Common" />
       <Asset Guid="4d61bd4407a3f4070a1752d96b5616d2" ResourceName="Tilemap" />
       <Asset Guid="512a45938d34f49a4b3180feb6c64f85" ResourceName="DataTables" />
       <Asset Guid="514cfbf3a7f8c489aa9872f702533b97" ResourceName="Tilemap" />
@@ -108,20 +136,25 @@
       <Asset Guid="52538dcb05dd647ae885d6897c3c31ad" ResourceName="Tilemap" />
       <Asset Guid="528a881691ada48fb84a996ce7877c29" ResourceName="Tilemap" />
       <Asset Guid="52e55ec570bdf40479dd70e06c99af97" ResourceName="DataTables" />
-      <Asset Guid="5321734f50449436cb80e5b4ad51b25a" ResourceName="Textures" />
       <Asset Guid="53415ed43380846c29033f4d04a996ab" ResourceName="Tilemap" />
+      <Asset Guid="54628aafa20f64b40ae661038ee7abf0" ResourceName="UI/UISprites/Common" />
       <Asset Guid="55638dd15985444f2a74d7d7f90b40dd" ResourceName="Tilemap" />
       <Asset Guid="55a01ddb0fdba4f72afb500fd37920b6" ResourceName="Tilemap" />
       <Asset Guid="55d795be9494749a6b8e95412746ad17" ResourceName="UI/UIForms" />
+      <Asset Guid="55e47c5815693431e8acd213d8f85496" ResourceName="SceneSettings" />
       <Asset Guid="56b8df63bbad60749a69e38bc687fadf" ResourceName="UI/UISprites/Common" />
       <Asset Guid="56f14eeeafb934682ae150616784596d" ResourceName="Tilemap" />
       <Asset Guid="58dc2140c55e1412f8151e6c14d7452b" ResourceName="Tilemap" />
       <Asset Guid="590ece6a10d384dae9ed43c0e9e2e9da" ResourceName="Tilemap" />
       <Asset Guid="591ea8794a938493599ed2d9ccde59b1" ResourceName="Tilemap" />
       <Asset Guid="592aec89b64d24796a78d88763c22412" ResourceName="DataTables" />
+      <Asset Guid="5935ae613c7c94c699a9d9995407736d" ResourceName="Entities" />
       <Asset Guid="5b15fbd80c53545beb5d330c9645c422" ResourceName="Tilemap" />
+      <Asset Guid="5b56d9fa0e8bd6e409ed188db38a692c" ResourceName="UI/UISprites/Common" />
       <Asset Guid="5bdeee3a1fa114cc3bfe8076097db5c4" ResourceName="DataTables" />
-      <Asset Guid="5dcd89912e222bf4c87f76db4044bc5e" ResourceName="Localization/Dictionaries" ResourceVariant="ko-kr" />
+      <Asset Guid="5dcd89912e222bf4c87f76db4044bc5e" ResourceName="Localization/Dictionaries"
+        ResourceVariant="ko-kr" />
+      <Asset Guid="5eda94a9dcf71e445ad17e3c065d1460" ResourceName="UI/UISprites/Common" />
       <Asset Guid="5ee2e37ef5f43486b8da4f5a267df2d7" ResourceName="UI/UISprites/Common" />
       <Asset Guid="6018eb026fd8440f4a73ee923a778c50" ResourceName="Tilemap" />
       <Asset Guid="6042391c4021942e787c99efb6129fff" ResourceName="Tilemap" />
@@ -131,29 +164,33 @@
       <Asset Guid="6187a950ca9704a85bde2ad887f33c4c" ResourceName="Tilemap" />
       <Asset Guid="61f48caa4a94043de802b7055d9f2069" ResourceName="Tilemap" />
       <Asset Guid="62af9e5c8f39cfa49af9e10ccf42f1da" ResourceName="UI/UISprites/Common" />
+      <Asset Guid="6304ad603f150b649b764d29bbc2a87b" ResourceName="UI/UISprites/Common" />
       <Asset Guid="638ff8ae4a0d15047839cd265d3bc296" ResourceName="Music/Background" />
       <Asset Guid="63ff5fd3027c84922abf3dc917ea4964" ResourceName="Tilemap" />
       <Asset Guid="6445e36d8712e4f358a53a0ab3d23664" ResourceName="Tilemap" />
       <Asset Guid="64940e89325a24b99aa029d9a27d7aaf" ResourceName="UI/UISprites/Common" />
       <Asset Guid="64c72e78cdce049c29fc314e1e3f21d9" ResourceName="Tilemap" />
       <Asset Guid="664fd26c0b8e44b59bb3f73e09f7b80f" ResourceName="DataTables" />
-      <Asset Guid="671564e21e83b4b1fb97e1b3ad5dc9e5" ResourceName="Textures" />
       <Asset Guid="685a4c700d07f4d918d3088e3a0b4974" ResourceName="DataTables" />
       <Asset Guid="68af9688fb41844efb7d9c91dd57334e" ResourceName="Tilemap" />
       <Asset Guid="6a618860f43ed4ab2ad440b569645b23" ResourceName="Tilemap" />
+      <Asset Guid="6c1e5994a7c4cf74c8f9864c7b219fc2" ResourceName="Entities" />
       <Asset Guid="6cbc2c323b77f804fb958fa4eca33998" ResourceName="UI/UISprites/Common" />
+      <Asset Guid="6d769abbc2a86a34fa6b6874a7444f0a" ResourceName="UI/UIForms" />
       <Asset Guid="6d9c0a7ea0f0740cb936e657d07519a7" ResourceName="Tilemap" />
       <Asset Guid="706026d4d82b64ccc8125632eba57367" ResourceName="DataTables" />
-      <Asset Guid="70c32fb74e2284dd7872013d40432983" ResourceName="Textures" />
       <Asset Guid="7245f11b809444d6e83fe13d2602e26f" ResourceName="Tilemap" />
       <Asset Guid="72bbe3ee9a8ec41149cf543524bf174f" ResourceName="DataTables" />
       <Asset Guid="72e76810224064300b7d32e8322a5d12" ResourceName="Sounds" />
       <Asset Guid="73f3bab2a23c84b8eba9da676fa00488" ResourceName="Tilemap" />
       <Asset Guid="7420c44365cdc4f43b99ce08f656f036" ResourceName="Tilemap" />
       <Asset Guid="7496b03b68625432887c0069850c78ac" ResourceName="Tilemap" />
+      <Asset Guid="74a1968112cf22142ad0b451b678c5dc" ResourceName="UI/UIForms" />
       <Asset Guid="77cbb7c5404c10242ab59953e0746314" ResourceName="Fonts" />
+      <Asset Guid="77f3574713c04ec79e17966af4223d84" ResourceName="Textures" />
       <Asset Guid="785dc70d3399743ba9bf178560ba4f2c" ResourceName="Tilemap" />
       <Asset Guid="791ba9de462c4462f96d95f203789d86" ResourceName="DataTables" />
+      <Asset Guid="7927b9032dc11e841af3f9a1353d7ecd" ResourceName="UI/UISprites/Common" />
       <Asset Guid="7a99b22b7a9fd4f46b1be90bae1d5d5f" ResourceName="UI/UISprites/Common" />
       <Asset Guid="7aa31f80b8b8c48bc9904148ab773b77" ResourceName="Tilemap" />
       <Asset Guid="7be5562d0685c48049805a1a60ee9068" ResourceName="Tilemap" />
@@ -163,8 +200,9 @@
       <Asset Guid="7fd11dc5d29076d469d414dec2818f11" ResourceName="Configs" />
       <Asset Guid="821ab11a83def48afae06a95ee73a616" ResourceName="Tilemap" />
       <Asset Guid="83776799661314716a411feadd0e45d8" ResourceName="DataTables" />
-      <Asset Guid="838a5ceea506740319abfaeff57ea22a" ResourceName="Textures" />
+      <Asset Guid="84487d73ca4b791498332d8f6858417f" ResourceName="UI/UISprites/Common" />
       <Asset Guid="852ef0206fea1454fabad3280b23ddae" ResourceName="Tilemap" />
+      <Asset Guid="856f1f3f5ab19415d9709658bba4e68b" ResourceName="Entities" />
       <Asset Guid="863569e2fca314cd39a6b5f1d3d5e5de" ResourceName="Tilemap" />
       <Asset Guid="87b9a94d87a3c4b979177fe8e3fefd5f" ResourceName="Tilemap" />
       <Asset Guid="87eff4e93c50047c7bcdca8a32079be9" ResourceName="Tilemap" />
@@ -177,9 +215,11 @@
       <Asset Guid="8c3f7cb39722149d28543549f56bd738" ResourceName="UI/UISprites/Common" />
       <Asset Guid="8c4b5efcfed4c45fabe8458836ccd4c3" ResourceName="Textures" />
       <Asset Guid="8d8f82e4729b8400787989f864977638" ResourceName="Tilemap" />
+      <Asset Guid="8dd9ea9d17ac284489dd484d1fe6dae1" ResourceName="UI/UIForms" />
       <Asset Guid="8e550e66b25124600ba50fbf88ae1b26" ResourceName="UI/UIItems" />
       <Asset Guid="8eb1e718a27bf42ec8048506aa13b80b" ResourceName="UI/UISprites/Common" />
       <Asset Guid="92c8ac94064b747e4b8746ab1b04ea29" ResourceName="UI/UIForms" />
+      <Asset Guid="9332cf0d233636a40a024382720294a3" ResourceName="UI/UISprites/Common" />
       <Asset Guid="940f815ef907248a49bff426beda0850" ResourceName="Tilemap" />
       <Asset Guid="941895512b0e943c3883b416a776923f" ResourceName="Tilemap" />
       <Asset Guid="95fa28fe2f96b4c57a30f004068ed992" ResourceName="Tilemap" />
@@ -189,20 +229,23 @@
       <Asset Guid="993f7cf9b95b040b69c8aa94b7dba81c" ResourceName="Tilemap" />
       <Asset Guid="99d811b0183246646a2ce8df996f4bca" ResourceName="Fonts" />
       <Asset Guid="9a5da44490ac746c98fffb47b534f839" ResourceName="Tilemap" />
-      <Asset Guid="9be2e1e45f4edd74c8764538ad306b78" ResourceName="Localization/Dictionaries" ResourceVariant="zh-cn" />
+      <Asset Guid="9be2e1e45f4edd74c8764538ad306b78" ResourceName="Localization/Dictionaries"
+        ResourceVariant="zh-cn" />
       <Asset Guid="9c962efc76bea4534af0a14c17122dc0" ResourceName="DataTables" />
       <Asset Guid="9c9faa08e620f4d4dbdfcdc692a7da07" ResourceName="UI/UISprites/Common" />
       <Asset Guid="9d266ad70f51c43d3bf454994651bec8" ResourceName="Tilemap" />
+      <Asset Guid="9e0da37601c951e41968785a68119b4e" ResourceName="UI/UISprites/Common" />
       <Asset Guid="9e82761fd14d64f66b9f8371c678b485" ResourceName="Tilemap" />
       <Asset Guid="9f847ec5e66e03e4ead1d3c5f7b510e8" ResourceName="UI/UISprites/Common" />
       <Asset Guid="9fe7ee78deeae49a685727098c6304ef" ResourceName="UI/UIForms" />
       <Asset Guid="a019ae3af8e864616b85773c509f5285" ResourceName="Sounds" />
-      <Asset Guid="a113e1718b86341ec89cd182bdab66de" ResourceName="Textures" />
       <Asset Guid="a2547aabb28ff4dd58e33b21a206f560" ResourceName="DataTables" />
       <Asset Guid="a26525fb94c9846f48a7f7df3a467024" ResourceName="Tilemap" />
       <Asset Guid="a3f7641fcdd54dd4b9cd73079fbf400c" ResourceName="Scenes" />
       <Asset Guid="a4501416688bb43c9b1042b86b67aaab" ResourceName="Tilemap" />
       <Asset Guid="a5d6046a5da4e4c3dbf87091b3333666" ResourceName="UI/UISprites/Common" />
+      <Asset Guid="a6c56474666ce0647bdb766e9b4764b3" ResourceName="UI/UISprites/Common" />
+      <Asset Guid="a847bc0dd54914cf1904beeb712c1e25" ResourceName="Entities" />
       <Asset Guid="a8c07bbe04fdaf04b80e27f651a8edd6" ResourceName="UI/UISprites/Common" />
       <Asset Guid="a8ebe1cbbe12a4ee6a21de133cd5fc4d" ResourceName="DataTables" />
       <Asset Guid="a93cfa09aa15f9d409788ca7b9063ead" ResourceName="SceneSettings" />
@@ -210,6 +253,7 @@
       <Asset Guid="aa6822449b9304c168a5ba43072f1658" ResourceName="UI/UIItems" />
       <Asset Guid="ab45c3f613f388d43bbf43ec05eb92e2" ResourceName="UI/UISprites/Common" />
       <Asset Guid="ab4b4c43d441f4ad082dc06434e19433" ResourceName="Textures" />
+      <Asset Guid="ab6db91373811284caeba2e9472fa9c2" ResourceName="UI/UISprites/Common" />
       <Asset Guid="ab7d7d93f4a2247c38fbfaf9c18fe96f" ResourceName="Tilemap" />
       <Asset Guid="ab87dec715b51442bb802a46802f5d91" ResourceName="Tilemap" />
       <Asset Guid="abc9b6f52e80648c78abda155c34ca01" ResourceName="Tilemap" />
@@ -219,13 +263,16 @@
       <Asset Guid="af004c6ec6d764aeabfac4e740c3a2e8" ResourceName="DataTables" />
       <Asset Guid="af50388b844254e3c854d17957ab1de0" ResourceName="Tilemap" />
       <Asset Guid="b03c5019a345e48b8b0f18cb86e4d19e" ResourceName="Tilemap" />
+      <Asset Guid="b0b8e8e54a0204a42854b4710cd145e2" ResourceName="Entities" />
       <Asset Guid="b100f982e48814dfeadb160358067b65" ResourceName="UI/UIItems" />
       <Asset Guid="b226df3d35b154e24a2e7fcf61a0e3c6" ResourceName="DataTables" />
+      <Asset Guid="b486fde0a0cd0034b81d4c42cc3eff54" ResourceName="Entities" />
       <Asset Guid="b4dcdb67629b445a9a132ebcac3f145b" ResourceName="Tilemap" />
       <Asset Guid="b4f4e5618577c44bc9e386b139fd41d7" ResourceName="Tilemap" />
       <Asset Guid="b6df7a20212d445819113ff10026ce5b" ResourceName="UI/UISprites/Common" />
       <Asset Guid="b7ac3b23ae0f7436d9a5a38a037e4fdc" ResourceName="DataTables" />
       <Asset Guid="b7bbb52c3894f40a7aa6fea356addcef" ResourceName="Tilemap" />
+      <Asset Guid="b8467ea5fbaf9ba42908de6411bd443d" ResourceName="UI/UISprites/Common" />
       <Asset Guid="b95a1e6973cfe4834b45a752cbd67e52" ResourceName="UI/UISprites/Common" />
       <Asset Guid="b95d263703f274975bc1be54e83d77dc" ResourceName="Tilemap" />
       <Asset Guid="b9ce1550af75748dfa0cf79143a01098" ResourceName="Tilemap" />
@@ -234,43 +281,54 @@
       <Asset Guid="bc89dc4d4351d40c69520f142fe4e291" ResourceName="UI/UISprites/Common" />
       <Asset Guid="be4a0398ed2094deab9d3b9d253fed9e" ResourceName="Tilemap" />
       <Asset Guid="be4ef9a9a8583684781c9dd0539985c1" ResourceName="UI/UIForms" />
+      <Asset Guid="be985aedc2959104993ad889d3fe5b7b" ResourceName="UI/UIForms" />
       <Asset Guid="bf75b984df8a84987bcf3a8bf6e2862d" ResourceName="Sounds" />
       <Asset Guid="c23e73fa7c8a1462bb80edf83f07da0e" ResourceName="Tilemap" />
       <Asset Guid="c26060390ccfd447a9a764b753a381d1" ResourceName="Tilemap" />
       <Asset Guid="c3502c9a6d53141fd81e32b381709bf4" ResourceName="Tilemap" />
+      <Asset Guid="c46d3578828c54ae89f53913a81d09ab" ResourceName="Entities" />
       <Asset Guid="c5dbf43715222464c85e7055ecb89210" ResourceName="Scenes" />
+      <Asset Guid="c615706690ca87043ad593475e6db7ec" ResourceName="UI/UISprites/Common" />
       <Asset Guid="c72ec2f6752f8435b8ed98f261364b9a" ResourceName="Textures" />
       <Asset Guid="c7d1e11dd37634b48a9dd4012b8e4306" ResourceName="UI/UISounds" />
+      <Asset Guid="c8585b68a92b5d440992ddd7d1b1a3d6" ResourceName="UI/UISprites/Common" />
       <Asset Guid="caa829ab2ffc71340a69253afdf58365" ResourceName="Music/Menu" />
       <Asset Guid="cadd0764941c8b646ae79b51d0ea8285" ResourceName="UI/UISprites/Common" />
+      <Asset Guid="cd0a2c1b2c014ba4c80c1df786e150e9" ResourceName="UI/UISprites/Common" />
       <Asset Guid="cdb9cb639cb4341eebfe7ff690e7ac32" ResourceName="Tilemap" />
       <Asset Guid="ce3dddd24e91743d28db17acef22c5da" ResourceName="DataTables" />
+      <Asset Guid="cec82557a539d404397ed1b3d89f9fe4" ResourceName="UI/UIForms" />
       <Asset Guid="d005daed0c0784f12941d6b846ba027c" ResourceName="Tilemap" />
       <Asset Guid="d0f266d75e5754ce0ae4191173fc9a9e" ResourceName="Tilemap" />
-      <Asset Guid="d19cab1a837b54444b1f2c5e23689004" ResourceName="Textures" />
       <Asset Guid="d1fc53f62704847bca0b442834c44454" ResourceName="Tilemap" />
       <Asset Guid="d32dc98febba844c4a6a2ea11a080ab0" ResourceName="DataTables" />
       <Asset Guid="d34aa56bac1024f34baa789b87635bc6" ResourceName="Tilemap" />
       <Asset Guid="d53743227f6564aec89ab283dd33fbef" ResourceName="Tilemap" />
+      <Asset Guid="d67cea993e38b400ab1ed7716948d45e" ResourceName="Entities" />
       <Asset Guid="d7f00f72c9e0241a08362d4f9853675d" ResourceName="Tilemap" />
       <Asset Guid="d95432493ecbb4e088ea3e318d785b6a" ResourceName="Tilemap" />
       <Asset Guid="d9ab355afce6749369b7a29f07d8f55e" ResourceName="Tilemap" />
       <Asset Guid="db58965402f12ed47b4dad61a9e48c9d" ResourceName="UI/UISprites/Icons" />
       <Asset Guid="e18a5bfb03563438ab3c18c1cf298b01" ResourceName="UI/UISprites/Common" />
+      <Asset Guid="e319799bca1218444a6a94fd7a4f57e7" ResourceName="Entities" />
       <Asset Guid="e44eb69993a104eadbf3e35cf4bd3c37" ResourceName="UI/UISprites/Common" />
       <Asset Guid="e5ca26c53b6ab8a46b52817008d7c7fa" ResourceName="UI/UISprites/Icons" />
       <Asset Guid="e6cd5c52b88f84e0d8f78f75538dfdb8" ResourceName="Tilemap" />
+      <Asset Guid="e738cf654c18846fc9dec0d254dac222" ResourceName="Entities" />
       <Asset Guid="e80f89d412a934022935d05dd65ad10c" ResourceName="Tilemap" />
       <Asset Guid="e82837c9099f69a48b48fc44eb8d119d" ResourceName="UI/UISprites/Common" />
       <Asset Guid="e830964cdb85ff3429bca484c16bab44" ResourceName="UI/UISounds" />
       <Asset Guid="e85864330b68dde498dcb6e8711815d3" ResourceName="UI/UISprites/Common" />
       <Asset Guid="e8b31140a29c140808c8e7494928655b" ResourceName="DataTables" />
-      <Asset Guid="e9932daa5556b4041ae99acfdc88bc31" ResourceName="Textures" />
+      <Asset Guid="ebd1358d359de41e29087746ea86373a" ResourceName="Entities" />
       <Asset Guid="ec588c9e038694451adaeb703e8e61d1" ResourceName="UI/UIForms" />
       <Asset Guid="ee0272973ed1241ec8557876842959d3" ResourceName="Tilemap" />
       <Asset Guid="eea1c93a4ce904394ab369a358b61bd6" ResourceName="Tilemap" />
       <Asset Guid="efadbc9e2b0014576b39c3a7f711de8a" ResourceName="DataTables" />
+      <Asset Guid="f054197ef28924b4986cbd91de2ab054" ResourceName="UI/UISprites/Common" />
+      <Asset Guid="f124e72737be3134ebb24e2f237f424f" ResourceName="UI/UIItems" />
       <Asset Guid="f2f4df0b7211e4c42a5638273525d8ee" ResourceName="UI/UISprites/Common" />
+      <Asset Guid="f353d42d1db27ff42b78b28efd86b316" ResourceName="UI/UISprites/Common" />
       <Asset Guid="f385dbbe441164ac2838080c95ca5a52" ResourceName="Tilemap" />
       <Asset Guid="f438a72a91e1c3c4a9ced40888ffec96" ResourceName="UI/UISprites/Icons" />
       <Asset Guid="f5edb4b06e93b4585b4abcfbf15922cb" ResourceName="Tilemap" />

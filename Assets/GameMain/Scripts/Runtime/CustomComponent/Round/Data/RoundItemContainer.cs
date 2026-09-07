@@ -60,6 +60,40 @@ namespace SepCore.Run
         public bool IsFull => FreeSlotsCount <= 0;
 
         /// <summary>
+        /// 检查容器是否能容纳至少指定数量的指定物品（包含堆叠合并与空槽）。
+        /// </summary>
+        public bool CanAcceptItem(int itemId, int count = 1)
+        {
+            if (itemId <= 0 || count <= 0)
+            {
+                return false;
+            }
+
+            if (!IsFull)
+            {
+                return true;
+            }
+
+            ItemConfig config = _itemConfigGetter(itemId);
+            int stackLimit = config != null && config.StackLimit > 0 ? config.StackLimit : 1;
+
+            int accepted = 0;
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                if (_slots[i].itemId == itemId && _slots[i].count < stackLimit)
+                {
+                    accepted += stackLimit - _slots[i].count;
+                    if (accepted >= count)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// 容器内所有物品按配表价值（ItemConfig.Value）累加的总估值。
         /// </summary>
         public int TotalValue
@@ -91,6 +125,19 @@ namespace SepCore.Run
         /// <returns>实际成功放入容器的数量。</returns>
         public int TryAddItem(int itemId, int count)
         {
+            return TryAddItem(itemId, count, out _);
+        }
+
+        /// <summary>
+        /// 尝试将指定数量的物品加入容器，并输出首个放入的目标槽位索引。
+        /// </summary>
+        /// <param name="itemId">物品配置 ID。</param>
+        /// <param name="count">欲放入数量。</param>
+        /// <param name="targetSlotIndex">成功放入的目标槽位索引（未放入时为 -1）。</param>
+        /// <returns>实际成功放入容器的数量。</returns>
+        public int TryAddItem(int itemId, int count, out int targetSlotIndex)
+        {
+            targetSlotIndex = -1;
             if (itemId <= 0 || count <= 0)
             {
                 return 0;
@@ -110,6 +157,10 @@ namespace SepCore.Run
                     int toAdd = Math.Min(space, remaining);
                     _slots[i].count += toAdd;
                     remaining -= toAdd;
+                    if (targetSlotIndex < 0)
+                    {
+                        targetSlotIndex = i;
+                    }
 
                     if (remaining <= 0)
                     {
@@ -126,6 +177,10 @@ namespace SepCore.Run
                     int toAdd = Math.Min(stackLimit, remaining);
                     _slots[i] = new ItemStack(itemId, toAdd);
                     remaining -= toAdd;
+                    if (targetSlotIndex < 0)
+                    {
+                        targetSlotIndex = i;
+                    }
 
                     if (remaining <= 0)
                     {
@@ -217,7 +272,16 @@ namespace SepCore.Run
         /// </summary>
         public bool TryMoveTo(int fromSlotIndex, RoundItemContainer targetContainer, int count, out int movedCount)
         {
+            return TryMoveTo(fromSlotIndex, targetContainer, count, out movedCount, out _);
+        }
+
+        /// <summary>
+        /// 将指定槽位中的物品转移至目标容器，并输出目标容器首个接收该物品的槽位索引。
+        /// </summary>
+        public bool TryMoveTo(int fromSlotIndex, RoundItemContainer targetContainer, int count, out int movedCount, out int targetSlotIndex)
+        {
             movedCount = 0;
+            targetSlotIndex = -1;
             if (targetContainer == null || fromSlotIndex < 0 || fromSlotIndex >= _slots.Length || count <= 0)
             {
                 return false;
@@ -231,7 +295,7 @@ namespace SepCore.Run
             int itemId = _slots[fromSlotIndex].itemId;
             int available = Math.Min(count, _slots[fromSlotIndex].count);
 
-            int accepted = targetContainer.TryAddItem(itemId, available);
+            int accepted = targetContainer.TryAddItem(itemId, available, out targetSlotIndex);
             if (accepted > 0)
             {
                 _slots[fromSlotIndex].count -= accepted;

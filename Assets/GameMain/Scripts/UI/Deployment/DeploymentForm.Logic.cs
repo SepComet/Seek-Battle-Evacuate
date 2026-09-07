@@ -30,45 +30,26 @@ namespace SepCore.UI
 
             _listenersBound = true;
 
-            if (View.beginRunButton != null)
+            View.beginRunButton.onClick.AddListener(OnBeginRunButtonClick);
+            View.randomizeButton.onClick.AddListener(OnRandomizeButtonClick);
+            View.tier1Toggle.onValueChanged.AddListener(isOn =>
             {
-                View.beginRunButton.onClick.AddListener(OnBeginRunButtonClick);
-            }
-
-            if (View.randomizeButton != null)
+                if (isOn) OnDifficultyToggleChanged(DifficultyTier.Tier1);
+            });
+            View.tier2Toggle.onValueChanged.AddListener(isOn =>
             {
-                View.randomizeButton.onClick.AddListener(OnRandomizeButtonClick);
-            }
-
-            if (View.tier1Toggle != null)
+                if (isOn) OnDifficultyToggleChanged(DifficultyTier.Tier2);
+            });
+            View.tier3Toggle.onValueChanged.AddListener(isOn =>
             {
-                View.tier1Toggle.onValueChanged.AddListener(isOn =>
-                {
-                    if (isOn) OnDifficultyToggleChanged(DifficultyTier.Tier1);
-                });
-            }
-
-            if (View.tier2Toggle != null)
-            {
-                View.tier2Toggle.onValueChanged.AddListener(isOn =>
-                {
-                    if (isOn) OnDifficultyToggleChanged(DifficultyTier.Tier2);
-                });
-            }
-
-            if (View.tier3Toggle != null)
-            {
-                View.tier3Toggle.onValueChanged.AddListener(isOn =>
-                {
-                    if (isOn) OnDifficultyToggleChanged(DifficultyTier.Tier3);
-                });
-            }
+                if (isOn) OnDifficultyToggleChanged(DifficultyTier.Tier3);
+            });
         }
 
         private void RefreshUI()
         {
             GlobalConfig global = GameEntry.Luban.Global?.Data;
-            if (global != null && View.timeLimitText != null)
+            if (global != null)
             {
                 int minutes = global.RunTimeLimitMs / 60000;
                 int seconds = (global.RunTimeLimitMs % 60000) / 1000;
@@ -79,18 +60,19 @@ namespace SepCore.UI
             DifficultyTier difficulty = save?.loadout?.difficultyId ?? DifficultyTier.Tier1;
             SetDifficultyToggle(difficulty);
 
-            if (View.seedInput != null && string.IsNullOrEmpty(View.seedInput.text))
+            if (string.IsNullOrEmpty(View.seedInput.text))
             {
                 int randomSeed = (int)(DateTime.UtcNow.Ticks & 0x7FFFFFFF);
                 View.seedInput.text = randomSeed.ToString();
             }
 
             int characterCount = save?.characters?.Count ?? 0;
-            if (View.partySizeText != null)
-            {
-                int deployedCount = Math.Min(Math.Max(characterCount, 1), 4);
-                View.partySizeText.text = $"{deployedCount}/4";
-            }
+            int maxParty = global != null ? global.MaxPlayerPartySize : 4;
+            int deployedCount = save?.loadout?.partyCharacterIds != null
+                ? save.loadout.partyCharacterIds.Length
+                : Math.Min(characterCount, maxParty);
+            View.partySizeText.text = $"{deployedCount}/{maxParty}";
+            View.beginRunButton.interactable = deployedCount > 0;
         }
 
         private void SetDifficultyToggle(DifficultyTier difficulty)
@@ -98,13 +80,13 @@ namespace SepCore.UI
             switch (difficulty)
             {
                 case DifficultyTier.Tier2:
-                    if (View.tier2Toggle != null) View.tier2Toggle.isOn = true;
+                    View.tier2Toggle.isOn = true;
                     break;
                 case DifficultyTier.Tier3:
-                    if (View.tier3Toggle != null) View.tier3Toggle.isOn = true;
+                    View.tier3Toggle.isOn = true;
                     break;
                 default:
-                    if (View.tier1Toggle != null) View.tier1Toggle.isOn = true;
+                    View.tier1Toggle.isOn = true;
                     break;
             }
         }
@@ -126,10 +108,7 @@ namespace SepCore.UI
         private void OnRandomizeButtonClick()
         {
             int seed = (int)(DateTime.UtcNow.Ticks & 0x7FFFFFFF);
-            if (View.seedInput != null)
-            {
-                View.seedInput.text = seed.ToString();
-            }
+            View.seedInput.text = seed.ToString();
         }
 
         private void OnBeginRunButtonClick()
@@ -146,36 +125,47 @@ namespace SepCore.UI
                 save.loadout = new LoadoutSave();
             }
 
-            // 1. 直接构造出战列表（取当前存档拥有的角色前 1~4 人）
-            List<int> partyIds = new List<int>();
-            if (save.characters != null && save.characters.Count > 0)
+            // 1. 确定出战列表：若从未配置过（partyCharacterIds 为 null），才使用默认角色
+            if (save.loadout.partyCharacterIds == null)
             {
-                for (int i = 0; i < Math.Min(save.characters.Count, 4); i++)
+                int maxParty = GameEntry.Luban.Global?.Data != null ? GameEntry.Luban.Global.Data.MaxPlayerPartySize : 4;
+                List<int> partyIds = new List<int>();
+                if (save.characters != null && save.characters.Count > 0)
                 {
-                    partyIds.Add(save.characters[i].characterId);
-                }
-            }
-            else
-            {
-                GlobalConfig global = GameEntry.Luban.Global?.Data;
-                if (global?.NewGameCharacterIds != null)
-                {
-                    for (int i = 0; i < Math.Min(global.NewGameCharacterIds.Count, 4); i++)
+                    for (int i = 0; i < Math.Min(save.characters.Count, maxParty); i++)
                     {
-                        partyIds.Add(global.NewGameCharacterIds[i]);
+                        partyIds.Add(save.characters[i].characterId);
                     }
                 }
+                else
+                {
+                    GlobalConfig global = GameEntry.Luban.Global?.Data;
+                    if (global?.NewGameCharacterIds != null)
+                    {
+                        for (int i = 0; i < Math.Min(global.NewGameCharacterIds.Count, maxParty); i++)
+                        {
+                            partyIds.Add(global.NewGameCharacterIds[i]);
+                        }
+                    }
+                }
+
+                save.loadout.partyCharacterIds = partyIds.ToArray();
             }
 
-            save.loadout.partyCharacterIds = partyIds.ToArray();
+            // 队伍人数为 0 时不允许进入游戏，点击 BeginRunButton 无效
+            if (save.loadout.partyCharacterIds.Length == 0)
+            {
+                Log.Warning("Cannot begin run without any characters in the party.");
+                return;
+            }
 
             // 2. 获取难度配置
             DifficultyTier difficulty = DifficultyTier.Tier1;
-            if (View.tier3Toggle != null && View.tier3Toggle.isOn)
+            if (View.tier3Toggle.isOn)
             {
                 difficulty = DifficultyTier.Tier3;
             }
-            else if (View.tier2Toggle != null && View.tier2Toggle.isOn)
+            else if (View.tier2Toggle.isOn)
             {
                 difficulty = DifficultyTier.Tier2;
             }
@@ -184,7 +174,7 @@ namespace SepCore.UI
 
             // 3. 读取种子并播种共享随机源
             int seed = (int)(DateTime.UtcNow.Ticks & 0x7FFFFFFF);
-            if (View.seedInput != null && int.TryParse(View.seedInput.text, out int inputSeed))
+            if (int.TryParse(View.seedInput.text, out int inputSeed))
             {
                 seed = inputSeed;
             }
@@ -195,7 +185,7 @@ namespace SepCore.UI
             GameEntry.Save.Save();
 
             Log.Info("[DeploymentForm] Starting run with {0} characters, difficulty: {1}, seed: {2}.",
-                partyIds.Count, difficulty, seed);
+                save.loadout.partyCharacterIds.Length, difficulty, seed);
 
             // 5. 抛出开始单局事件，由 ProcedureMenu 接收并切场景进入单局
             GameEntry.Event.Fire(this, StartRunEventArgs.Create());

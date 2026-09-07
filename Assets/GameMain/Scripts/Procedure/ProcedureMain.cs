@@ -2,6 +2,7 @@ using GameFramework.Fsm;
 using GameFramework.Procedure;
 using SepCore.Definition;
 using SepCore.Entity;
+using SepCore.Exploration;
 using SepCore.UI;
 using UnityEngine;
 using UnityGameFramework.Runtime;
@@ -70,6 +71,8 @@ namespace SepCore.Procedure
             base.OnEnter(procedureOwner);
             Log.Info("[ProcedureMain] Procedure entered.");
 
+            CharacterInputBridge.Reset();
+
             _procedureOwner = procedureOwner;
             ExtractionPoint = Vector2.zero;
             PlayerSpawnPoint = Vector2.zero;
@@ -114,6 +117,8 @@ namespace SepCore.Procedure
             {
                 GameEntry.UI.CloseAllLoadedUIForms();
             }
+
+            CharacterInputBridge.Reset();
 
             Log.Info("[ProcedureMain] Procedure left.");
             base.OnLeave(procedureOwner, isShutdown);
@@ -172,6 +177,32 @@ namespace SepCore.Procedure
                 if (roundHUDForm != null)
                 {
                     GameEntry.UI.CloseUIForm(roundHUDForm);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 打开战局简报/过场横幅界面（DeploymentBriefingForm）。
+        /// </summary>
+        public void OpenDeploymentBriefingForm(DeploymentBannerData data = null)
+        {
+            if (GameEntry.UI != null)
+            {
+                GameEntry.UI.OpenUIForm(UIFormType.DeploymentBriefingForm, data);
+            }
+        }
+
+        /// <summary>
+        /// 关闭战局简报/过场横幅界面（DeploymentBriefingForm）。
+        /// </summary>
+        public void CloseDeploymentBriefingForm()
+        {
+            if (GameEntry.UI != null)
+            {
+                UGuiForm briefingForm = GameEntry.UI.GetUIForm(UIFormType.DeploymentBriefingForm);
+                if (briefingForm != null)
+                {
+                    GameEntry.UI.CloseUIForm(briefingForm);
                 }
             }
         }

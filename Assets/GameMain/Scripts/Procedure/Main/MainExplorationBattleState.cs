@@ -2,6 +2,7 @@ using GameFramework.Event;
 using GameFramework.Fsm;
 using SepCore.Base;
 using SepCore.Definition;
+using SepCore.UI;
 using UnityGameFramework.Runtime;
 
 namespace SepCore.Procedure
@@ -31,6 +32,7 @@ namespace SepCore.Procedure
 
             fsm.Owner.OpenJoystickForm();
             fsm.Owner.OpenRoundHUDForm();
+            OpenDeploymentBanner(fsm.Owner);
         }
 
         protected override void OnUpdate(IFsm<ProcedureMain> fsm, float elapseSeconds, float realElapseSeconds)
@@ -81,6 +83,7 @@ namespace SepCore.Procedure
             _fsm = null;
             fsm.Owner.CloseJoystickForm();
             fsm.Owner.CloseRoundHUDForm();
+            fsm.Owner.CloseDeploymentBriefingForm();
             base.OnLeave(fsm, isShutdown);
         }
 
@@ -104,6 +107,25 @@ namespace SepCore.Procedure
 
             Log.Info("[ProcedureMain] Battle total defeat event received, requesting defeat settlement.");
             _fsm.Owner.TriggerSettlement(RoundResultType.Defeated);
+        }
+
+        /// <summary>
+        /// 组装战况数据并呼出入场轻量过场横幅。
+        /// </summary>
+        private static void OpenDeploymentBanner(ProcedureMain owner)
+        {
+            DifficultyConfig difficultyConfig = GameEntry.Luban.Get<DifficultyConfig>((int)owner.Difficulty);
+            string difficultyName = difficultyConfig != null && !string.IsNullOrEmpty(difficultyConfig.Name)
+                ? difficultyConfig.Name
+                : owner.Difficulty.ToString().ToUpperInvariant();
+
+            DeploymentBannerData bannerData = new DeploymentBannerData(
+                mapName: "SECTOR 04 — ABANDONED DEPOT",
+                threatTier: owner.Difficulty,
+                subInfo: $"TACTICAL SCAN: DENSE FOG DETECTED  •  THREAT LEVEL: {difficultyName}",
+                holdDuration: 1.0f);
+
+            owner.OpenDeploymentBriefingForm(bannerData);
         }
     }
 }

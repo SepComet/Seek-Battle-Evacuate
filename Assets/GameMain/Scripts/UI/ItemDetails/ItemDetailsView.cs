@@ -16,6 +16,6 @@ namespace SepCore.UI
         [SerializeField] public global::SepCore.UI.FormatTextUI speedFormatText;
         [SerializeField] public global::SepCore.UI.FormatTextUI stackFormatText;
         [SerializeField] public global::TMPro.TextMeshProUGUI itemDetailDescriptionText;
-        [SerializeField] public global::UnityEngine.UI.Button openLoadoutButton;
+        [SerializeField] public global::UnityEngine.UI.Button moveBackpackButton;
     }
 }

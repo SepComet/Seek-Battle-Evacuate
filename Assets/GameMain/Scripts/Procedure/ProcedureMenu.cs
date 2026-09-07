@@ -3,6 +3,7 @@ using GameFramework.Fsm;
 using GameFramework.Procedure;
 using SepCore.Base;
 using SepCore.Definition;
+using SepCore.Exploration;
 using SepCore.UI;
 using UnityEngine;
 using UnityGameFramework.Runtime;
@@ -21,6 +22,8 @@ namespace SepCore.Procedure
         protected override void OnEnter(IFsm<IProcedureManager> procedureOwner)
         {
             base.OnEnter(procedureOwner);
+
+            CharacterInputBridge.Reset();
 
             _startGameRequested = false;
             GameEntry.Event.Subscribe(StartRunEventArgs.EventId, OnStartRun);

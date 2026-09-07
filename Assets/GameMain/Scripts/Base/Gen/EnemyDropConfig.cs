@@ -16,8 +16,7 @@ public sealed partial class EnemyDropConfig : Luban.BeanBase
 {
     public EnemyDropConfig(ByteBuf _buf) 
     {
-        Id = _buf.ReadInt();
-        Name = _buf.ReadString();
+        Id = (EnemyPartyThreatLevel)_buf.ReadInt();
         {int n0 = System.Math.Min(_buf.ReadSize(), _buf.Size);LootConfigs = new System.Collections.Generic.List<LootGenerationConfig>(n0);for(var i0 = 0 ; i0 < n0 ; i0++) { LootGenerationConfig _e0;  _e0 = LootGenerationConfig.DeserializeLootGenerationConfig(_buf); LootConfigs.Add(_e0);}}
     }
 
@@ -27,13 +26,9 @@ public sealed partial class EnemyDropConfig : Luban.BeanBase
     }
 
     /// <summary>
-    /// 掉落表ID
+    /// 威胁等级ID
     /// </summary>
-    public readonly int Id;
-    /// <summary>
-    /// 显示名
-    /// </summary>
-    public readonly string Name;
+    public readonly EnemyPartyThreatLevel Id;
     public readonly System.Collections.Generic.List<LootGenerationConfig> LootConfigs;
    
     public const int __ID__ = -1747318631;
@@ -42,7 +37,6 @@ public sealed partial class EnemyDropConfig : Luban.BeanBase
     public  void ResolveRef(Tables tables)
     {
         
-        
         foreach (var _e in LootConfigs) { _e?.ResolveRef(tables); }
     }
 
@@ -50,7 +44,6 @@ public sealed partial class EnemyDropConfig : Luban.BeanBase
     {
         return "{ "
         + "id:" + Id + ","
-        + "name:" + Name + ","
         + "lootConfigs:" + Luban.StringUtil.CollectionToString(LootConfigs) + ","
         + "}";
     }

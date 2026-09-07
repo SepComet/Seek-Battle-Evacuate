@@ -1,7 +1,6 @@
 [
   {
     "id": 1,
-    "name": "普通敌人掉落",
     "lootConfigs": [
       {
         "difficulty": 1,
@@ -37,7 +36,6 @@
   },
   {
     "id": 2,
-    "name": "中级敌人掉落",
     "lootConfigs": [
       {
         "difficulty": 1,
@@ -73,7 +71,6 @@
   },
   {
     "id": 3,
-    "name": "高级敌人掉落",
     "lootConfigs": [
       {
         "difficulty": 1,

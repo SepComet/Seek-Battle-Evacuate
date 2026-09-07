@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using SepCore.Battle;
+using SepCore.CustomComponent;
 using SepCore.Definition;
 using SepCore.Exploration;
 using UnityEngine;
@@ -16,6 +18,10 @@ namespace SepCore.Entity
     /// </summary>
     public sealed class EnemyPartyLogic : EntityBase
     {
+        private const float DefaultLootRangeMinRadius = 0.3f;
+        private const float DefaultLootRangeMaxRadius = 1.5f;
+        private const int MaxDropPositionAttempts = 15;
+
         private EnemyPartyData _data;
         private EnemyPartyConfig _config;
         private EnemyPartyMovementController _movementController;
@@ -296,6 +302,7 @@ namespace SepCore.Entity
             if (result.Outcome == BattleOutcomeType.Victory)
             {
                 _isInBattle = false;
+                DropLoot();
                 GameEntry.Entity.HideEntity(this);
             }
             else
@@ -305,6 +312,141 @@ namespace SepCore.Entity
                 _movementController?.ResetToPatrol();
                 _lastState = EnemyExplorationState.Patrol;
                 UpdateAlertUI();
+            }
+        }
+
+        private void DropLoot()
+        {
+            if (_data == null)
+            {
+                return;
+            }
+
+            EnemyPartyThreatLevel threatLevel = _config != null ? _config.ThreatConfig : _data.ThreatLevel;
+            if (threatLevel == EnemyPartyThreatLevel.None)
+            {
+                return;
+            }
+
+            EnemyDropConfig dropConfig = GameEntry.Luban.Get<EnemyDropConfig>((int)threatLevel);
+            if (dropConfig == null)
+            {
+                Log.Warning("Enemy drop config for threat level '{0}' is not found.", threatLevel);
+                return;
+            }
+
+            DifficultyTier difficulty = DifficultyTier.Tier1;
+            if (GameEntry.Round != null && GameEntry.Round.HasActiveRun)
+            {
+                difficulty = GameEntry.Round.Session.Difficulty;
+            }
+            else if (GameEntry.Save?.Data?.loadout != null)
+            {
+                difficulty = GameEntry.Save.Data.loadout.difficultyId;
+            }
+
+            IReadOnlyList<ItemConfig> allItems = GameEntry.Luban.GetTable<ItemConfig>();
+            IRoundRandomSource random = GameEntry.Random?.Random;
+
+            List<ItemConfig> droppedItems = EnemyDropGenerator.GenerateDrops(
+                dropConfig, difficulty, allItems, random);
+
+            if (droppedItems == null || droppedItems.Count == 0)
+            {
+                return;
+            }
+
+            GlobalConfig globalConfig = GameEntry.Luban.Global != null ? GameEntry.Luban.Global.Data : null;
+            string itemEntityAsset = globalConfig != null ? globalConfig.ItemEntity : null;
+            if (string.IsNullOrEmpty(itemEntityAsset))
+            {
+                Log.Error("GlobalConfig.ItemEntity is not configured.");
+                return;
+            }
+
+            float minRadius = (globalConfig != null && globalConfig.LootRangeMinRadius > 0)
+                ? globalConfig.LootRangeMinRadius / 1000f
+                : DefaultLootRangeMinRadius;
+            float maxRadius = (globalConfig != null && globalConfig.LootRangeMaxRadius > 0)
+                ? globalConfig.LootRangeMaxRadius / 1000f
+                : DefaultLootRangeMaxRadius;
+
+            if (maxRadius <= minRadius)
+            {
+                maxRadius = Mathf.Max(minRadius + 0.1f, DefaultLootRangeMaxRadius);
+            }
+
+            EnsureItemEntityGroup();
+
+            Vector3 spawnOrigin = transform.position;
+            for (int i = 0; i < droppedItems.Count; i++)
+            {
+                ItemConfig itemConfig = droppedItems[i];
+                if (itemConfig == null)
+                {
+                    continue;
+                }
+
+                Vector3 dropPosition = CalculateDropPosition(spawnOrigin, minRadius, maxRadius);
+                int serialId = GameEntry.Entity.SerialId();
+                ItemEntityData itemData = new ItemEntityData(
+                    serialId,
+                    itemEntityAsset,
+                    dropPosition,
+                    itemConfig.Id,
+                    1,
+                    itemConfig.Rarity,
+                    rotation: Quaternion.identity,
+                    spawnFromPosition: spawnOrigin);
+
+                GameEntry.Entity.ShowEntity<ItemEntityLogic>(itemData, "Item", Constant.AssetPriority.SceneAsset);
+                Log.Info("Enemy party '{0}' dropped item '{1}' (Rarity: {2}) at position {3}.",
+                    Entity != null ? Entity.Id : 0, itemConfig.Id, itemConfig.Rarity, dropPosition);
+            }
+        }
+
+        private Vector3 CalculateDropPosition(Vector3 center, float minRadius, float maxRadius)
+        {
+            int lootCheckLayerId = LayerMask.NameToLayer(Constant.Layer.LootCheckLayerName);
+            int layerMask = lootCheckLayerId >= 0 ? (1 << lootCheckLayerId) : 0;
+            IRoundRandomSource random = GameEntry.Random?.Random;
+
+            if (layerMask != 0)
+            {
+                for (int i = 0; i < MaxDropPositionAttempts; i++)
+                {
+                    float angle = random != null
+                        ? random.NextInt(0, 360) * Mathf.Deg2Rad
+                        : UnityEngine.Random.Range(0f, Mathf.PI * 2f);
+
+                    float distanceRatio = random != null
+                        ? (random.NextInt(0, 1001) / 1000f)
+                        : UnityEngine.Random.value;
+                    float distance = Mathf.Lerp(minRadius, maxRadius, distanceRatio);
+
+                    Vector2 candidate = (Vector2)center + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * distance;
+                    Collider2D hit = Physics2D.OverlapPoint(candidate, layerMask);
+                    if (hit != null)
+                    {
+                        return new Vector3(candidate.x, candidate.y, center.z);
+                    }
+                }
+
+                Collider2D centerHit = Physics2D.OverlapPoint(center, layerMask);
+                if (centerHit != null)
+                {
+                    return center;
+                }
+            }
+
+            return center;
+        }
+
+        private static void EnsureItemEntityGroup()
+        {
+            if (GameEntry.Entity != null && !GameEntry.Entity.HasEntityGroup("Item"))
+            {
+                GameEntry.Entity.AddEntityGroup("Item", 60f, 32, 60f, 0);
             }
         }
 

@@ -53,9 +53,22 @@ namespace SepCore.Run
         /// <param name="movedCount">实际成功转移的数量。</param>
         public bool TryMoveBetweenContainers(bool fromBackpackToSafe, int fromSlotIndex, int count, out int movedCount)
         {
+            return TryMoveBetweenContainers(fromBackpackToSafe, fromSlotIndex, count, out movedCount, out _);
+        }
+
+        /// <summary>
+        /// 在共享背包与保险箱之间转移物品，并输出目标容器新接收物品的槽位索引。
+        /// </summary>
+        /// <param name="fromBackpackToSafe">true 为背包移入保险箱，false 为保险箱移入背包。</param>
+        /// <param name="fromSlotIndex">源容器槽位索引。</param>
+        /// <param name="count">转移数量。</param>
+        /// <param name="movedCount">实际成功转移的数量。</param>
+        /// <param name="targetSlotIndex">目标容器接收槽位索引。</param>
+        public bool TryMoveBetweenContainers(bool fromBackpackToSafe, int fromSlotIndex, int count, out int movedCount, out int targetSlotIndex)
+        {
             RoundItemContainer source = fromBackpackToSafe ? Backpack : SafeCase;
             RoundItemContainer target = fromBackpackToSafe ? SafeCase : Backpack;
-            return source.TryMoveTo(fromSlotIndex, target, count, out movedCount);
+            return source.TryMoveTo(fromSlotIndex, target, count, out movedCount, out targetSlotIndex);
         }
 
         /// <summary>

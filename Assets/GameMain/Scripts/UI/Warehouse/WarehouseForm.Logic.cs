@@ -24,15 +24,7 @@ namespace SepCore.UI
         public void Refresh(IReadOnlyList<ItemStack> stacks)
         {
             EnsureEventBound();
-
-            InventoryForm inventoryForm = View.inventoryPanelForm;
-            if (inventoryForm == null)
-            {
-                Log.Warning("WarehouseForm inventory panel form is not configured.");
-                return;
-            }
-
-            inventoryForm.RefreshList(stacks);
+            View.inventoryPanelForm.RefreshList(stacks);
         }
 
         private void EnsureEventBound()
@@ -72,15 +64,10 @@ namespace SepCore.UI
             WarehouseSlotItemClickEventArgs ne = (WarehouseSlotItemClickEventArgs)e;
             int slotId = ne.SlotId;
 
-            if (View.inventoryPanelForm == null)
-            {
-                return;
-            }
-
             View.inventoryPanelForm.SetSelectedSlot(slotId);
 
             int itemId = View.inventoryPanelForm.GetItemIdAtSlot(slotId);
-            if (itemId != 0 && View.itemDetailsPanelForm != null)
+            if (itemId != 0)
             {
                 View.itemDetailsPanelForm.Refresh(itemId);
             }

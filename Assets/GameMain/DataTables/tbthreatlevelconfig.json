@@ -1,7 +1,6 @@
 [
   {
     "id": 1,
-    "name": "低威胁",
     "maxViewDistanceMilli": 3500,
     "alertDecayPerSecondMilli": 200,
     "distanceBands": [
@@ -21,7 +20,6 @@
   },
   {
     "id": 2,
-    "name": "中威胁",
     "maxViewDistanceMilli": 5000,
     "alertDecayPerSecondMilli": 150,
     "distanceBands": [
@@ -41,7 +39,6 @@
   },
   {
     "id": 3,
-    "name": "高威胁",
     "maxViewDistanceMilli": 7000,
     "alertDecayPerSecondMilli": 100,
     "distanceBands": [

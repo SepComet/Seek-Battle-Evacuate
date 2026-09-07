@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using DG.Tweening;
 using SepCore.Base;
 using SepCore.Battle;
@@ -16,28 +17,32 @@ namespace SepCore.UI
     /// </summary>
     public partial class BattleForm : UGuiForm
     {
+        private const float SlotWidth = 100f;
+        private const float SlotHeight = 180f;
+        private const float SlotSpacing = 28f;
+        private const float StepX = SlotWidth + SlotSpacing;
+
         private BattleResult _result;
         private int _displayedRound;
-        private readonly List<BattleTurnSlotItem> _turnSlots = new List<BattleTurnSlotItem>();
-        private readonly List<int> _turnSlotUnitIds = new List<int>();
+        private readonly Dictionary<int, BattleTurnSlotItem> _turnSlotMap = new Dictionary<int, BattleTurnSlotItem>();
+        private readonly List<int> _currentDisplayOrder = new List<int>();
         private readonly List<BattleEnemySlotItem> _enemySlots = new List<BattleEnemySlotItem>();
         private BattleActionType _pendingCommandType = BattleActionType.None;
         private int _pendingActionConfigId;
         private int _displayedActorId;
         private int _selectedTargetUnitId;
         private bool _isEnteringAnimation;
+        private bool _isFirstTurnSlotsEntry = true;
         private Tween _turnSlotsFadeTween;
         private Tween _delayedEnterCall;
         private Sequence _victorySequence;
 
-        /// <summary>
-        /// 战斗结果展示停留时间（秒），之后非全灭结果自动关闭战斗界面。
-        /// </summary>
-        private const float ResultDisplayDelaySeconds = 1.5f;
 
         protected override void OnInit(object userData)
         {
             base.OnInit(userData);
+
+            EnsureLayoutGroupDisabled();
 
             // 道具首版禁用；逃跑 M5 接入
             View.itemButton.interactable = false;
@@ -46,6 +51,8 @@ namespace SepCore.UI
         protected override void OnOpen(object userData)
         {
             base.OnOpen(userData);
+
+            EnsureLayoutGroupDisabled();
 
             CharacterInputBridge.DisableInput(InputDisableReason.Battle);
 
@@ -66,21 +73,32 @@ namespace SepCore.UI
             _pendingActionConfigId = 0;
             _displayedActorId = 0;
             _selectedTargetUnitId = 0;
-            _turnSlots.Clear();
-            _turnSlotUnitIds.Clear();
+            _turnSlotMap.Clear();
+            _currentDisplayOrder.Clear();
             _enemySlots.Clear();
-
-            BattleViewState initialViewState = GameEntry.TurnBattle != null ? GameEntry.TurnBattle.GetViewState() : null;
-            Refresh(initialViewState);
+            _isFirstTurnSlotsEntry = true;
 
             BattleEnterAnimationParams enterParams = userData as BattleEnterAnimationParams;
-            if (enterParams != null && initialViewState != null)
+            BattleViewState initialViewState =
+                GameEntry.TurnBattle != null ? GameEntry.TurnBattle.GetViewState() : null;
+
+            _isEnteringAnimation = enterParams != null && initialViewState != null;
+
+            Refresh(initialViewState);
+
+            if (_isEnteringAnimation)
             {
                 StartEnterAnimation(enterParams, initialViewState);
             }
-            else
+        }
+
+        private void EnsureLayoutGroupDisabled()
+        {
+            UnityEngine.UI.HorizontalLayoutGroup layoutGroup =
+                View.turnSlotsRoot.GetComponent<UnityEngine.UI.HorizontalLayoutGroup>();
+            if (layoutGroup != null)
             {
-                _isEnteringAnimation = false;
+                layoutGroup.enabled = false;
             }
         }
 
@@ -102,38 +120,46 @@ namespace SepCore.UI
             _turnSlotsFadeTween?.Kill();
             turnGroup.alpha = 0f;
 
+            GlobalConfig global = GameEntry.Luban.Global.Data;
+            float moveInterval = global.BattleInMoveIntervalMs / 1000f;
+            float inDuration = global.BattleInDurationMs / 1000f;
+
             // 3. 玩家卡片错峰飞入
             int activePlayerCount = 0;
             for (int i = 0; i < 4; i++)
             {
                 BattleActorCardItem card = GetPlayerCard(i);
-                if (card != null && card.gameObject.activeSelf)
+                if (!card.gameObject.activeSelf) continue;
+                
+                Vector3 startPos;
+                if (enterParams.PlayerScreenPositions != null && i < enterParams.PlayerScreenPositions.Count)
                 {
-                    Vector3 startPos = (enterParams.PlayerScreenPositions != null && i < enterParams.PlayerScreenPositions.Count)
-                        ? enterParams.PlayerScreenPositions[i]
-                        : (enterParams.PlayerScreenPositions != null && enterParams.PlayerScreenPositions.Count > 0
-                            ? enterParams.PlayerScreenPositions[0]
-                            : enterParams.EnemyScreenPosition);
-
-                    card.PlayEnterAnimation(startPos, i * 0.08f);
-                    activePlayerCount++;
+                    startPos = enterParams.PlayerScreenPositions[i];
                 }
+                else if (enterParams.PlayerScreenPositions != null && enterParams.PlayerScreenPositions.Count > 0)
+                {
+                    startPos = enterParams.PlayerScreenPositions[0];
+                }
+                else
+                {
+                    startPos = enterParams.EnemyScreenPosition;
+                }
+
+                card.PlayEnterAnimation(startPos, i * moveInterval);
+                activePlayerCount++;
             }
 
             // 4. 敌人槽位错峰飞入（从同一个敌人队伍地图点扇出）
             for (int i = 0; i < _enemySlots.Count; i++)
             {
-                _enemySlots[i].PlayEnterAnimation(enterParams.EnemyScreenPosition, 0.1f + i * 0.08f);
+                _enemySlots[i].PlayEnterAnimation(enterParams.EnemyScreenPosition, 0.1f + i * moveInterval);
             }
 
             // 5. 计算全员就位时长并注册完成回调
-            float maxDuration = Mathf.Max(activePlayerCount * 0.08f, 0.1f + _enemySlots.Count * 0.08f) + 0.62f;
+            float maxDuration = Mathf.Max(activePlayerCount * moveInterval, 0.1f + _enemySlots.Count * moveInterval) + inDuration + 0.2f;
 
             _delayedEnterCall?.Kill();
-            _delayedEnterCall = DOVirtual.DelayedCall(maxDuration, () =>
-            {
-                OnEnterAnimationComplete(view);
-            });
+            _delayedEnterCall = DOVirtual.DelayedCall(maxDuration, () => { OnEnterAnimationComplete(view); });
         }
 
         private void OnEnterAnimationComplete(BattleViewState view)
@@ -141,10 +167,8 @@ namespace SepCore.UI
             _isEnteringAnimation = false;
             _delayedEnterCall = null;
 
-            // 顺位栏淡入
-            CanvasGroup turnGroup = View.turnSlotsRoot.gameObject.GetOrAddComponent<CanvasGroup>();
-            _turnSlotsFadeTween?.Kill();
-            _turnSlotsFadeTween = turnGroup.DOFade(1f, 0.25f);
+            // 顺位栏淡入并播放错峰滑入动效
+            PlayTurnSlotsEnterAnimation(view);
 
             // 恢复操作面板
             RefreshActionPanel(view);
@@ -179,7 +203,7 @@ namespace SepCore.UI
             for (int i = 0; i < 4; i++)
             {
                 BattleActorCardItem card = GetPlayerCard(i);
-                card?.ResetVisualState();
+                card.ResetVisualState();
             }
 
             for (int i = 0; i < _enemySlots.Count; i++)
@@ -187,9 +211,29 @@ namespace SepCore.UI
                 _enemySlots[i]?.ResetVisualState();
             }
 
+            foreach (var kvp in _turnSlotMap)
+            {
+                if (kvp.Value != null)
+                {
+                    kvp.Value.transform.DOKill();
+                    CanvasGroup slotCg = kvp.Value.GetComponent<CanvasGroup>();
+                    if (slotCg != null)
+                    {
+                        slotCg.DOKill();
+                    }
+                }
+            }
+
+            _turnSlotMap.Clear();
+            _currentDisplayOrder.Clear();
+            _isFirstTurnSlotsEntry = true;
+
+            ClearSlots(View.turnSlotsRoot, View.battleTurnSlotTemplate.transform);
+
             CanvasGroup turnGroup = View.turnSlotsRoot.GetComponent<CanvasGroup>();
             if (turnGroup != null)
             {
+                turnGroup.DOKill();
                 turnGroup.alpha = 1f;
             }
 
@@ -344,7 +388,8 @@ namespace SepCore.UI
             if (action.TargetType == BattleTargetType.SingleEnemy)
             {
                 BattleUnitView target = FindUnit(view, targetEnemyUnitId);
-                if (target == null || target.Faction != BattleFactionType.Enemy || target.IsDefeated || target.IsEscaped)
+                if (target == null || target.Faction != BattleFactionType.Enemy || target.IsDefeated ||
+                    target.IsEscaped)
                 {
                     return;
                 }
@@ -355,7 +400,8 @@ namespace SepCore.UI
             {
                 // 全体目标：点击任意存活敌人选中，再次点击确认释放，目标由内核自动展开
                 BattleUnitView target = FindUnit(view, targetEnemyUnitId);
-                if (target == null || target.Faction != BattleFactionType.Enemy || target.IsDefeated || target.IsEscaped)
+                if (target == null || target.Faction != BattleFactionType.Enemy || target.IsDefeated ||
+                    target.IsEscaped)
                 {
                     return;
                 }
@@ -409,7 +455,8 @@ namespace SepCore.UI
             {
                 BattleUnitView target = FindUnit(view, targetPlayerUnitId);
                 // SingleAlly 可以选择队友或施法者自身
-                if (target == null || target.Faction != BattleFactionType.Player || target.IsDefeated || target.IsEscaped)
+                if (target == null || target.Faction != BattleFactionType.Player || target.IsDefeated ||
+                    target.IsEscaped)
                 {
                     return;
                 }
@@ -419,7 +466,8 @@ namespace SepCore.UI
             else if (action.TargetType == BattleTargetType.AllAllies)
             {
                 BattleUnitView target = FindUnit(view, targetPlayerUnitId);
-                if (target == null || target.Faction != BattleFactionType.Player || target.IsDefeated || target.IsEscaped)
+                if (target == null || target.Faction != BattleFactionType.Player || target.IsDefeated ||
+                    target.IsEscaped)
                 {
                     return;
                 }
@@ -502,7 +550,7 @@ namespace SepCore.UI
             for (int i = 0; i < 4; i++)
             {
                 BattleActorCardItem card = GetPlayerCard(i);
-                if (card != null && card.gameObject.activeSelf)
+                if (card.gameObject.activeSelf)
                 {
                     card.PlayVictoryCelebrate(i * 0.05f);
                 }
@@ -547,7 +595,8 @@ namespace SepCore.UI
         /// </summary>
         private System.Collections.IEnumerator CloseAfterTotalDefeatDelay(BattleResult result)
         {
-            yield return new WaitForSecondsRealtime(ResultDisplayDelaySeconds);
+            float delaySeconds = GameEntry.Luban.Global.Data.BattleResultDisplayDelayMs / 1000f;
+            yield return new WaitForSecondsRealtime(delaySeconds);
 
             if (_result == result && GameEntry.TurnBattle != null && GameEntry.TurnBattle.IsBattleActive)
             {
@@ -562,7 +611,8 @@ namespace SepCore.UI
         /// </summary>
         private System.Collections.IEnumerator CloseAfterResultDelay(BattleResult result)
         {
-            yield return new WaitForSecondsRealtime(ResultDisplayDelaySeconds);
+            float delaySeconds = GameEntry.Luban.Global.Data.BattleResultDisplayDelayMs / 1000f;
+            yield return new WaitForSecondsRealtime(delaySeconds);
 
             if (_result == result && GameEntry.TurnBattle != null && GameEntry.TurnBattle.IsBattleActive)
             {
@@ -708,28 +758,67 @@ namespace SepCore.UI
 
         private void RefreshTurnSlots(BattleViewState view)
         {
-            BattleTurnSlotItem template = View.battleTurnSlotTemplate;
-
-            if (view.RoundNumber != _displayedRound ||
-                (view.CurrentActorUnitId != 0 && !_turnSlotUnitIds.Contains(view.CurrentActorUnitId)) ||
-                IsDisplayOrderChanged(view))
+            if (view == null || view.DisplayOrder == null)
             {
-                RebuildTurnSlots(view, template);
+                return;
+            }
+
+            BattleTurnSlotItem template = View.battleTurnSlotTemplate;
+            if (template == null)
+            {
+                return;
+            }
+
+            // 如果开场动画正在进行中，静默预备好槽位坐标（置于屏幕右侧），等待 OnEnterAnimationComplete 统一错峰飞入
+            if (_isEnteringAnimation)
+            {
+                BuildOrSyncSlots(view);
+                int totalCount = view.DisplayOrder.Count;
+                for (int i = 0; i < totalCount; i++)
+                {
+                    int unitId = view.DisplayOrder[i];
+                    if (_turnSlotMap.TryGetValue(unitId, out BattleTurnSlotItem slot) && slot != null)
+                    {
+                        float targetX = GetTargetLocalPosX(i, totalCount);
+                        slot.transform.localPosition = new Vector3(targetX + 600f, 0f, 0f);
+                    }
+                }
+
+                _currentDisplayOrder.Clear();
+                _currentDisplayOrder.AddRange(view.DisplayOrder);
                 _displayedRound = view.RoundNumber;
                 return;
             }
 
-            // 同轮内只移动当前行动者高亮，不隐藏已行动单位
-            for (int i = 0; i < _turnSlots.Count; i++)
+            // 首次入场（无开场动画直接开战场景，如调试或即时开启）
+            if (_isFirstTurnSlotsEntry)
             {
-                _turnSlots[i].SetCurrentActor(_turnSlotUnitIds[i] == view.CurrentActorUnitId);
+                PlayTurnSlotsEnterAnimation(view);
+                return;
+            }
+
+            // 检查顺序是否变化（跨轮、单位速度改变/插队超车、单位阵亡或逃跑）
+            if (view.RoundNumber != _displayedRound || IsDisplayOrderChanged(view))
+            {
+                AnimateOrderChange(view);
+                _displayedRound = view.RoundNumber;
+                return;
+            }
+
+            // 同轮内仅当前行动者推进：无位置变动，仅刷新高亮标记
+            foreach (var kvp in _turnSlotMap)
+            {
+                if (kvp.Value != null)
+                {
+                    kvp.Value.SetCurrentActor(kvp.Key == view.CurrentActorUnitId);
+                }
             }
         }
 
         /// <summary>
         /// 显示列表与视图行动栏顺序不一致时返回 true。
-        /// 视图顺序为本轮完整顺序（已行动按行动先后排前，未行动按当前调度优先级随后，
-        /// 先制第一轮敌人排在玩家之后）；变速重排或单位阵亡时触发重建。
+        /// 视图顺序为本轮完整顺序（已行动排前，未行动按当前调度优先级随后）；
+        /// 变速重排、插队或单位阵亡/逃跑时触发平滑动画重排。
         /// </summary>
         private bool IsDisplayOrderChanged(BattleViewState view)
         {
@@ -738,14 +827,14 @@ namespace SepCore.UI
                 return false;
             }
 
-            if (_turnSlotUnitIds.Count != view.DisplayOrder.Count)
+            if (_currentDisplayOrder.Count != view.DisplayOrder.Count)
             {
                 return true;
             }
 
             for (int i = 0; i < view.DisplayOrder.Count; i++)
             {
-                if (_turnSlotUnitIds[i] != view.DisplayOrder[i])
+                if (_currentDisplayOrder[i] != view.DisplayOrder[i])
                 {
                     return true;
                 }
@@ -755,41 +844,216 @@ namespace SepCore.UI
         }
 
         /// <summary>
-        /// 刷新本轮行动栏顺序：已行动单位按行动先后排前，
-        /// 未行动单位按当前调度优先级随后，当前行动者高亮；本轮内已行动单位保持可见。
-        /// 数量相同时复用槽对象，只重建单位映射与内容。
+        /// 播放开场顺位栏错峰滑入动效：各槽位从屏幕右侧快速位移至居中目标位置。
         /// </summary>
-        private void RebuildTurnSlots(BattleViewState view, BattleTurnSlotItem template)
+        private void PlayTurnSlotsEnterAnimation(BattleViewState view)
         {
-            List<BattleUnitView> units = new List<BattleUnitView>();
-            foreach (int unitId in view.DisplayOrder)
+            if (view == null || view.DisplayOrder == null || view.DisplayOrder.Count == 0)
             {
+                return;
+            }
+
+            CanvasGroup turnGroup = View.turnSlotsRoot.gameObject.GetOrAddComponent<CanvasGroup>();
+            _turnSlotsFadeTween?.Kill();
+            _turnSlotsFadeTween = turnGroup.DOFade(1f, 0.25f);
+
+            BuildOrSyncSlots(view);
+
+            int totalCount = view.DisplayOrder.Count;
+            for (int i = 0; i < totalCount; i++)
+            {
+                int unitId = view.DisplayOrder[i];
+                if (_turnSlotMap.TryGetValue(unitId, out BattleTurnSlotItem slot) && slot != null)
+                {
+                    float targetX = GetTargetLocalPosX(i, totalCount);
+                    slot.transform.DOKill();
+                    slot.transform.localPosition = new Vector3(targetX + 600f, 0f, 0f);
+                    slot.transform.DOLocalMoveX(targetX, 0.35f).SetEase(Ease.OutCubic).SetDelay(i * 0.04f);
+                }
+            }
+
+            _currentDisplayOrder.Clear();
+            _currentDisplayOrder.AddRange(view.DisplayOrder);
+            _displayedRound = view.RoundNumber;
+            _isFirstTurnSlotsEntry = false;
+        }
+
+        /// <summary>
+        /// 行动栏顺位发生改变时的平滑过渡动画：
+        /// 1. 离场单位（阵亡/逃跑）缩小淡出；
+        /// 2. 存活单位各自平滑平移至新目标位置（实现自然的超车与让位插队效果，绝不重新硬切）；
+        /// 3. 超车单位（顺位提升）提升渲染层级并微弹反馈。
+        /// </summary>
+        private void AnimateOrderChange(BattleViewState view)
+        {
+            BattleTurnSlotItem template = View.battleTurnSlotTemplate;
+            List<int> newOrder = new List<int>(view.DisplayOrder);
+            int newTotal = newOrder.Count;
+
+            // 1. 处理移除的单位（阵亡或逃跑）
+            List<int> toRemove = new List<int>();
+            foreach (var kvp in _turnSlotMap)
+            {
+                int unitId = kvp.Key;
+                if (!newOrder.Contains(unitId))
+                {
+                    toRemove.Add(unitId);
+                    BattleTurnSlotItem slot = kvp.Value;
+                    if (slot != null)
+                    {
+                        slot.transform.DOKill();
+                        CanvasGroup cg = slot.gameObject.GetOrAddComponent<CanvasGroup>();
+                        cg.DOKill();
+                        cg.DOFade(0f, 0.2f);
+                        slot.transform.DOScale(0.2f, 0.2f).OnComplete(() =>
+                        {
+                            if (slot != null && slot.gameObject != null)
+                            {
+                                Destroy(slot.gameObject);
+                            }
+                        });
+                    }
+                }
+            }
+
+            for (int i = 0; i < toRemove.Count; i++)
+            {
+                _turnSlotMap.Remove(toRemove[i]);
+            }
+
+            // 2. 更新留存与新增单位并计算各自目标位移
+            for (int i = 0; i < newTotal; i++)
+            {
+                int unitId = newOrder[i];
                 BattleUnitView unit = FindUnit(view, unitId);
-                if (unit != null)
+                if (unit == null)
                 {
-                    units.Add(unit);
+                    continue;
+                }
+
+                float targetX = GetTargetLocalPosX(i, newTotal);
+                bool isCurrentActor = (unitId == view.CurrentActorUnitId);
+
+                if (_turnSlotMap.TryGetValue(unitId, out BattleTurnSlotItem slot) && slot != null)
+                {
+                    slot.SetTurnSlot(unit, isCurrentActor);
+
+                    int oldIndex = _currentDisplayOrder.IndexOf(unitId);
+                    // 顺位变动或队伍总人数改变导致居中重排
+                    if (oldIndex != i || _currentDisplayOrder.Count != newTotal)
+                    {
+                        // 若为超车/顺位前移，将渲染层级提至顶层并做轻微弹性反馈
+                        if (oldIndex > i)
+                        {
+                            slot.transform.SetAsLastSibling();
+                            slot.transform.DOPunchScale(new Vector3(0.12f, 0.12f, 0f), 0.2f, 1, 0f);
+                        }
+
+                        slot.transform.DOKill();
+                        slot.transform.DOLocalMoveX(targetX, 0.25f).SetEase(Ease.OutCubic);
+                    }
+                }
+                else
+                {
+                    // 新增单位进入顺位栏
+                    BattleTurnSlotItem newSlot = CreateSlotItem(template);
+                    newSlot.SetTurnSlot(unit, isCurrentActor);
+                    newSlot.transform.localPosition = new Vector3(targetX + 300f, 0f, 0f);
+                    newSlot.transform.DOLocalMoveX(targetX, 0.25f).SetEase(Ease.OutCubic);
+                    _turnSlotMap[unitId] = newSlot;
                 }
             }
 
-            if (_turnSlots.Count != units.Count)
+            _currentDisplayOrder.Clear();
+            _currentDisplayOrder.AddRange(newOrder);
+        }
+
+        /// <summary>
+        /// 同步或构建当前顺位槽实例，保持与 view.DisplayOrder 一致。
+        /// </summary>
+        private void BuildOrSyncSlots(BattleViewState view)
+        {
+            BattleTurnSlotItem template = View.battleTurnSlotTemplate;
+            if (template == null || view == null || view.DisplayOrder == null)
             {
-                template.gameObject.SetActive(false);
-                ClearSlots(View.turnSlotsRoot, template.transform);
-                _turnSlots.Clear();
-                foreach (BattleUnitView unit in units)
+                return;
+            }
+
+            List<int> toRemove = new List<int>();
+            foreach (int unitId in _turnSlotMap.Keys)
+            {
+                if (!view.DisplayOrder.Contains(unitId))
                 {
-                    BattleTurnSlotItem slot = Instantiate(template, View.turnSlotsRoot);
-                    slot.gameObject.SetActive(true);
-                    _turnSlots.Add(slot);
+                    toRemove.Add(unitId);
                 }
             }
 
-            _turnSlotUnitIds.Clear();
-            for (int i = 0; i < _turnSlots.Count; i++)
+            for (int i = 0; i < toRemove.Count; i++)
             {
-                _turnSlotUnitIds.Add(units[i].BattleUnitId);
-                _turnSlots[i].SetTurnSlot(units[i], units[i].BattleUnitId == view.CurrentActorUnitId);
+                int unitId = toRemove[i];
+                if (_turnSlotMap.TryGetValue(unitId, out BattleTurnSlotItem slot) && slot != null)
+                {
+                    slot.transform.DOKill();
+                    Destroy(slot.gameObject);
+                }
+
+                _turnSlotMap.Remove(unitId);
             }
+
+            for (int i = 0; i < view.DisplayOrder.Count; i++)
+            {
+                int unitId = view.DisplayOrder[i];
+                BattleUnitView unit = FindUnit(view, unitId);
+                if (unit == null)
+                {
+                    continue;
+                }
+
+                bool isCurrentActor = (unitId == view.CurrentActorUnitId);
+                if (!_turnSlotMap.TryGetValue(unitId, out BattleTurnSlotItem slot) || slot == null)
+                {
+                    slot = CreateSlotItem(template);
+                    _turnSlotMap[unitId] = slot;
+                }
+
+                slot.SetTurnSlot(unit, isCurrentActor);
+            }
+        }
+
+        private BattleTurnSlotItem CreateSlotItem(BattleTurnSlotItem template)
+        {
+            template.gameObject.SetActive(false);
+            BattleTurnSlotItem slot = Instantiate(template, View.turnSlotsRoot);
+            SetupSlotRectTransform(slot);
+            slot.gameObject.SetActive(true);
+            return slot;
+        }
+
+        private static void SetupSlotRectTransform(BattleTurnSlotItem slot)
+        {
+            RectTransform rect = slot.transform as RectTransform;
+            if (rect == null)
+            {
+                return;
+            }
+
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(SlotWidth, SlotHeight);
+            rect.localScale = Vector3.one;
+
+            CanvasGroup cg = slot.GetComponent<CanvasGroup>();
+            if (cg != null)
+            {
+                cg.alpha = 1f;
+            }
+        }
+
+        private static float GetTargetLocalPosX(int index, int totalCount)
+        {
+            float startX = -(totalCount - 1) * 0.5f * StepX;
+            return startX + index * StepX;
         }
 
         private void RefreshActionPanel(BattleViewState view)
@@ -823,7 +1087,8 @@ namespace SepCore.UI
             }
 
             int skillActionId = playerTurn ? FindSkillActionId(view) : 0;
-            BattleActionConfig skillConfig = skillActionId != 0 ? GameEntry.Luban.Get<BattleActionConfig>(skillActionId) : null;
+            BattleActionConfig skillConfig =
+                skillActionId != 0 ? GameEntry.Luban.Get<BattleActionConfig>(skillActionId) : null;
             bool canUseSkill = playerTurn && skillConfig != null && actor.CurrentMp >= skillConfig.MpCost;
 
             View.attackButton.interactable = playerTurn;
@@ -838,7 +1103,9 @@ namespace SepCore.UI
             else if (_pendingCommandType != BattleActionType.None)
             {
                 BattleActionConfig pendingAction = GameEntry.Luban.Get<BattleActionConfig>(_pendingActionConfigId);
-                string actionName = pendingAction != null ? pendingAction.Name : (_pendingCommandType == BattleActionType.Attack ? "普通攻击" : "技能");
+                string actionName = pendingAction != null
+                    ? pendingAction.Name
+                    : (_pendingCommandType == BattleActionType.Attack ? "普通攻击" : "技能");
                 View.currentActorText.text = string.Format("【{0}】待命中（再次点击取消）", actionName);
                 View.tipText.text = GetPendingTip(pendingAction);
             }

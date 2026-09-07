@@ -17,7 +17,6 @@ public sealed partial class ThreatLevelConfig : Luban.BeanBase
     public ThreatLevelConfig(ByteBuf _buf) 
     {
         Id = (EnemyPartyThreatLevel)_buf.ReadInt();
-        Name = _buf.ReadString();
         MaxViewDistanceMilli = _buf.ReadInt();
         AlertDecayPerSecondMilli = _buf.ReadInt();
         {int n0 = System.Math.Min(_buf.ReadSize(), _buf.Size);DistanceBands = new System.Collections.Generic.List<AlertDistanceBand>(n0);for(var i0 = 0 ; i0 < n0 ; i0++) { AlertDistanceBand _e0;  _e0 = AlertDistanceBand.DeserializeAlertDistanceBand(_buf); DistanceBands.Add(_e0);}}
@@ -32,10 +31,6 @@ public sealed partial class ThreatLevelConfig : Luban.BeanBase
     /// 威胁等级ID
     /// </summary>
     public readonly EnemyPartyThreatLevel Id;
-    /// <summary>
-    /// 显示名
-    /// </summary>
-    public readonly string Name;
     /// <summary>
     /// 最大正面视野距离，千分之一Unity单位
     /// </summary>
@@ -54,7 +49,6 @@ public sealed partial class ThreatLevelConfig : Luban.BeanBase
         
         
         
-        
         foreach (var _e in DistanceBands) { _e?.ResolveRef(tables); }
     }
 
@@ -62,7 +56,6 @@ public sealed partial class ThreatLevelConfig : Luban.BeanBase
     {
         return "{ "
         + "id:" + Id + ","
-        + "name:" + Name + ","
         + "maxViewDistanceMilli:" + MaxViewDistanceMilli + ","
         + "alertDecayPerSecondMilli:" + AlertDecayPerSecondMilli + ","
         + "distanceBands:" + Luban.StringUtil.CollectionToString(DistanceBands) + ","

@@ -38,6 +38,15 @@ namespace SepCore.UI
         {
             base.OnOpen(userData);
 
+            if (_inputSource == null && View != null && View.joystick != null)
+            {
+                _inputSource = new JoystickCharacterInput(
+                    View.joystick,
+                    () => _interactListener != null && _interactListener.IsHeld,
+                    () => _interactListener != null && _interactListener.TriggeredThisFrame,
+                    () => _interactListener != null && _interactListener.ReleasedThisFrame);
+            }
+
             if (_inputSource != null)
             {
                 CharacterInputBridge.RegisterUIInput(_inputSource);

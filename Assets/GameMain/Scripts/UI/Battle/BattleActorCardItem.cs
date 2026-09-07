@@ -62,7 +62,7 @@ namespace SepCore.UI
 
         private void EnsureCachedOriginalTransform()
         {
-            if (_hasCachedOriginalTransform || _icon == null)
+            if (_hasCachedOriginalTransform)
             {
                 return;
             }
@@ -86,12 +86,12 @@ namespace SepCore.UI
 
         public void SetDetailsVisible(bool visible)
         {
-            if (_characterName != null) _characterName.gameObject.SetActive(visible);
-            if (_hpText != null) _hpText.gameObject.SetActive(visible);
-            if (_mpText != null) _mpText.gameObject.SetActive(visible);
-            if (_hpFill != null) _hpFill.gameObject.SetActive(visible);
-            if (_mpFill != null) _mpFill.gameObject.SetActive(visible);
-            if (_activeMarker != null && !visible) _activeMarker.SetActive(false);
+            _characterName.gameObject.SetActive(visible);
+            _hpText.gameObject.SetActive(visible);
+            _mpText.gameObject.SetActive(visible);
+            _hpFill.gameObject.SetActive(visible);
+            _mpFill.gameObject.SetActive(visible);
+            if (!visible) _activeMarker.SetActive(false);
         }
 
         /// <summary>
@@ -102,12 +102,6 @@ namespace SepCore.UI
         /// <param name="onComplete">单个卡片入场嵌合完成回调。</param>
         public void PlayEnterAnimation(Vector3 startScreenPos, float delay, Action onComplete = null)
         {
-            if (_icon == null)
-            {
-                onComplete?.Invoke();
-                return;
-            }
-
             EnsureCachedOriginalTransform();
             ResetVisualState();
 
@@ -127,7 +121,8 @@ namespace SepCore.UI
                 _icon.rectTransform.localPosition = _iconOriginalLocalPos;
             }
 
-            _icon.rectTransform.localScale = _iconOriginalScale * 0.35f;
+            GlobalConfig global = GameEntry.Luban.Global.Data;
+            _icon.rectTransform.localScale = _iconOriginalScale * (global.BattleInScale / 1000f);
             SetDetailsVisible(false);
 
             _enterSequence?.Kill();
@@ -138,13 +133,15 @@ namespace SepCore.UI
                 _enterSequence.AppendInterval(delay);
             }
 
-            _enterSequence.Append(_icon.rectTransform.DOLocalMove(_iconOriginalLocalPos, 0.42f).SetEase(Ease.OutCubic));
-            _enterSequence.Join(_icon.rectTransform.DOScale(_iconOriginalScale, 0.42f).SetEase(Ease.OutBack));
+            float inDuration = global.BattleInDurationMs / 1000f;
+            _enterSequence.Append(_icon.rectTransform.DOLocalMove(_iconOriginalLocalPos, inDuration).SetEase(Ease.OutCubic));
+            _enterSequence.Join(_icon.rectTransform.DOScale(_iconOriginalScale, inDuration).SetEase(Ease.OutBack));
 
             _enterSequence.AppendCallback(() =>
             {
                 SetDetailsVisible(true);
-                _icon.rectTransform.DOPunchScale(new Vector3(0.12f, -0.12f, 0f), 0.15f);
+                float punchScale = global.BattleInPunchScale / 1000f;
+                _icon.rectTransform.DOPunchScale(new Vector3(punchScale, -punchScale, 0f), 0.15f);
             });
 
             _enterSequence.AppendInterval(0.15f);
@@ -178,8 +175,10 @@ namespace SepCore.UI
                 _celebrateSequence.AppendInterval(delay);
             }
 
-            // 向上轻弹跳跃 15 像素
-            _celebrateSequence.Append(transform.DOPunchPosition(new Vector3(0f, 15f, 0f), 0.35f, 5, 0.5f));
+            GlobalConfig global = GameEntry.Luban.Global.Data;
+            float outDuration = global.BattleOutDurationMs / 1000f;
+            float jumpPixels = global.BattleActorCardOutPixels;
+            _celebrateSequence.Append(transform.DOPunchPosition(new Vector3(0f, jumpPixels, 0f), outDuration, 5, 0.5f));
             _celebrateSequence.OnComplete(() =>
             {
                 _celebrateSequence = null;
@@ -209,7 +208,7 @@ namespace SepCore.UI
                 transform.localPosition = _cardOriginalLocalPos;
             }
 
-            if (_icon != null && _hasCachedOriginalTransform)
+            if (_hasCachedOriginalTransform)
             {
                 _icon.rectTransform.DOKill();
                 _icon.rectTransform.localPosition = _iconOriginalLocalPos;

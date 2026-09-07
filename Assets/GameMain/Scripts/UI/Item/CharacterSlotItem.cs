@@ -31,13 +31,10 @@ namespace SepCore.UI
         public void SetOnClick(System.Action onClick)
         {
             _onClick = onClick;
-            if (_button != null)
+            _button.onClick.RemoveAllListeners();
+            if (_onClick != null)
             {
-                _button.onClick.RemoveAllListeners();
-                if (_onClick != null)
-                {
-                    _button.onClick.AddListener(() => _onClick?.Invoke());
-                }
+                _button.onClick.AddListener(() => _onClick?.Invoke());
             }
         }
 
@@ -46,16 +43,15 @@ namespace SepCore.UI
         /// </summary>
         public void SetSelected(bool selected)
         {
-            if (_bg != null)
-            {
-                _bg.color = selected ? SelectedBgColor : Color.white;
-            }
+            _bg.color = selected ? SelectedBgColor : Color.white;
         }
 
         /// <summary>
         /// 用存档角色填充格子；角色配置不存在时按空格子显示。
         /// </summary>
-        public void SetCharacter(CharacterSave save)
+        /// <param name="save">存档角色数据。</param>
+        /// <param name="applyEquipmentBonus">是否计入武器与防具属性加成。默认 false（展示原始属性，如 Loadout 角色列表）；为 true 时展示加成后属性（如 Home 战备编队列表）。</param>
+        public void SetCharacter(CharacterSave save, bool applyEquipmentBonus = false)
         {
             CharacterConfig config = GameEntry.Luban.Get<CharacterConfig>(save.characterId);
             if (config == null)
@@ -65,12 +61,47 @@ namespace SepCore.UI
                 return;
             }
 
+            int hp = config.MaxHp;
+            int mp = config.MaxMp;
+            int speed = config.Speed;
+            int atk = config.Atk;
+            int mat = config.Mat;
+
+            if (applyEquipmentBonus)
+            {
+                if (save.weaponItemId > 0)
+                {
+                    ItemConfig weaponConfig = GameEntry.Luban.Get<ItemConfig>(save.weaponItemId);
+                    if (weaponConfig != null)
+                    {
+                        hp += weaponConfig.MaxHpBonus;
+                        mp += weaponConfig.MaxMpBonus;
+                        speed += weaponConfig.SpeedBonus;
+                        atk += weaponConfig.AtkBonus;
+                        mat += weaponConfig.MatBonus;
+                    }
+                }
+
+                if (save.armorItemId > 0)
+                {
+                    ItemConfig armorConfig = GameEntry.Luban.Get<ItemConfig>(save.armorItemId);
+                    if (armorConfig != null)
+                    {
+                        hp += armorConfig.MaxHpBonus;
+                        mp += armorConfig.MaxMpBonus;
+                        speed += armorConfig.SpeedBonus;
+                        atk += armorConfig.AtkBonus;
+                        mat += armorConfig.MatBonus;
+                    }
+                }
+            }
+
             _characterName.text = config.Name;
-            _hpText.Set(config.MaxHp);
-            _mpText.Set(config.MaxMp);
-            _speedText.Set(config.Speed);
-            _atkText.Set(config.Atk);
-            _matText.Set(config.Mat);
+            _hpText.Set(hp);
+            _mpText.Set(mp);
+            _speedText.Set(speed);
+            _atkText.Set(atk);
+            _matText.Set(mat);
             _iconVersion++;
             ShowIconAsync(config.Icon_Ref, _iconVersion).Forget();
         }
@@ -89,20 +120,12 @@ namespace SepCore.UI
             _matText.Clear();
             HideIcon();
             SetSelected(false);
-            if (_button != null)
-            {
-                _button.onClick.RemoveAllListeners();
-            }
+            _button.onClick.RemoveAllListeners();
             _onClick = null;
         }
 
         private void HideIcon()
         {
-            if (_icon == null)
-            {
-                return;
-            }
-
             _icon.sprite = null;
             _icon.gameObject.SetActive(false);
         }
@@ -112,7 +135,7 @@ namespace SepCore.UI
         /// </summary>
         private async UniTaskVoid ShowIconAsync(SpriteConfig iconConfig, int iconVersion)
         {
-            if (iconConfig == null || _icon == null)
+            if (iconConfig == null)
             {
                 return;
             }

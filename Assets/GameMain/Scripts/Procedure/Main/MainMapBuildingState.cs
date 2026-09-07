@@ -99,6 +99,17 @@ namespace SepCore.Procedure
                 fsm.Owner.ExtractionPoint = TileToWorldPosition2D(buildResult.ExtractionPoint);
                 fsm.Owner.PlayerSpawnPoint = TileToWorldPosition2D(buildResult.PlayerSpawnPoint);
 
+                // 预先构建所有房间与走廊的迷雾淡出遮罩（避免运行时进入房间临时动态创建）
+                FogTilemapController fogController = FogTilemapController.Instance ?? UnityEngine.Object.FindObjectOfType<FogTilemapController>();
+                if (fogController != null)
+                {
+                    fogController.InitializeRoomOverlays(buildResult.Rooms);
+                }
+                else
+                {
+                    Log.Warning("[ProcedureMain] FogTilemapController is not found in the scene; fog fade overlay will not be initialized.");
+                }
+
                 GlobalConfig global = GameEntry.Luban.Global?.Data;
                 if (global == null)
                 {

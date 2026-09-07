@@ -16,13 +16,16 @@ namespace SepCore.UI
         [SerializeField] public global::SepCore.UI.FormatTextUI attackFormatText;
         [SerializeField] public global::SepCore.UI.FormatTextUI magicFormatText;
         [SerializeField] public global::SepCore.UI.FormatTextUI speedFormatText;
+        [SerializeField] public global::UnityEngine.UI.Button weaponSlotButton;
         [SerializeField] public global::UnityEngine.UI.Image weaponIcon;
         [SerializeField] public global::TMPro.TextMeshProUGUI weaponNameText;
+        [SerializeField] public global::UnityEngine.UI.Button armorSlotButton;
         [SerializeField] public global::UnityEngine.UI.Image armorIcon;
         [SerializeField] public global::TMPro.TextMeshProUGUI armorNameText;
         [SerializeField] public global::UnityEngine.UI.Image selectedItemIcon;
         [SerializeField] public global::SepCore.UI.FormatTextUI selectedItemNameFormatText;
         [SerializeField] public global::TMPro.TextMeshProUGUI selectedItemRarityText;
-        [SerializeField] public global::UnityEngine.UI.Button moveToSafeButton;
+        [SerializeField] public global::UnityEngine.UI.Button moveButton;
+        [SerializeField] public global::UnityEngine.UI.Button throwButton;
     }
 }

@@ -75,7 +75,7 @@ namespace SepCore.UI
 
         private void EnsurePreviewBound()
         {
-            if (_previewBound || View == null || View.characterPreviewForm == null)
+            if (_previewBound)
             {
                 return;
             }
@@ -93,21 +93,13 @@ namespace SepCore.UI
         private void OnDestroy()
         {
             UnbindEvent();
-            if (View != null && View.characterPreviewForm != null)
-            {
-                View.characterPreviewForm.OnUnequipWeaponRequested -= OnUnequipWeaponRequested;
-                View.characterPreviewForm.OnUnequipArmorRequested -= OnUnequipArmorRequested;
-            }
+            View.characterPreviewForm.OnUnequipWeaponRequested -= OnUnequipWeaponRequested;
+            View.characterPreviewForm.OnUnequipArmorRequested -= OnUnequipArmorRequested;
         }
 
         private void RebuildCharacterList(List<CharacterSave> characters)
         {
             LoadoutView view = View;
-            if (view == null || view.characterListRoot == null || view.characterSlotTemplate == null)
-            {
-                return;
-            }
-
             CharacterSlotItem template = view.characterSlotTemplate;
             template.gameObject.SetActive(false);
 
@@ -156,11 +148,6 @@ namespace SepCore.UI
         private void RebuildWeaponList(List<ItemStack> warehouse)
         {
             LoadoutView view = View;
-            if (view == null || view.weaponListRoot == null || view.weaponSlotTemplate == null)
-            {
-                return;
-            }
-
             WarehouseSlotItem template = view.weaponSlotTemplate;
             template.gameObject.SetActive(false);
 
@@ -209,11 +196,6 @@ namespace SepCore.UI
         private void RebuildArmorList(List<ItemStack> warehouse)
         {
             LoadoutView view = View;
-            if (view == null || view.armorListRoot == null || view.armorSlotTemplate == null)
-            {
-                return;
-            }
-
             WarehouseSlotItem template = view.armorSlotTemplate;
             template.gameObject.SetActive(false);
 
@@ -261,8 +243,7 @@ namespace SepCore.UI
 
         private void RefreshPreview(List<CharacterSave> characters)
         {
-            if (View == null || View.characterPreviewForm == null || characters == null ||
-                _selectedCharacterIndex < 0 || _selectedCharacterIndex >= characters.Count)
+            if (characters == null || _selectedCharacterIndex < 0 || _selectedCharacterIndex >= characters.Count)
             {
                 return;
             }

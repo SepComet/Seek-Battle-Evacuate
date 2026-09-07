@@ -131,11 +131,6 @@ namespace SepCore.UI
         private void HideWeaponIcon()
         {
             _weaponIconVersion++;
-            if (View.weaponIcon == null)
-            {
-                return;
-            }
-
             View.weaponIcon.sprite = null;
             View.weaponIcon.gameObject.SetActive(false);
         }
@@ -143,18 +138,13 @@ namespace SepCore.UI
         private void HideArmorIcon()
         {
             _armorIconVersion++;
-            if (View.armorIcon == null)
-            {
-                return;
-            }
-
             View.armorIcon.sprite = null;
             View.armorIcon.gameObject.SetActive(false);
         }
 
         private async UniTaskVoid ShowCharacterIconAsync(SpriteConfig iconConfig, int iconVersion)
         {
-            if (iconConfig == null || View.characterIcon == null)
+            if (iconConfig == null)
             {
                 return;
             }
@@ -171,7 +161,7 @@ namespace SepCore.UI
 
         private async UniTaskVoid ShowWeaponIconAsync(SpriteConfig iconConfig, int iconVersion)
         {
-            if (iconConfig == null || View.weaponIcon == null)
+            if (iconConfig == null)
             {
                 return;
             }
@@ -188,7 +178,7 @@ namespace SepCore.UI
 
         private async UniTaskVoid ShowArmorIconAsync(SpriteConfig iconConfig, int iconVersion)
         {
-            if (iconConfig == null || View.armorIcon == null)
+            if (iconConfig == null)
             {
                 return;
             }

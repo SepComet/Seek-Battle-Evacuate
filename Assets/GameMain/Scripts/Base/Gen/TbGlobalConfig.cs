@@ -83,6 +83,10 @@ public partial class TbGlobalConfig
     /// </summary>
      public int EvacuateTimeMs => _data.EvacuateTimeMs;
     /// <summary>
+    /// 世界漂浮文本实体
+    /// </summary>
+     public string WorldFloatTextEntity => _data.WorldFloatTextEntity;
+    /// <summary>
     /// 敌人丢失目标后返回巡逻的时间，毫秒
     /// </summary>
      public int EnemyLoseTargetMs => _data.EnemyLoseTargetMs;
@@ -174,6 +178,42 @@ public partial class TbGlobalConfig
     /// 新存档直接拥有的角色
     /// </summary>
      public System.Collections.Generic.List<int> NewGameCharacterIds => _data.NewGameCharacterIds;
+    /// <summary>
+    /// LobbyForm选中标记移动动画持续时间，毫秒
+    /// </summary>
+     public int LobbySelectionMarkerMoveDurationMs => _data.LobbySelectionMarkerMoveDurationMs;
+    /// <summary>
+    /// BattleForm结算等待时间，毫秒
+    /// </summary>
+     public int BattleResultDisplayDelayMs => _data.BattleResultDisplayDelayMs;
+    /// <summary>
+    /// 战斗入场动画时间，毫秒
+    /// </summary>
+     public int BattleInDurationMs => _data.BattleInDurationMs;
+    /// <summary>
+    /// 战斗入场缩放系数
+    /// </summary>
+     public int BattleInScale => _data.BattleInScale;
+    /// <summary>
+    /// 战斗入场Punch操作缩放系数
+    /// </summary>
+     public int BattleInPunchScale => _data.BattleInPunchScale;
+    /// <summary>
+    /// 战斗离场动画时间，毫秒
+    /// </summary>
+     public int BattleOutDurationMs => _data.BattleOutDurationMs;
+    /// <summary>
+    /// BattleActorCard战斗离场动画跳跃距离，像素
+    /// </summary>
+     public int BattleActorCardOutPixels => _data.BattleActorCardOutPixels;
+    /// <summary>
+    /// EnemyCard战斗离场动画上浮距离，像素
+    /// </summary>
+     public int BattleEnemyCardOutPixels => _data.BattleEnemyCardOutPixels;
+    /// <summary>
+    /// 战斗入场卡片动画开始间隔
+    /// </summary>
+     public int BattleInMoveIntervalMs => _data.BattleInMoveIntervalMs;
     
     public void ResolveRef(Tables tables)
     {

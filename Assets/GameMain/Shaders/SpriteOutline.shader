@@ -4,7 +4,7 @@ Shader "SepCore/2D/SpriteOutline"
     {
         [PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {}
         _Color ("Tint", Color) = (1,1,1,1)
-        [MaterialToggle] PixelSnap ("Pixel snap", Float) = 0
+        [HideInInspector] PixelSnap ("Pixel snap", Float) = 0
         [HideInInspector] _RendererColor ("RendererColor", Color) = (1,1,1,1)
         [HideInInspector] _Flip ("Flip", Vector) = (1,1,1,1)
         [PerRendererData] _SpriteUVRect ("Sprite UV Rect", Vector) = (0,0,1,1)
@@ -44,7 +44,6 @@ Shader "SepCore/2D/SpriteOutline"
             #pragma vertex vert
             #pragma fragment frag
             #pragma multi_compile_instancing
-            #pragma multi_compile _ PIXELSNAP_ON
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
@@ -92,10 +91,6 @@ Shader "SepCore/2D/SpriteOutline"
                 float2 uvPadding = direction * _MainTex_TexelSize.xy * _OutlineSize;
                 pos.xy += uvPadding / uvSize * _SpriteSize.xy;
                 pos.xy *= _Flip.xy;
-
-                #if defined(PIXELSNAP_ON)
-                pos = UnityPixelSnap(pos);
-                #endif
 
                 output.positionCS = TransformObjectToHClip(pos.xyz);
                 output.uv = input.uv + uvPadding;
@@ -167,7 +162,6 @@ Shader "SepCore/2D/SpriteOutline"
             #pragma vertex vert
             #pragma fragment frag
             #pragma multi_compile_instancing
-            #pragma multi_compile _ PIXELSNAP_ON
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
@@ -215,10 +209,6 @@ Shader "SepCore/2D/SpriteOutline"
                 float2 uvPadding = direction * _MainTex_TexelSize.xy * _OutlineSize;
                 pos.xy += uvPadding / uvSize * _SpriteSize.xy;
                 pos.xy *= _Flip.xy;
-
-                #if defined(PIXELSNAP_ON)
-                pos = UnityPixelSnap(pos);
-                #endif
 
                 output.positionCS = TransformObjectToHClip(pos.xyz);
                 output.uv = input.uv + uvPadding;

@@ -17,12 +17,12 @@ namespace SepCore.Definition
 /// </summary>
 public partial class TbEnemyDropConfig
 {
-    private readonly System.Collections.Generic.Dictionary<int, EnemyDropConfig> _dataMap;
+    private readonly System.Collections.Generic.Dictionary<EnemyPartyThreatLevel, EnemyDropConfig> _dataMap;
     private readonly System.Collections.Generic.List<EnemyDropConfig> _dataList;
     
     public TbEnemyDropConfig(ByteBuf _buf)
     {
-        _dataMap = new System.Collections.Generic.Dictionary<int, EnemyDropConfig>();
+        _dataMap = new System.Collections.Generic.Dictionary<EnemyPartyThreatLevel, EnemyDropConfig>();
         _dataList = new System.Collections.Generic.List<EnemyDropConfig>();
         
         for(int n = _buf.ReadSize() ; n > 0 ; --n)
@@ -34,12 +34,12 @@ public partial class TbEnemyDropConfig
         }
     }
 
-    public System.Collections.Generic.Dictionary<int, EnemyDropConfig> DataMap => _dataMap;
+    public System.Collections.Generic.Dictionary<EnemyPartyThreatLevel, EnemyDropConfig> DataMap => _dataMap;
     public System.Collections.Generic.List<EnemyDropConfig> DataList => _dataList;
 
-    public EnemyDropConfig GetOrDefault(int key) => _dataMap.TryGetValue(key, out var v) ? v : null;
-    public EnemyDropConfig Get(int key) => _dataMap[key];
-    public EnemyDropConfig this[int key] => _dataMap[key];
+    public EnemyDropConfig GetOrDefault(EnemyPartyThreatLevel key) => _dataMap.TryGetValue(key, out var v) ? v : null;
+    public EnemyDropConfig Get(EnemyPartyThreatLevel key) => _dataMap[key];
+    public EnemyDropConfig this[EnemyPartyThreatLevel key] => _dataMap[key];
 
     public void ResolveRef(Tables tables)
     {

@@ -13,6 +13,7 @@
     "LootRangeMinRadius": 1000,
     "LootRangeMaxRadius": 2500,
     "evacuateTimeMs": 5000,
+    "WorldFloatTextEntity": "WorldFloatText",
     "enemyLoseTargetMs": 3000,
     "alertMax": 1000,
     "chaseSpeed": 4000,
@@ -40,6 +41,15 @@
       1002,
       1003,
       1004
-    ]
+    ],
+    "LobbySelectionMarkerMoveDurationMs": 250,
+    "BattleResultDisplayDelayMs": 1500,
+    "BattleInDurationMs": 420,
+    "BattleInScale": 350,
+    "BattleInPunchScale": 120,
+    "BattleOutDurationMs": 350,
+    "BattleActorCardOutPixels": 15,
+    "BattleEnemyCardOutPixels": 20,
+    "BattleInMoveIntervalMs": 80
   }
 ]

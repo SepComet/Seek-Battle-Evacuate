@@ -2,12 +2,12 @@
     "name": "SepCore.Runtime",
     "rootNamespace": "SepCore.Runtime",
     "references": [
-        "GUID:75469ad4d38634e559750d17036d5f7c",
         "GUID:6055be8ebefd69e48b49212b09b47b2f",
         "GUID:363c5eb08ff8e6a439b85e37b8c20d96",
         "GUID:a04b272484018094ab427253f20c416c",
         "GUID:3bb549212964b4192b427888ac9382e7",
-        "GUID:f51ebe6a0ceec4240a699833d6309b23"
+        "GUID:f51ebe6a0ceec4240a699833d6309b23",
+        "GUID:7278ed819d405ed4bb51f2e3849e46f5"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

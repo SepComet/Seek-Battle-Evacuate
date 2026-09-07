@@ -85,13 +85,6 @@ namespace SepCore.UI
         private void RebuildGrid()
         {
             InventoryView inventoryView = View;
-            if (inventoryView == null || inventoryView.warehouseSlotRoot == null ||
-                inventoryView.warehouseSlotTemplate == null)
-            {
-                Log.Warning("InventoryForm is not fully configured.");
-                return;
-            }
-
             int slotCount = GameEntry.Luban.Global.Data.WarehouseSlotCount;
             if (slotCount <= 0)
             {
@@ -133,11 +126,8 @@ namespace SepCore.UI
                 _slots.Add(slot);
             }
 
-            if (inventoryView.itemCountFormatText != null)
-            {
-                int usedSlotCount = _stacks != null ? _stacks.Count : 0;
-                inventoryView.itemCountFormatText.Set(usedSlotCount, slotCount);
-            }
+            int usedSlotCount = _stacks != null ? _stacks.Count : 0;
+            inventoryView.itemCountFormatText.Set(usedSlotCount, slotCount);
         }
 
         /// <summary>

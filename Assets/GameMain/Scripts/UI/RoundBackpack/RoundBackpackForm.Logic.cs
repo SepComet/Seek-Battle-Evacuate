@@ -16,6 +16,7 @@ namespace SepCore.UI
     {
         private bool _selectedIsBackpack = true;
         private int _selectedSlotIndex = -1;
+        private int _overrideDetailItemId = 0;
         private int _lastRemainingSeconds = -1;
 
         protected override void OnOpen(object userData)
@@ -25,7 +26,10 @@ namespace SepCore.UI
             CharacterInputBridge.DisableInput(InputDisableReason.Backpack);
 
             View.closeButton.onClick.AddListener(OnCloseButtonClick);
-            View.characterForm.SetOnMoveToSafeClicked(OnMoveToSafeClicked);
+            View.characterForm.OnMoveClicked += OnMoveClicked;
+            View.characterForm.OnThrowClicked += OnThrowClicked;
+            View.characterForm.OnUnequipWeaponRequested += OnUnequipWeaponRequested;
+            View.characterForm.OnUnequipArmorRequested += OnUnequipArmorRequested;
 
             GameEntry.Event.Subscribe(RoundBackpackChangedEventArgs.EventId, OnBackpackChanged);
             GameEntry.Event.Subscribe(RoundSafeCaseChangedEventArgs.EventId, OnSafeCaseChanged);
@@ -33,6 +37,7 @@ namespace SepCore.UI
             GameEntry.Event.Subscribe(WarehouseSlotItemClickEventArgs.EventId, OnSlotItemClick);
 
             _selectedSlotIndex = -1;
+            _overrideDetailItemId = 0;
             _lastRemainingSeconds = -1;
 
             RefreshAll();
@@ -42,6 +47,10 @@ namespace SepCore.UI
         protected override void OnClose(bool isShutdown, object userData)
         {
             View.closeButton.onClick.RemoveListener(OnCloseButtonClick);
+            View.characterForm.OnMoveClicked -= OnMoveClicked;
+            View.characterForm.OnThrowClicked -= OnThrowClicked;
+            View.characterForm.OnUnequipWeaponRequested -= OnUnequipWeaponRequested;
+            View.characterForm.OnUnequipArmorRequested -= OnUnequipArmorRequested;
 
             GameEntry.Event.Unsubscribe(RoundBackpackChangedEventArgs.EventId, OnBackpackChanged);
             GameEntry.Event.Unsubscribe(RoundSafeCaseChangedEventArgs.EventId, OnSafeCaseChanged);
@@ -115,23 +124,127 @@ namespace SepCore.UI
         private void OnSlotItemClick(object sender, GameEventArgs e)
         {
             WarehouseSlotItem clickedSlot = sender as WarehouseSlotItem;
-            if (clickedSlot == null)
+            if (clickedSlot == null || GameEntry.Round?.Session == null)
             {
                 return;
             }
 
-            if (View.backpackForm.TryGetSlotItem(clickedSlot, out bool isBackpack, out int slotIndex))
+            if (!View.backpackForm.TryGetSlotItem(clickedSlot, out bool isBackpack, out int slotIndex))
             {
+                return;
+            }
+
+            RoundSession session = GameEntry.Round.Session;
+            RoundItemContainer container = isBackpack ? session.Backpack : session.SafeCase;
+            if (slotIndex < 0 || slotIndex >= container.Slots.Count)
+            {
+                return;
+            }
+
+            ItemStack stack = container.Slots[slotIndex];
+            if (stack.itemId <= 0 || stack.count <= 0)
+            {
+                _overrideDetailItemId = 0;
                 _selectedIsBackpack = isBackpack;
                 _selectedSlotIndex = slotIndex;
                 View.backpackForm.SetSelectedSlot(isBackpack, slotIndex);
                 UpdateSelectedItemDetail();
+                return;
+            }
+
+            ItemConfig itemConfig = GameEntry.Luban.Get<ItemConfig>(stack.itemId);
+            int charIndex = View.characterForm.SelectedCharacterIndex;
+            RoundCharacterState character = (session.Party != null && charIndex >= 0 && charIndex < session.Party.Count)
+                ? session.Party[charIndex]
+                : null;
+
+            bool isEquipment = itemConfig != null &&
+                               (itemConfig.EquipSlot == EquipmentSlotType.Weapon || itemConfig.EquipSlot == EquipmentSlotType.Armor);
+
+            bool canEquip = false;
+            if (isEquipment && character != null)
+            {
+                if (itemConfig.EquipSlot == EquipmentSlotType.Weapon && character.WeaponItemId == 0)
+                {
+                    canEquip = true;
+                }
+                else if (itemConfig.EquipSlot == EquipmentSlotType.Armor && character.ArmorItemId == 0)
+                {
+                    canEquip = true;
+                }
+            }
+
+            if (canEquip)
+            {
+                int equippedItemId = stack.itemId;
+                if (GameEntry.Round.TryEquipFromContainer(charIndex, isBackpack, slotIndex))
+                {
+                    View.backpackForm.Refresh(session.Backpack, session.SafeCase);
+                    View.characterForm.RefreshParty(session.Party);
+
+                    ItemStack remainingStack = container.Slots[slotIndex];
+                    if (remainingStack.itemId > 0 && remainingStack.count > 0)
+                    {
+                        _overrideDetailItemId = 0;
+                        _selectedIsBackpack = isBackpack;
+                        _selectedSlotIndex = slotIndex;
+                        View.backpackForm.SetSelectedSlot(isBackpack, slotIndex);
+                        UpdateSelectedItemDetail();
+                    }
+                    else
+                    {
+                        _selectedSlotIndex = -1;
+                        View.backpackForm.ClearSelection();
+                        _overrideDetailItemId = equippedItemId;
+                        UpdateSelectedItemDetail();
+                    }
+                    return;
+                }
+            }
+
+            // 非装备或对应槽位已有装备（不替换），仅选中该格子并在右侧展示详情
+            _overrideDetailItemId = 0;
+            _selectedIsBackpack = isBackpack;
+            _selectedSlotIndex = slotIndex;
+            View.backpackForm.SetSelectedSlot(isBackpack, slotIndex);
+            UpdateSelectedItemDetail();
+        }
+
+        private void OnUnequipWeaponRequested()
+        {
+            HandleUnequip(EquipmentSlotType.Weapon);
+        }
+
+        private void OnUnequipArmorRequested()
+        {
+            HandleUnequip(EquipmentSlotType.Armor);
+        }
+
+        private void HandleUnequip(EquipmentSlotType slotType)
+        {
+            if (GameEntry.Round?.Session == null)
+            {
+                return;
+            }
+
+            int charIndex = View.characterForm.SelectedCharacterIndex;
+            if (GameEntry.Round.TryUnequipToContainer(charIndex, slotType, out bool toBackpack, out int targetSlotIndex))
+            {
+                _overrideDetailItemId = 0;
+                _selectedIsBackpack = toBackpack;
+                _selectedSlotIndex = targetSlotIndex;
+
+                RoundSession session = GameEntry.Round.Session;
+                View.backpackForm.Refresh(session.Backpack, session.SafeCase);
+                View.characterForm.RefreshParty(session.Party);
+                View.backpackForm.SetSelectedSlot(toBackpack, targetSlotIndex);
+                UpdateSelectedItemDetail();
             }
         }
 
-        private void OnMoveToSafeClicked()
+        private void OnMoveClicked()
         {
-            if (!_selectedIsBackpack || _selectedSlotIndex < 0 || GameEntry.Round?.Session == null)
+            if (_selectedSlotIndex < 0 || GameEntry.Round?.Session == null)
             {
                 return;
             }
@@ -142,8 +255,52 @@ namespace SepCore.UI
                 return;
             }
 
-            GameEntry.Round.MoveBetweenBackpackAndSafe(fromBackpackToSafe: true, _selectedSlotIndex, stack.count, out _);
-            UpdateSelectedItemDetail();
+            bool fromBackpackToSafe = _selectedIsBackpack;
+            if (GameEntry.Round.MoveBetweenBackpackAndSafe(fromBackpackToSafe, _selectedSlotIndex, stack.count, out int movedCount, out int targetSlotIndex))
+            {
+                RoundSession session = GameEntry.Round.Session;
+                View.backpackForm.Refresh(session.Backpack, session.SafeCase);
+
+                // 检查原槽位是否还有剩余
+                ItemStack remainingSourceStack = GetSelectedStack();
+                if (remainingSourceStack.itemId > 0 && remainingSourceStack.count > 0)
+                {
+                    View.backpackForm.SetSelectedSlot(_selectedIsBackpack, _selectedSlotIndex);
+                }
+                else if (targetSlotIndex >= 0)
+                {
+                    // 原格已空，焦点切至目标容器对应格子
+                    _selectedIsBackpack = !fromBackpackToSafe;
+                    _selectedSlotIndex = targetSlotIndex;
+                    View.backpackForm.SetSelectedSlot(_selectedIsBackpack, targetSlotIndex);
+                }
+                else
+                {
+                    _selectedSlotIndex = -1;
+                    View.backpackForm.ClearSelection();
+                }
+
+                _overrideDetailItemId = 0;
+                UpdateSelectedItemDetail();
+            }
+        }
+
+        private void OnThrowClicked()
+        {
+            if (_selectedSlotIndex < 0 || GameEntry.Round?.Session == null)
+            {
+                return;
+            }
+
+            if (GameEntry.Round.DiscardItemFromContainer(_selectedIsBackpack, _selectedSlotIndex))
+            {
+                RoundSession session = GameEntry.Round.Session;
+                View.backpackForm.Refresh(session.Backpack, session.SafeCase);
+                _selectedSlotIndex = -1;
+                _overrideDetailItemId = 0;
+                View.backpackForm.ClearSelection();
+                UpdateSelectedItemDetail();
+            }
         }
 
         private ItemStack GetSelectedStack()
@@ -167,21 +324,31 @@ namespace SepCore.UI
 
         private void UpdateSelectedItemDetail()
         {
-            if (_selectedSlotIndex < 0 || GameEntry.Round?.Session == null)
+            if (_selectedSlotIndex >= 0 && GameEntry.Round?.Session != null)
             {
-                View.characterForm.ClearSelectedItem();
+                _overrideDetailItemId = 0;
+                ItemStack stack = GetSelectedStack();
+                if (stack.itemId > 0 && stack.count > 0)
+                {
+                    RoundItemContainer targetContainer = _selectedIsBackpack
+                        ? GameEntry.Round.Session.SafeCase
+                        : GameEntry.Round.Session.Backpack;
+
+                    bool canMove = targetContainer != null && targetContainer.CanAcceptItem(stack.itemId, 1);
+                    bool canThrow = true;
+
+                    View.characterForm.RefreshSelectedItem(stack, canMove, canThrow);
+                    return;
+                }
+            }
+
+            if (_overrideDetailItemId > 0)
+            {
+                View.characterForm.RefreshSelectedItem(new ItemStack(_overrideDetailItemId, 1), canMove: false, canThrow: false);
                 return;
             }
 
-            ItemStack stack = GetSelectedStack();
-            if (stack.itemId <= 0 || stack.count <= 0)
-            {
-                View.characterForm.ClearSelectedItem();
-                return;
-            }
-
-            bool canMoveToSafe = _selectedIsBackpack && !GameEntry.Round.Session.SafeCase.IsFull;
-            View.characterForm.RefreshSelectedItem(stack, _selectedIsBackpack, canMoveToSafe);
+            View.characterForm.ClearSelectedItem();
         }
 
         private void UpdateRemainingTime(bool force)
@@ -204,7 +371,7 @@ namespace SepCore.UI
             _lastRemainingSeconds = totalSeconds;
             int minutes = totalSeconds / 60;
             int seconds = totalSeconds % 60;
-            View.timerText.SetText(string.Format("{0:00}:{1:00}", minutes, seconds));
+            View.timerText.SetText($"{minutes:00}:{seconds:00}");
         }
     }
 }

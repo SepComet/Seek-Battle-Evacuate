@@ -3,44 +3,68 @@
     "id": 4001,
     "name": "单敌人",
     "enemyIds": [
+      3001,
+      3001,
       3001
     ],
     "threatConfig": 1
   },
   {
     "id": 4002,
-    "name": "双普通敌人",
+    "name": "三普通敌人",
     "enemyIds": [
       3001,
-      3001
+      3002
     ],
     "threatConfig": 1
   },
   {
-    "id": 4003,
+    "id": 4101,
     "name": "混合队伍",
     "enemyIds": [
+      3001,
+      3002,
+      3002
+    ],
+    "threatConfig": 2
+  },
+  {
+    "id": 4102,
+    "name": "敌人",
+    "enemyIds": [
+      3002,
       3001,
       3002
     ],
     "threatConfig": 2
   },
   {
-    "id": 4004,
-    "name": "高威胁队伍",
+    "id": 4201,
+    "name": "威胁队伍",
     "enemyIds": [
       3002,
-      3003
+      3002,
+      3002
     ],
     "threatConfig": 3
   },
   {
-    "id": 4005,
+    "id": 4202,
     "name": "四普通敌人",
     "enemyIds": [
       3001,
-      3002,
       3001,
+      3001,
+      3001
+    ],
+    "threatConfig": 3
+  },
+  {
+    "id": 4203,
+    "name": "威胁队伍",
+    "enemyIds": [
+      3002,
+      3002,
       3002
     ],
     "threatConfig": 3

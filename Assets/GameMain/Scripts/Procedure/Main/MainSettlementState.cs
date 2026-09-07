@@ -35,6 +35,7 @@ namespace SepCore.Procedure
         protected override void OnLeave(IFsm<ProcedureMain> fsm, bool isShutdown)
         {
             GameEntry.Event.Unsubscribe(RoundSettlementReturnEventArgs.EventId, OnRoundSettlementReturn);
+            CharacterInputBridge.EnableInput(InputDisableReason.Custom);
             _procedureMain = null;
             base.OnLeave(fsm, isShutdown);
         }
@@ -106,6 +107,25 @@ namespace SepCore.Procedure
                         foreach (ItemStack item in backpackItems)
                         {
                             MergeIntoWarehouse(save.mainWarehouse, item);
+                        }
+
+                        // 同步出战角色在局内的最新穿戴装备至存档
+                        if (save.characters != null && session.Party != null)
+                        {
+                            for (int i = 0; i < save.characters.Count; i++)
+                            {
+                                CharacterSave cs = save.characters[i];
+                                for (int j = 0; j < session.Party.Count; j++)
+                                {
+                                    if (session.Party[j].CharacterId == cs.characterId)
+                                    {
+                                        cs.weaponItemId = session.Party[j].WeaponItemId;
+                                        cs.armorItemId = session.Party[j].ArmorItemId;
+                                        save.characters[i] = cs;
+                                        break;
+                                    }
+                                }
+                            }
                         }
                     }
                 }

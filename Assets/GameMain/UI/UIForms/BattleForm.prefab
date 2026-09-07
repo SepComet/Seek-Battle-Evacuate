@@ -2825,7 +2825,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7298131768139967}
-  - component: {fileID: 8037555354180411514}
   - component: {fileID: 7458888285785912437}
   m_Layer: 5
   m_Name: TurnSlotsRoot
@@ -2854,32 +2853,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: -40, y: -20}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &8037555354180411514
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3638160659978967504}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 30649d3a9faa99c48a7b1166b86bf2a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_Padding:
-    m_Left: 0
-    m_Right: 0
-    m_Top: 0
-    m_Bottom: 0
-  m_ChildAlignment: 4
-  m_Spacing: 28
-  m_ChildForceExpandWidth: 0
-  m_ChildForceExpandHeight: 1
-  m_ChildControlWidth: 0
-  m_ChildControlHeight: 1
-  m_ChildScaleWidth: 0
-  m_ChildScaleHeight: 0
-  m_ReverseArrangement: 0
 --- !u!114 &7458888285785912437
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2896,9 +2869,6 @@ MonoBehaviour:
   - component: {fileID: 7298131768139967}
     generateReference: 1
     variableName: turnSlotsRoot
-  - component: {fileID: 8037555354180411514}
-    generateReference: 0
-    variableName: turnSlotsHorizontalLayoutGroup
 --- !u!1 &3707025412061330939
 GameObject:
   m_ObjectHideFlags: 0
@@ -8058,6 +8028,10 @@ PrefabInstance:
     - target: {fileID: 1070990104557590534, guid: aa6822449b9304c168a5ba43072f1658, type: 3}
       propertyPath: m_Name
       value: BattleTurnSlotTemplate
+      objectReference: {fileID: 0}
+    - target: {fileID: 1070990104557590534, guid: aa6822449b9304c168a5ba43072f1658, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6913906517704956117, guid: aa6822449b9304c168a5ba43072f1658, type: 3}
       propertyPath: m_Pivot.x

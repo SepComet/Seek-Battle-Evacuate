@@ -128,6 +128,7 @@ GameObject:
   - component: {fileID: 6630637237695708207}
   - component: {fileID: 6341402167652363422}
   - component: {fileID: 894280605912153976}
+  - component: {fileID: 5269030052498008887}
   - component: {fileID: 7033223085343051107}
   m_Layer: 5
   m_Name: SquadMemberText
@@ -182,9 +183,25 @@ MonoBehaviour:
   - component: {fileID: 6341402167652363422}
     generateReference: 0
     variableName: valueCanvasRenderer
-  - component: {fileID: 7033223085343051107}
+  - component: {fileID: 5269030052498008887}
     generateReference: 1
+    variableName: squadMemberFormatText
+  - component: {fileID: 7033223085343051107}
+    generateReference: 0
     variableName: squadMemberText
+--- !u!114 &5269030052498008887
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2402190237831222800}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6566a3a7cfd184008ab2282feea295f8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  key: SquadMemberText
 --- !u!114 &7033223085343051107
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -608,7 +625,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6eacd1573559d4784862ed9c21d5928c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  squadMemberText: {fileID: 7033223085343051107}
+  squadMemberFormatText: {fileID: 5269030052498008887}
   characterSlotRoot: {fileID: 8056164042536516938}
   characterSlotTemplate: {fileID: 8054159202405221406}
 --- !u!114 &4309052769825198644
@@ -932,7 +949,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6029580628930235837, guid: b100f982e48814dfeadb160358067b65, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6029580628930235837, guid: b100f982e48814dfeadb160358067b65, type: 3}
       propertyPath: m_AnchorMin.x
@@ -940,15 +957,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6029580628930235837, guid: b100f982e48814dfeadb160358067b65, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6029580628930235837, guid: b100f982e48814dfeadb160358067b65, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 440
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6029580628930235837, guid: b100f982e48814dfeadb160358067b65, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 200
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6029580628930235837, guid: b100f982e48814dfeadb160358067b65, type: 3}
       propertyPath: m_LocalPosition.x

@@ -56,6 +56,14 @@ namespace SepCore.Definition
         /// 局内结算面板
         /// </summary>
         RoundSettlementForm = 107,
+        /// <summary>
+        /// 入场简报面板
+        /// </summary>
+        DeploymentBriefingForm = 108,
+        /// <summary>
+        /// 转场面板
+        /// </summary>
+        FadeForm = 109,
     }
 
 } 

@@ -1,5 +1,6 @@
 using System;
 using SepCore.Battle;
+using SepCore.Definition;
 
 namespace SepCore.Run
 {
@@ -133,6 +134,72 @@ namespace SepCore.Run
         {
             if (amount <= 0) return;
             CurrentMp = Math.Max(0, CurrentMp - amount);
+        }
+
+        /// <summary>
+        /// 穿戴装备并应用属性加成。
+        /// </summary>
+        public void EquipItem(ItemConfig config)
+        {
+            if (config == null)
+            {
+                return;
+            }
+
+            if (config.EquipSlot == EquipmentSlotType.Weapon)
+            {
+                WeaponItemId = config.Id;
+            }
+            else if (config.EquipSlot == EquipmentSlotType.Armor)
+            {
+                ArmorItemId = config.Id;
+            }
+            else
+            {
+                return;
+            }
+
+            MaxHp += config.MaxHpBonus;
+            MaxMp += config.MaxMpBonus;
+            Atk += config.AtkBonus;
+            Mat += config.MatBonus;
+            Speed += config.SpeedBonus;
+
+            CurrentHp = Math.Clamp(CurrentHp, 1, MaxHp);
+            CurrentMp = Math.Clamp(CurrentMp, 0, MaxMp);
+        }
+
+        /// <summary>
+        /// 卸下装备并扣除属性加成，生命值截断时至少保留 1 点。
+        /// </summary>
+        public void UnequipItem(ItemConfig config)
+        {
+            if (config == null)
+            {
+                return;
+            }
+
+            if (config.EquipSlot == EquipmentSlotType.Weapon && WeaponItemId == config.Id)
+            {
+                WeaponItemId = 0;
+            }
+            else if (config.EquipSlot == EquipmentSlotType.Armor && ArmorItemId == config.Id)
+            {
+                ArmorItemId = 0;
+            }
+            else
+            {
+                return;
+            }
+
+            MaxHp -= config.MaxHpBonus;
+            MaxMp -= config.MaxMpBonus;
+            Atk -= config.AtkBonus;
+            Mat -= config.MatBonus;
+            Speed -= config.SpeedBonus;
+
+            CurrentHp = Math.Max(1, Math.Min(CurrentHp, MaxHp));
+            CurrentMp = Math.Max(0, Math.Min(CurrentMp, MaxMp));
         }
     }
 }

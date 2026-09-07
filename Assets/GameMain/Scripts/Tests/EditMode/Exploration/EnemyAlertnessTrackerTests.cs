@@ -25,7 +25,6 @@ namespace SepCore.Tests
 
             _threatConfig = TestConfigFactory.Create<ThreatLevelConfig>(
                 "Id", EnemyPartyThreatLevel.Low,
-                "Name", "LowThreat",
                 "MaxViewDistanceMilli", 6000,
                 "AlertDecayPerSecondMilli", 200,
                 "DistanceBands", new List<AlertDistanceBand> { band1, band2 });

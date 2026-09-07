@@ -1,7 +1,9 @@
 using SepCore.Base;
 using SepCore.Battle;
 using SepCore.Definition;
+using SepCore.Entity;
 using SepCore.Run;
+using UnityEngine;
 using UnityGameFramework.Runtime;
 
 namespace SepCore.CustomComponent
@@ -136,13 +138,27 @@ namespace SepCore.CustomComponent
         /// <param name="movedCount">实际转移数量。</param>
         public bool MoveBetweenBackpackAndSafe(bool fromBackpackToSafe, int fromSlotIndex, int count, out int movedCount)
         {
+            return MoveBetweenBackpackAndSafe(fromBackpackToSafe, fromSlotIndex, count, out movedCount, out _);
+        }
+
+        /// <summary>
+        /// 在共享背包与保险箱之间转移物品，并输出目标容器新接收物品的槽位索引。
+        /// </summary>
+        /// <param name="fromBackpackToSafe">true 为从背包移入保险箱，false 为从保险箱移入背包。</param>
+        /// <param name="fromSlotIndex">源容器槽位索引。</param>
+        /// <param name="count">转移数量。</param>
+        /// <param name="movedCount">实际转移数量。</param>
+        /// <param name="targetSlotIndex">目标容器接收槽位索引。</param>
+        public bool MoveBetweenBackpackAndSafe(bool fromBackpackToSafe, int fromSlotIndex, int count, out int movedCount, out int targetSlotIndex)
+        {
             movedCount = 0;
+            targetSlotIndex = -1;
             if (_session == null)
             {
                 return false;
             }
 
-            bool result = _session.TryMoveBetweenContainers(fromBackpackToSafe, fromSlotIndex, count, out movedCount);
+            bool result = _session.TryMoveBetweenContainers(fromBackpackToSafe, fromSlotIndex, count, out movedCount, out targetSlotIndex);
             if (result && movedCount > 0)
             {
                 FireBackpackChanged();
@@ -204,6 +220,257 @@ namespace SepCore.CustomComponent
         public void FirePartyStateChanged()
         {
             GameEntry.Event.Fire(this, RoundPartyStateChangedEventArgs.Create());
+        }
+
+        /// <summary>
+        /// 尝试为指定角色穿戴来自背包或保险箱的装备。
+        /// 若角色对应装备槽为空，扣减容器物品并穿戴，自动派发变更事件。
+        /// </summary>
+        public bool TryEquipFromContainer(int characterIndex, bool fromBackpack, int slotIndex)
+        {
+            if (_session == null || characterIndex < 0 || characterIndex >= _session.Party.Count)
+            {
+                return false;
+            }
+
+            RoundItemContainer container = fromBackpack ? _session.Backpack : _session.SafeCase;
+            if (slotIndex < 0 || slotIndex >= container.Slots.Count)
+            {
+                return false;
+            }
+
+            ItemStack stack = container.Slots[slotIndex];
+            if (stack.itemId <= 0 || stack.count <= 0)
+            {
+                return false;
+            }
+
+            ItemConfig itemConfig = GameEntry.Luban.Get<ItemConfig>(stack.itemId);
+            if (itemConfig == null)
+            {
+                return false;
+            }
+
+            RoundCharacterState character = _session.Party[characterIndex];
+            if (itemConfig.EquipSlot == EquipmentSlotType.Weapon)
+            {
+                if (character.WeaponItemId != 0)
+                {
+                    return false;
+                }
+            }
+            else if (itemConfig.EquipSlot == EquipmentSlotType.Armor)
+            {
+                if (character.ArmorItemId != 0)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+
+            if (!container.TryRemoveItemAt(slotIndex, 1, out int removed) || removed <= 0)
+            {
+                return false;
+            }
+
+            character.EquipItem(itemConfig);
+
+            if (fromBackpack)
+            {
+                FireBackpackChanged();
+            }
+            else
+            {
+                FireSafeCaseChanged();
+            }
+
+            FirePartyStateChanged();
+            return true;
+        }
+
+        /// <summary>
+        /// 尝试卸下角色指定装备栏的装备，优先放回背包，背包满时放入保险箱。
+        /// </summary>
+        public bool TryUnequipToContainer(int characterIndex, EquipmentSlotType slotType, out bool toBackpack, out int targetSlotIndex)
+        {
+            toBackpack = true;
+            targetSlotIndex = -1;
+
+            if (_session == null || characterIndex < 0 || characterIndex >= _session.Party.Count)
+            {
+                return false;
+            }
+
+            RoundCharacterState character = _session.Party[characterIndex];
+            int itemId = slotType == EquipmentSlotType.Weapon ? character.WeaponItemId : character.ArmorItemId;
+            if (itemId <= 0)
+            {
+                return false;
+            }
+
+            ItemConfig itemConfig = GameEntry.Luban.Get<ItemConfig>(itemId);
+            if (itemConfig == null)
+            {
+                return false;
+            }
+
+            // 1. 优先尝试放入背包
+            int added = _session.Backpack.TryAddItem(itemId, 1, out int backpackSlotIndex);
+            if (added > 0)
+            {
+                toBackpack = true;
+                targetSlotIndex = backpackSlotIndex;
+                character.UnequipItem(itemConfig);
+                FireBackpackChanged();
+                FirePartyStateChanged();
+                return true;
+            }
+
+            // 2. 背包满时尝试放入保险箱
+            added = _session.SafeCase.TryAddItem(itemId, 1, out int safeSlotIndex);
+            if (added > 0)
+            {
+                toBackpack = false;
+                targetSlotIndex = safeSlotIndex;
+                character.UnequipItem(itemConfig);
+                FireSafeCaseChanged();
+                FirePartyStateChanged();
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 将背包或保险箱指定槽位的物品作为场景实体丢弃到地图上。
+        /// </summary>
+        public bool DiscardItemFromContainer(bool fromBackpack, int slotIndex)
+        {
+            if (_session == null)
+            {
+                return false;
+            }
+
+            RoundItemContainer container = fromBackpack ? _session.Backpack : _session.SafeCase;
+            if (slotIndex < 0 || slotIndex >= container.Slots.Count)
+            {
+                return false;
+            }
+
+            ItemStack stack = container.Slots[slotIndex];
+            if (stack.itemId <= 0 || stack.count <= 0)
+            {
+                return false;
+            }
+
+            ItemConfig itemConfig = GameEntry.Luban.Get<ItemConfig>(stack.itemId);
+            if (itemConfig == null)
+            {
+                return false;
+            }
+
+            if (!container.TryRemoveItemAt(slotIndex, stack.count, out int removedCount) || removedCount <= 0)
+            {
+                return false;
+            }
+
+            if (fromBackpack)
+            {
+                FireBackpackChanged();
+            }
+            else
+            {
+                FireSafeCaseChanged();
+            }
+
+            SpawnDroppedItemEntity(stack.itemId, removedCount, itemConfig.Rarity);
+            return true;
+        }
+
+        private void SpawnDroppedItemEntity(int itemId, int count, Rarity rarity)
+        {
+            Vector3 spawnCenter = PlayerCharacterLogic.Leader != null
+                ? PlayerCharacterLogic.Leader.transform.position
+                : Vector3.zero;
+
+            GlobalConfig global = GameEntry.Luban.Global?.Data;
+            float minRadius = (global != null && global.LootRangeMinRadius > 0 ? global.LootRangeMinRadius : 500) / 1000f;
+            float maxRadius = (global != null && global.LootRangeMaxRadius > 0 ? global.LootRangeMaxRadius : 1200) / 1000f;
+
+            if (maxRadius <= minRadius)
+            {
+                maxRadius = Mathf.Max(minRadius + 0.1f, 1.2f);
+            }
+
+            Vector3 dropPosition = CalculateDropPosition(spawnCenter, minRadius, maxRadius);
+
+            string itemEntityAsset = global != null ? global.ItemEntity : "ItemEntity";
+            if (string.IsNullOrEmpty(itemEntityAsset))
+            {
+                Log.Error("GlobalConfig.ItemEntity is not configured.");
+                return;
+            }
+
+            if (GameEntry.Entity != null && !GameEntry.Entity.HasEntityGroup("Item"))
+            {
+                GameEntry.Entity.AddEntityGroup("Item", 60f, 32, 60f, 0);
+            }
+
+            int serialId = GameEntry.Entity.SerialId();
+            ItemEntityData itemData = new ItemEntityData(
+                serialId,
+                itemEntityAsset,
+                dropPosition,
+                itemId,
+                count,
+                rarity,
+                rotation: Quaternion.identity,
+                spawnFromPosition: spawnCenter);
+
+            GameEntry.Entity.ShowEntity<ItemEntityLogic>(itemData, "Item", Constant.AssetPriority.SceneAsset);
+            Log.Info("Discarded item '{0}' x{1} (Rarity: {2}) at position {3} from leader.",
+                itemId, count, rarity, dropPosition);
+        }
+
+        private Vector3 CalculateDropPosition(Vector3 center, float minRadius, float maxRadius)
+        {
+            int lootCheckLayerId = LayerMask.NameToLayer(Constant.Layer.LootCheckLayerName);
+            int layerMask = lootCheckLayerId >= 0 ? (1 << lootCheckLayerId) : 0;
+            IRoundRandomSource random = GameEntry.Random?.Random;
+
+            if (layerMask != 0)
+            {
+                const int maxAttempts = 16;
+                for (int i = 0; i < maxAttempts; i++)
+                {
+                    float angle = random != null
+                        ? random.NextInt(0, 360) * Mathf.Deg2Rad
+                        : UnityEngine.Random.Range(0f, Mathf.PI * 2f);
+
+                    float distanceRatio = random != null
+                        ? (random.NextInt(0, 1001) / 1000f)
+                        : UnityEngine.Random.value;
+                    float distance = Mathf.Lerp(minRadius, maxRadius, distanceRatio);
+
+                    Vector2 candidate = (Vector2)center + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * distance;
+                    Collider2D hit = Physics2D.OverlapPoint(candidate, layerMask);
+                    if (hit != null)
+                    {
+                        return new Vector3(candidate.x, candidate.y, center.z);
+                    }
+                }
+
+                Collider2D centerHit = Physics2D.OverlapPoint(center, layerMask);
+                if (centerHit != null)
+                {
+                    return center;
+                }
+            }
+
+            return center;
         }
     }
 }

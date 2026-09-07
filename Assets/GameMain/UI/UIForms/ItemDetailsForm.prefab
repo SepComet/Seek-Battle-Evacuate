@@ -501,7 +501,7 @@ GameObject:
   - component: {fileID: 7433963947553117608}
   - component: {fileID: 4333080805884545520}
   m_Layer: 5
-  m_Name: OpenLoadoutButton
+  m_Name: MoveBackpackButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -633,7 +633,7 @@ MonoBehaviour:
     variableName: openLoadoutButtonImage
   - component: {fileID: 7433963947553117608}
     generateReference: 1
-    variableName: openLoadoutButton
+    variableName: moveBackpackButton
 --- !u!1 &5554656631130595777
 GameObject:
   m_ObjectHideFlags: 0
@@ -1986,7 +1986,7 @@ MonoBehaviour:
   speedFormatText: {fileID: 4475856547401226535}
   stackFormatText: {fileID: 9129851160542363978}
   itemDetailDescriptionText: {fileID: 6763892873351540802}
-  openLoadoutButton: {fileID: 7433963947553117608}
+  moveBackpackButton: {fileID: 7433963947553117608}
 --- !u!114 &1610184350966444607
 MonoBehaviour:
   m_ObjectHideFlags: 0
