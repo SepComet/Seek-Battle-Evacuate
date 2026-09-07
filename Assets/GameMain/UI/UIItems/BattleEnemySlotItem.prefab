@@ -314,10 +314,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 66654602858681116}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -30}
-  m_SizeDelta: {x: -80, y: 240}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 195}
+  m_SizeDelta: {x: 220, y: 220}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!222 &14304438620706751
 CanvasRenderer:
@@ -468,7 +468,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -350}
+  m_AnchoredPosition: {x: 0, y: -300}
   m_SizeDelta: {x: -80, y: 40}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!222 &1956709582553251687
@@ -522,13 +522,14 @@ GameObject:
   - component: {fileID: 3919750086208422527}
   - component: {fileID: 3962122869308545550}
   - component: {fileID: 7014130549974408270}
+  - component: {fileID: 4221958672026191948}
   m_Layer: 5
   m_Name: BattleEnemySlotItem
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &66654602858681116
 RectTransform:
   m_ObjectHideFlags: 0
@@ -654,6 +655,34 @@ MonoBehaviour:
   enemyName: {fileID: 2436887621614352063}
   hpText: {fileID: 6548688303832215691}
   stateText: {fileID: 8640657530351062276}
+--- !u!114 &4221958672026191948
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5757760741501601689}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbaa237e23f7d4d3f85f73e0acd7eaec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  componentReferences:
+  - component: {fileID: 66654602858681116}
+    generateReference: 0
+    variableName: battleEnemySlotTemplateRectTransform
+  - component: {fileID: 8915804054968323550}
+    generateReference: 0
+    variableName: battleEnemySlotTemplateCanvasRenderer
+  - component: {fileID: 3919750086208422527}
+    generateReference: 0
+    variableName: battleEnemySlotTemplateImage
+  - component: {fileID: 3962122869308545550}
+    generateReference: 0
+    variableName: battleEnemySlotTemplateButton
+  - component: {fileID: 7014130549974408270}
+    generateReference: 1
+    variableName: battleEnemySlotTemplate
 --- !u!1 &5786947224843219099
 GameObject:
   m_ObjectHideFlags: 0
@@ -672,7 +701,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &7180864886869484082
 RectTransform:
   m_ObjectHideFlags: 0
@@ -779,7 +808,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -330}
+  m_AnchoredPosition: {x: 0, y: -280}
   m_SizeDelta: {x: -80, y: 40}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!222 &6990201675971539953

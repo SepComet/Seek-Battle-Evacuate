@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using SepCore.Definition;
+using SepCore.Entity;
 using SepCore.Exploration;
 using SepCore.UI;
 using UnityEngine;
@@ -28,6 +29,7 @@ namespace SepCore.Battle
         private Action<BattleResult> _onCompleted;
         private Action<BattleStep> _stepListener;
         private Coroutine _autoAdvanceRoutine;
+        private bool _isAutoAdvancePaused;
         private BattleOutcomeType? _lastOutcome;
         private float _escapeProtectionRemaining;
 
@@ -165,7 +167,8 @@ namespace SepCore.Battle
 
             CharacterInputBridge.DisableInput(InputDisableReason.Battle);
 
-            GameEntry.UI.OpenUIForm(UIFormType.BattleForm);
+            BattleEnterAnimationParams enterParams = BuildEnterAnimationParams(encounter);
+            GameEntry.UI.OpenUIForm(UIFormType.BattleForm, enterParams);
             Log.Info("Battle started with encounter '{0}'.", encounter.EncounterId);
 
             // M2：敌人速度更高时开局行动者为敌人，同样按间歇节奏自动推进
@@ -248,6 +251,7 @@ namespace SepCore.Battle
 
             CharacterInputBridge.EnableInput(InputDisableReason.Battle);
 
+            _isAutoAdvancePaused = false;
             _battleActive = false;
             Log.Info("Battle closed.");
         }
@@ -268,6 +272,15 @@ namespace SepCore.Battle
         public void SetTimerPaused(bool paused)
         {
             _timerPaused = paused;
+        }
+
+        /// <summary>
+        /// 设置自动推进暂停状态。进战入场动画等过渡期间可暂停，避免先手行动在动画未播完前触发。
+        /// </summary>
+        /// <param name="paused">是否暂停自动推进。</param>
+        public void SetAutoAdvancePaused(bool paused)
+        {
+            _isAutoAdvancePaused = paused;
         }
 
         private void Update()
@@ -335,7 +348,17 @@ namespace SepCore.Battle
 
             while (NeedsAutoAdvance())
             {
+                while (_isAutoAdvancePaused)
+                {
+                    yield return null;
+                }
+
                 yield return new WaitForSeconds(advanceDelaySeconds);
+
+                while (_isAutoAdvancePaused)
+                {
+                    yield return null;
+                }
 
                 // 眩晕玩家走跳过推进，其余自动行动者（敌人，含眩晕敌人）走敌人回合推进
                 BattleUnit actor = _runtime.CurrentActor;
@@ -422,8 +445,51 @@ namespace SepCore.Battle
             _onCompleted = null;
             _lastOutcome = null;
             StopAutoAdvance();
+            _isAutoAdvancePaused = false;
             _stepListener = null;
             CharacterInputBridge.EnableInput(InputDisableReason.Battle);
+        }
+
+        private BattleEnterAnimationParams BuildEnterAnimationParams(BattleEncounter encounter)
+        {
+            Camera mainCamera = Camera.main;
+            if (mainCamera == null)
+            {
+                return null;
+            }
+
+            BattleEnterAnimationParams enterParams = new BattleEnterAnimationParams();
+
+            // 1. 敌人队伍屏幕坐标
+            UnityGameFramework.Runtime.Entity enemyEntity = GameEntry.Entity != null
+                ? GameEntry.Entity.GetEntity(encounter.EncounterId)
+                : null;
+            if (enemyEntity != null)
+            {
+                enterParams.EnemyScreenPosition = mainCamera.WorldToScreenPoint(enemyEntity.transform.position);
+            }
+            else
+            {
+                enterParams.EnemyScreenPosition = new Vector3(Screen.width * 0.5f, Screen.height * 0.65f, 0f);
+            }
+
+            // 2. 玩家小队屏幕坐标
+            PlayerCharacterLogic leader = PlayerCharacterLogic.Leader;
+            Vector3 leaderScreenPos = (leader != null && leader.Available)
+                ? mainCamera.WorldToScreenPoint(leader.transform.position)
+                : new Vector3(Screen.width * 0.5f, Screen.height * 0.35f, 0f);
+
+            enterParams.PlayerScreenPositions.Add(leaderScreenPos);
+
+            int totalPlayers = Mathf.Max(1, _players.Count);
+            for (int i = 1; i < totalPlayers; i++)
+            {
+                float offsetX = (i % 2 == 1 ? -40f : 40f) * ((i + 1) / 2);
+                float offsetY = -20f * i;
+                enterParams.PlayerScreenPositions.Add(leaderScreenPos + new Vector3(offsetX, offsetY, 0f));
+            }
+
+            return enterParams;
         }
     }
 }

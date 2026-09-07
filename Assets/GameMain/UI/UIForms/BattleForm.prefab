@@ -243,7 +243,7 @@ MonoBehaviour:
   - {fileID: 2534326982996918661}
   - {fileID: 1454256372456103569}
   - {fileID: 5276602230031808010}
-  - {fileID: 1617943789605348407}
+  - {fileID: 2668546567632315718}
   - {fileID: 800628478403685733}
   - {fileID: 3715817736776423385}
   - {fileID: 8817501340796591135}
@@ -8011,133 +8011,37 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 4195264261407777418, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
-      propertyPath: m_AnchorMax.x
-      value: 0.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 4195264261407777418, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
-      propertyPath: m_AnchorMax.y
-      value: 0.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 4195264261407777418, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
-      propertyPath: m_AnchorMin.x
-      value: 0.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 4195264261407777418, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
-      propertyPath: m_AnchorMin.y
-      value: 0.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 4195264261407777418, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
-      propertyPath: m_SizeDelta.x
-      value: 220
-      objectReference: {fileID: 0}
-    - target: {fileID: 4195264261407777418, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
-      propertyPath: m_SizeDelta.y
-      value: 220
-      objectReference: {fileID: 0}
-    - target: {fileID: 4195264261407777418, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
-      propertyPath: m_AnchoredPosition.y
-      value: 195
-      objectReference: {fileID: 0}
-    - target: {fileID: 4530832911368872301, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
-      propertyPath: m_AnchoredPosition.y
-      value: -300
-      objectReference: {fileID: 0}
     - target: {fileID: 5757760741501601689, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
       propertyPath: m_Name
       value: BattleEnemySlotTemplate
       objectReference: {fileID: 0}
-    - target: {fileID: 5757760741501601689, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5786947224843219099, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8288357573332182777, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
-      propertyPath: m_AnchoredPosition.y
-      value: -280
-      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 5757760741501601689, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1617943789605348407}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
 --- !u!224 &2266212211947404822 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 66654602858681116, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
   m_PrefabInstance: {fileID: 2278819203313020170}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &2982425548130219780 stripped
+--- !u!114 &2668546567632315718 stripped
 MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 3962122869308545550, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
+  m_CorrespondingSourceObject: {fileID: 4221958672026191948, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
   m_PrefabInstance: {fileID: 2278819203313020170}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5798473711982684819}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!114 &3024802746555248501 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 3919750086208422527, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
-  m_PrefabInstance: {fileID: 2278819203313020170}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5798473711982684819}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!1 &5798473711982684819 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 5757760741501601689, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
-  m_PrefabInstance: {fileID: 2278819203313020170}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1617943789605348407
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5798473711982684819}
+  m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fbaa237e23f7d4d3f85f73e0acd7eaec, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  componentReferences:
-  - component: {fileID: 2266212211947404822}
-    generateReference: 0
-    variableName: battleEnemySlotTemplateRectTransform
-  - component: {fileID: 7216087602641789140}
-    generateReference: 0
-    variableName: battleEnemySlotTemplateCanvasRenderer
-  - component: {fileID: 3024802746555248501}
-    generateReference: 0
-    variableName: battleEnemySlotTemplateImage
-  - component: {fileID: 2982425548130219780}
-    generateReference: 0
-    variableName: battleEnemySlotTemplateButton
-  - component: {fileID: 9135779921912607044}
-    generateReference: 1
-    variableName: battleEnemySlotTemplate
---- !u!222 &7216087602641789140 stripped
-CanvasRenderer:
-  m_CorrespondingSourceObject: {fileID: 8915804054968323550, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
-  m_PrefabInstance: {fileID: 2278819203313020170}
-  m_PrefabAsset: {fileID: 0}
 --- !u!114 &9135779921912607044 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 7014130549974408270, guid: 37620799d96fb400b8015d9b961f65ea, type: 3}
   m_PrefabInstance: {fileID: 2278819203313020170}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5798473711982684819}
+  m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8efb693fb8da3406ea05e81cb56a6c20, type: 3}

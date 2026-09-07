@@ -1,5 +1,6 @@
 using System;
 using Cysharp.Threading.Tasks;
+using DG.Tweening;
 using SepCore.AsyncTask;
 using SepCore.Battle;
 using SepCore.Definition;
@@ -25,6 +26,15 @@ namespace SepCore.UI
         private int _iconVersion;
         private int _currentUnitId;
         private Action<int> _onClick;
+        private bool _hasCachedOriginalTransform;
+        private Vector3 _iconOriginalLocalPos;
+        private Vector3 _iconOriginalScale;
+        private Sequence _enterSequence;
+        private bool _isDefeated;
+        private bool _isEscaped;
+        private bool _hasCachedCardLocalPos;
+        private Vector3 _cardOriginalLocalPos;
+        private Sequence _celebrateSequence;
 
         public int CurrentUnitId => _currentUnitId;
 
@@ -32,6 +42,34 @@ namespace SepCore.UI
         {
             _button.onClick.RemoveListener(OnCardButtonClick);
             _button.onClick.AddListener(OnCardButtonClick);
+            EnsureCachedOriginalTransform();
+            EnsureCachedCardLocalPos();
+        }
+
+        private void OnDisable()
+        {
+            ResetVisualState();
+        }
+
+        private void EnsureCachedCardLocalPos()
+        {
+            if (!_hasCachedCardLocalPos)
+            {
+                _cardOriginalLocalPos = transform.localPosition;
+                _hasCachedCardLocalPos = true;
+            }
+        }
+
+        private void EnsureCachedOriginalTransform()
+        {
+            if (_hasCachedOriginalTransform || _icon == null)
+            {
+                return;
+            }
+
+            _iconOriginalLocalPos = _icon.rectTransform.localPosition;
+            _iconOriginalScale = _icon.rectTransform.localScale;
+            _hasCachedOriginalTransform = true;
         }
 
         private void OnCardButtonClick()
@@ -46,12 +84,149 @@ namespace SepCore.UI
             _button.onClick.AddListener(OnCardButtonClick);
         }
 
+        public void SetDetailsVisible(bool visible)
+        {
+            if (_characterName != null) _characterName.gameObject.SetActive(visible);
+            if (_hpText != null) _hpText.gameObject.SetActive(visible);
+            if (_mpText != null) _mpText.gameObject.SetActive(visible);
+            if (_hpFill != null) _hpFill.gameObject.SetActive(visible);
+            if (_mpFill != null) _mpFill.gameObject.SetActive(visible);
+            if (_activeMarker != null && !visible) _activeMarker.SetActive(false);
+        }
+
+        /// <summary>
+        /// 播放卡片头像从大地图屏幕投影坐标飞入嵌合的入场动画。
+        /// </summary>
+        /// <param name="startScreenPos">大地图实体在当前屏幕上的像素坐标。</param>
+        /// <param name="delay">错峰延迟时间（秒）。</param>
+        /// <param name="onComplete">单个卡片入场嵌合完成回调。</param>
+        public void PlayEnterAnimation(Vector3 startScreenPos, float delay, Action onComplete = null)
+        {
+            if (_icon == null)
+            {
+                onComplete?.Invoke();
+                return;
+            }
+
+            EnsureCachedOriginalTransform();
+            ResetVisualState();
+
+            RectTransform parentRect = _icon.rectTransform.parent as RectTransform;
+            Canvas canvas = GetComponentInParent<Canvas>();
+            Camera uiCamera = (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                ? canvas.worldCamera
+                : null;
+
+            if (parentRect != null && RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                    parentRect, startScreenPos, uiCamera, out Vector2 startLocalPos))
+            {
+                _icon.rectTransform.localPosition = startLocalPos;
+            }
+            else
+            {
+                _icon.rectTransform.localPosition = _iconOriginalLocalPos;
+            }
+
+            _icon.rectTransform.localScale = _iconOriginalScale * 0.35f;
+            SetDetailsVisible(false);
+
+            _enterSequence?.Kill();
+            _enterSequence = DOTween.Sequence();
+
+            if (delay > 0f)
+            {
+                _enterSequence.AppendInterval(delay);
+            }
+
+            _enterSequence.Append(_icon.rectTransform.DOLocalMove(_iconOriginalLocalPos, 0.42f).SetEase(Ease.OutCubic));
+            _enterSequence.Join(_icon.rectTransform.DOScale(_iconOriginalScale, 0.42f).SetEase(Ease.OutBack));
+
+            _enterSequence.AppendCallback(() =>
+            {
+                SetDetailsVisible(true);
+                _icon.rectTransform.DOPunchScale(new Vector3(0.12f, -0.12f, 0f), 0.15f);
+            });
+
+            _enterSequence.AppendInterval(0.15f);
+            _enterSequence.OnComplete(() =>
+            {
+                _enterSequence = null;
+                onComplete?.Invoke();
+            });
+        }
+
+        /// <summary>
+        /// 播放战斗胜利时存活角色的轻弹跳跃庆祝动画。
+        /// </summary>
+        /// <param name="delay">错峰延迟时间（秒）。</param>
+        public void PlayVictoryCelebrate(float delay)
+        {
+            if (_isDefeated || _isEscaped)
+            {
+                return;
+            }
+
+            EnsureCachedCardLocalPos();
+            transform.DOKill();
+            transform.localPosition = _cardOriginalLocalPos;
+
+            _celebrateSequence?.Kill();
+            _celebrateSequence = DOTween.Sequence();
+
+            if (delay > 0f)
+            {
+                _celebrateSequence.AppendInterval(delay);
+            }
+
+            // 向上轻弹跳跃 15 像素
+            _celebrateSequence.Append(transform.DOPunchPosition(new Vector3(0f, 15f, 0f), 0.35f, 5, 0.5f));
+            _celebrateSequence.OnComplete(() =>
+            {
+                _celebrateSequence = null;
+            });
+        }
+
+        /// <summary>
+        /// 重置视觉状态，停止正在执行的入场/庆祝动画并复原卡片坐标、头像坐标与详情可见性。
+        /// </summary>
+        public void ResetVisualState()
+        {
+            if (_enterSequence != null)
+            {
+                _enterSequence.Kill();
+                _enterSequence = null;
+            }
+
+            if (_celebrateSequence != null)
+            {
+                _celebrateSequence.Kill();
+                _celebrateSequence = null;
+            }
+
+            if (_hasCachedCardLocalPos)
+            {
+                transform.DOKill();
+                transform.localPosition = _cardOriginalLocalPos;
+            }
+
+            if (_icon != null && _hasCachedOriginalTransform)
+            {
+                _icon.rectTransform.DOKill();
+                _icon.rectTransform.localPosition = _iconOriginalLocalPos;
+                _icon.rectTransform.localScale = _iconOriginalScale;
+            }
+
+            SetDetailsVisible(true);
+        }
+
         /// <summary>
         /// 用战斗单位视图填充我方卡片：名称、HP/MP 数值与血条、当前行动者标记和配置图标。
         /// 同一单位复用时不重复加载图标。
         /// </summary>
         public void SetUnit(BattleUnitView unit, bool isCurrentActor, bool isSelectedTarget = false)
         {
+            _isDefeated = unit.IsDefeated;
+            _isEscaped = unit.IsEscaped;
             _button.interactable = !unit.IsDefeated && !unit.IsEscaped;
 
             _characterName.text = BattleUnitViewHelper.GetDisplayName(unit);

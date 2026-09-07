@@ -13,16 +13,26 @@ namespace SepCore.UI
     public partial class LobbyForm : UGuiForm
     {
         private const float SelectionMarkerMoveDuration = 0.25f;
+        private GameObject _loadoutPage;
+        private LoadoutForm _loadoutForm;
+        private LobbyPage _currentPage = LobbyPage.CombatReadiness;
 
         private enum LobbyPage
         {
             CombatReadiness,
             Warehouse,
+            Loadout,
         }
 
         protected override void OnInit(object userData)
         {
             base.OnInit(userData);
+
+            _loadoutPage = transform.Find("SafeFrame/LoadoutForm").gameObject;
+            if (_loadoutPage != null)
+            {
+                _loadoutForm = _loadoutPage.GetComponent<LoadoutForm>();
+            }
 
             View.homeToggle.onValueChanged.AddListener(OnHomeToggleValueChanged);
             View.warehouseToggle.onValueChanged.AddListener(OnWarehouseToggleValueChanged);
@@ -37,6 +47,11 @@ namespace SepCore.UI
 
         protected override void OnClose(bool isShutdown, object userData)
         {
+            if (_currentPage == LobbyPage.Loadout)
+            {
+                GameEntry.Save.Save();
+            }
+
             if (View.selectionMarkerObject != null)
             {
                 View.selectionMarkerObject.DOKill();
@@ -67,17 +82,29 @@ namespace SepCore.UI
 
         private void OnLoadoutToggleValueChanged(bool isOn)
         {
-            // 战备页暂无对应界面，选中状态由 ToggleGroup 维护，仅预留切换入口
+            if (isOn)
+            {
+                SwitchPage(LobbyPage.Loadout, View.loadoutToggle);
+            }
         }
 
         private void SwitchPage(LobbyPage page, Toggle activeToggle)
         {
+            if (_currentPage == LobbyPage.Loadout && page != LobbyPage.Loadout)
+            {
+                GameEntry.Save.Save();
+            }
+
+            _currentPage = page;
             bool showCombatReadiness = page == LobbyPage.CombatReadiness;
             bool showWarehouse = page == LobbyPage.Warehouse;
+            bool showLoadout = page == LobbyPage.Loadout;
 
-            if (View.combatReadinessForm != null)
+            _loadoutPage.SetActive(showLoadout);
+
+            if (View.homeForm != null)
             {
-                View.combatReadinessForm.gameObject.SetActive(showCombatReadiness);
+                View.homeForm.gameObject.SetActive(showCombatReadiness);
             }
 
             if (View.warehouseForm != null)
@@ -95,6 +122,11 @@ namespace SepCore.UI
             if (showWarehouse)
             {
                 RefreshWarehouse();
+            }
+
+            if (showLoadout)
+            {
+                RefreshLoadout();
             }
         }
 
@@ -121,7 +153,7 @@ namespace SepCore.UI
 
         private void RefreshCombatReadiness()
         {
-            CombatReadinessForm form = View.combatReadinessForm;
+            HomeForm form = View.homeForm;
             if (form == null)
             {
                 Log.Warning("LobbyForm combat readiness form is not configured.");
@@ -156,6 +188,22 @@ namespace SepCore.UI
 
             SaveData save = GameEntry.Save.Data;
             View.warehouseForm.Refresh(save != null ? save.mainWarehouse : null);
+        }
+
+        private void RefreshLoadout()
+        {
+            if (_loadoutForm == null && _loadoutPage != null)
+            {
+                _loadoutForm = _loadoutPage.GetComponent<LoadoutForm>();
+            }
+
+            if (_loadoutForm == null)
+            {
+                Log.Warning("LobbyForm loadout form component is not configured.");
+                return;
+            }
+
+            _loadoutForm.Refresh();
         }
     }
 }

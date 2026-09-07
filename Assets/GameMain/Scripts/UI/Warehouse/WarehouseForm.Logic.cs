@@ -46,6 +46,22 @@ namespace SepCore.UI
             GameEntry.Event.Subscribe(WarehouseSlotItemClickEventArgs.EventId, OnWarehouseSlotItemClick);
         }
 
+        public void UnbindEvent()
+        {
+            if (!_eventBound)
+            {
+                return;
+            }
+
+            _eventBound = false;
+            GameEntry.Event.Unsubscribe(WarehouseSlotItemClickEventArgs.EventId, OnWarehouseSlotItemClick);
+        }
+
+        private void OnDisable()
+        {
+            UnbindEvent();
+        }
+
         private void OnWarehouseSlotItemClick(object sender, GameEventArgs e)
         {
             if (this == null)

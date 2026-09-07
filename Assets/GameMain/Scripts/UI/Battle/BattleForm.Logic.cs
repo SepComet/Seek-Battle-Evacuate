@@ -1,10 +1,10 @@
 using System.Collections.Generic;
+using DG.Tweening;
 using SepCore.Base;
 using SepCore.Battle;
 using SepCore.Definition;
 using SepCore.Exploration;
 using UnityEngine;
-using UnityGameFramework.Runtime;
 
 namespace SepCore.UI
 {
@@ -25,6 +25,10 @@ namespace SepCore.UI
         private int _pendingActionConfigId;
         private int _displayedActorId;
         private int _selectedTargetUnitId;
+        private bool _isEnteringAnimation;
+        private Tween _turnSlotsFadeTween;
+        private Tween _delayedEnterCall;
+        private Sequence _victorySequence;
 
         /// <summary>
         /// 战斗结果展示停留时间（秒），之后非全灭结果自动关闭战斗界面。
@@ -65,7 +69,88 @@ namespace SepCore.UI
             _turnSlots.Clear();
             _turnSlotUnitIds.Clear();
             _enemySlots.Clear();
-            Refresh(GameEntry.TurnBattle.GetViewState());
+
+            BattleViewState initialViewState = GameEntry.TurnBattle != null ? GameEntry.TurnBattle.GetViewState() : null;
+            Refresh(initialViewState);
+
+            BattleEnterAnimationParams enterParams = userData as BattleEnterAnimationParams;
+            if (enterParams != null && initialViewState != null)
+            {
+                StartEnterAnimation(enterParams, initialViewState);
+            }
+            else
+            {
+                _isEnteringAnimation = false;
+            }
+        }
+
+        private void StartEnterAnimation(BattleEnterAnimationParams enterParams, BattleViewState view)
+        {
+            _isEnteringAnimation = true;
+            GameEntry.TurnBattle?.SetAutoAdvancePaused(true);
+
+            // 1. 禁用所有操作面板按钮与文本提示
+            View.attackButton.interactable = false;
+            View.skillButton.interactable = false;
+            View.escapeButton.interactable = false;
+            View.itemButton.interactable = false;
+            View.currentActorText.text = string.Empty;
+            View.tipText.text = string.Empty;
+
+            // 2. 回合顺位栏先隐藏
+            CanvasGroup turnGroup = View.turnSlotsRoot.gameObject.GetOrAddComponent<CanvasGroup>();
+            _turnSlotsFadeTween?.Kill();
+            turnGroup.alpha = 0f;
+
+            // 3. 玩家卡片错峰飞入
+            int activePlayerCount = 0;
+            for (int i = 0; i < 4; i++)
+            {
+                BattleActorCardItem card = GetPlayerCard(i);
+                if (card != null && card.gameObject.activeSelf)
+                {
+                    Vector3 startPos = (enterParams.PlayerScreenPositions != null && i < enterParams.PlayerScreenPositions.Count)
+                        ? enterParams.PlayerScreenPositions[i]
+                        : (enterParams.PlayerScreenPositions != null && enterParams.PlayerScreenPositions.Count > 0
+                            ? enterParams.PlayerScreenPositions[0]
+                            : enterParams.EnemyScreenPosition);
+
+                    card.PlayEnterAnimation(startPos, i * 0.08f);
+                    activePlayerCount++;
+                }
+            }
+
+            // 4. 敌人槽位错峰飞入（从同一个敌人队伍地图点扇出）
+            for (int i = 0; i < _enemySlots.Count; i++)
+            {
+                _enemySlots[i].PlayEnterAnimation(enterParams.EnemyScreenPosition, 0.1f + i * 0.08f);
+            }
+
+            // 5. 计算全员就位时长并注册完成回调
+            float maxDuration = Mathf.Max(activePlayerCount * 0.08f, 0.1f + _enemySlots.Count * 0.08f) + 0.62f;
+
+            _delayedEnterCall?.Kill();
+            _delayedEnterCall = DOVirtual.DelayedCall(maxDuration, () =>
+            {
+                OnEnterAnimationComplete(view);
+            });
+        }
+
+        private void OnEnterAnimationComplete(BattleViewState view)
+        {
+            _isEnteringAnimation = false;
+            _delayedEnterCall = null;
+
+            // 顺位栏淡入
+            CanvasGroup turnGroup = View.turnSlotsRoot.gameObject.GetOrAddComponent<CanvasGroup>();
+            _turnSlotsFadeTween?.Kill();
+            _turnSlotsFadeTween = turnGroup.DOFade(1f, 0.25f);
+
+            // 恢复操作面板
+            RefreshActionPanel(view);
+
+            // 解除自动推进暂停（若敌人先手或眩晕，正式开始调度）
+            GameEntry.TurnBattle?.SetAutoAdvancePaused(false);
         }
 
         protected override void OnClose(bool isShutdown, object userData)
@@ -75,12 +160,45 @@ namespace SepCore.UI
             if (GameEntry.TurnBattle != null)
             {
                 GameEntry.TurnBattle.SetStepListener(null);
+                GameEntry.TurnBattle.SetAutoAdvancePaused(false);
             }
 
             View.attackButton.onClick.RemoveListener(OnAttackButtonClick);
             View.skillButton.onClick.RemoveListener(OnSkillButtonClick);
             View.itemButton.onClick.RemoveListener(OnItemButtonClick);
             View.escapeButton.onClick.RemoveListener(OnEscapeButtonClick);
+
+            _delayedEnterCall?.Kill();
+            _delayedEnterCall = null;
+            _turnSlotsFadeTween?.Kill();
+            _turnSlotsFadeTween = null;
+            _victorySequence?.Kill();
+            _victorySequence = null;
+            _isEnteringAnimation = false;
+
+            for (int i = 0; i < 4; i++)
+            {
+                BattleActorCardItem card = GetPlayerCard(i);
+                card?.ResetVisualState();
+            }
+
+            for (int i = 0; i < _enemySlots.Count; i++)
+            {
+                _enemySlots[i]?.ResetVisualState();
+            }
+
+            CanvasGroup turnGroup = View.turnSlotsRoot.GetComponent<CanvasGroup>();
+            if (turnGroup != null)
+            {
+                turnGroup.alpha = 1f;
+            }
+
+            CanvasGroup formGroup = GetComponent<CanvasGroup>();
+            if (formGroup != null)
+            {
+                formGroup.DOKill();
+                formGroup.alpha = 1f;
+            }
 
             _pendingCommandType = BattleActionType.None;
             _pendingActionConfigId = 0;
@@ -92,6 +210,11 @@ namespace SepCore.UI
 
         private void OnAttackButtonClick()
         {
+            if (_isEnteringAnimation)
+            {
+                return;
+            }
+
             BattleViewState view = GameEntry.TurnBattle.GetViewState();
             if (view == null || view.CurrentActorUnitId == 0)
             {
@@ -126,6 +249,11 @@ namespace SepCore.UI
 
         private void OnSkillButtonClick()
         {
+            if (_isEnteringAnimation)
+            {
+                return;
+            }
+
             BattleViewState view = GameEntry.TurnBattle.GetViewState();
             if (view == null || view.CurrentActorUnitId == 0)
             {
@@ -190,7 +318,7 @@ namespace SepCore.UI
 
         private void OnEnemySlotClick(int targetEnemyUnitId)
         {
-            if (_pendingCommandType == BattleActionType.None || _pendingActionConfigId == 0)
+            if (_isEnteringAnimation || _pendingCommandType == BattleActionType.None || _pendingActionConfigId == 0)
             {
                 return;
             }
@@ -238,7 +366,7 @@ namespace SepCore.UI
 
         private void OnPlayerCardClick(int targetPlayerUnitId)
         {
-            if (_pendingCommandType == BattleActionType.None)
+            if (_isEnteringAnimation || _pendingCommandType == BattleActionType.None)
             {
                 return;
             }
@@ -343,11 +471,75 @@ namespace SepCore.UI
                 {
                     StartCoroutine(CloseAfterTotalDefeatDelay(step.Result));
                 }
+                else if (step.Result.Outcome == BattleOutcomeType.Victory)
+                {
+                    PlayVictorySequence(step.Result);
+                }
                 else
                 {
                     StartCoroutine(CloseAfterResultDelay(step.Result));
                 }
             }
+        }
+
+        /// <summary>
+        /// 播放战斗胜利退出序列：存活队员轻弹庆祝、敌方槽位微幅上浮消散淡出、顺位栏淡出、全屏渐隐后关闭战斗。
+        /// </summary>
+        private void PlayVictorySequence(BattleResult result)
+        {
+            _victorySequence?.Kill();
+            _victorySequence = DOTween.Sequence();
+
+            // 1. 锁定所有操作面板按钮与交互
+            View.attackButton.interactable = false;
+            View.skillButton.interactable = false;
+            View.escapeButton.interactable = false;
+            View.itemButton.interactable = false;
+            View.currentActorText.text = GetOutcomeText(result.Outcome);
+            View.tipText.text = string.Empty;
+
+            // 2. 存活玩家卡片错峰轻弹跳跃庆祝
+            for (int i = 0; i < 4; i++)
+            {
+                BattleActorCardItem card = GetPlayerCard(i);
+                if (card != null && card.gameObject.activeSelf)
+                {
+                    card.PlayVictoryCelebrate(i * 0.05f);
+                }
+            }
+
+            // 3. 所有敌人槽位微幅上浮消散淡出
+            for (int i = 0; i < _enemySlots.Count; i++)
+            {
+                _enemySlots[i].PlayVictoryFadeOut(i * 0.06f);
+            }
+
+            // 4. 顶部回合顺位栏同步淡出
+            CanvasGroup turnGroup = View.turnSlotsRoot.GetComponent<CanvasGroup>();
+            if (turnGroup != null)
+            {
+                _turnSlotsFadeTween?.Kill();
+                _turnSlotsFadeTween = turnGroup.DOFade(0f, 0.35f);
+            }
+
+            // 5. 保持展示并短暂停留，给玩家战果反馈（淡出约 0.4s + 停留 0.35s = 0.75s）
+            _victorySequence.AppendInterval(0.75f);
+
+            // 6. 整个 BattleForm 渐隐后正式关闭战斗
+            CanvasGroup formGroup = GetComponent<CanvasGroup>();
+            if (formGroup != null)
+            {
+                _victorySequence.Append(formGroup.DOFade(0f, 0.3f));
+            }
+
+            _victorySequence.OnComplete(() =>
+            {
+                _victorySequence = null;
+                if (_result == result && GameEntry.TurnBattle != null && GameEntry.TurnBattle.IsBattleActive)
+                {
+                    GameEntry.TurnBattle.CloseBattle();
+                }
+            });
         }
 
         /// <summary>
@@ -791,6 +983,11 @@ namespace SepCore.UI
 
         private void OnEscapeButtonClick()
         {
+            if (_isEnteringAnimation)
+            {
+                return;
+            }
+
             BattleViewState view = GameEntry.TurnBattle.GetViewState();
             if (view == null || view.CurrentActorUnitId == 0)
             {

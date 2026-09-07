@@ -1,11 +1,13 @@
 using System;
 using Cysharp.Threading.Tasks;
+using DG.Tweening;
 using SepCore.AsyncTask;
 using SepCore.Battle;
 using SepCore.Definition;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityGameFramework.Runtime;
 
 namespace SepCore.UI
 {
@@ -23,8 +25,47 @@ namespace SepCore.UI
         private int _iconVersion;
         private int _currentUnitId;
         private Action<int> _onClick;
+        private bool _hasCachedOriginalTransform;
+        private Vector3 _iconOriginalLocalPos;
+        private Vector3 _iconOriginalScale;
+        private Sequence _enterSequence;
+        private bool _hasCachedSlotLocalPos;
+        private Vector3 _slotOriginalLocalPos;
+        private Sequence _fadeSequence;
 
         public int CurrentUnitId => _currentUnitId;
+
+        private void Awake()
+        {
+            EnsureCachedOriginalTransform();
+            EnsureCachedSlotLocalPos();
+        }
+
+        private void OnDisable()
+        {
+            ResetVisualState();
+        }
+
+        private void EnsureCachedSlotLocalPos()
+        {
+            if (!_hasCachedSlotLocalPos)
+            {
+                _slotOriginalLocalPos = transform.localPosition;
+                _hasCachedSlotLocalPos = true;
+            }
+        }
+
+        private void EnsureCachedOriginalTransform()
+        {
+            if (_hasCachedOriginalTransform || icon == null)
+            {
+                return;
+            }
+
+            _iconOriginalLocalPos = icon.rectTransform.localPosition;
+            _iconOriginalScale = icon.rectTransform.localScale;
+            _hasCachedOriginalTransform = true;
+        }
 
         public void SetOnClick(Action<int> onClick)
         {
@@ -34,6 +75,147 @@ namespace SepCore.UI
             {
                 targetButton.onClick.AddListener(() => _onClick(_currentUnitId));
             }
+        }
+
+        public void SetDetailsVisible(bool visible)
+        {
+            enemyName.gameObject.SetActive(visible);
+            hpText.gameObject.SetActive(visible);
+            hpFill.gameObject.SetActive(visible);
+            stateText.gameObject.SetActive(visible);
+            if (!visible) selectedMarker.SetActive(false);
+        }
+
+        /// <summary>
+        /// 播放敌人头像从大地图屏幕投影坐标飞入嵌合的入场动画。
+        /// </summary>
+        /// <param name="startScreenPos">大地图敌人小队在当前屏幕上的像素坐标。</param>
+        /// <param name="delay">错峰延迟时间（秒）。</param>
+        /// <param name="onComplete">单个卡片入场嵌合完成回调。</param>
+        public void PlayEnterAnimation(Vector3 startScreenPos, float delay, Action onComplete = null)
+        {
+            if (icon == null)
+            {
+                onComplete?.Invoke();
+                return;
+            }
+
+            EnsureCachedOriginalTransform();
+            ResetVisualState();
+
+            RectTransform parentRect = icon.rectTransform.parent as RectTransform;
+            Canvas canvas = GetComponentInParent<Canvas>();
+            Camera uiCamera = (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                ? canvas.worldCamera
+                : null;
+
+            if (parentRect != null && RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                    parentRect, startScreenPos, uiCamera, out Vector2 startLocalPos))
+            {
+                icon.rectTransform.localPosition = startLocalPos;
+            }
+            else
+            {
+                icon.rectTransform.localPosition = _iconOriginalLocalPos;
+            }
+
+            icon.rectTransform.localScale = _iconOriginalScale * 0.35f;
+            SetDetailsVisible(false);
+
+            _enterSequence?.Kill();
+            _enterSequence = DOTween.Sequence();
+
+            if (delay > 0f)
+            {
+                _enterSequence.AppendInterval(delay);
+            }
+
+            _enterSequence.Append(icon.rectTransform.DOLocalMove(_iconOriginalLocalPos, 0.42f).SetEase(Ease.OutCubic));
+            _enterSequence.Join(icon.rectTransform.DOScale(_iconOriginalScale, 0.42f).SetEase(Ease.OutBack));
+
+            _enterSequence.AppendCallback(() =>
+            {
+                SetDetailsVisible(true);
+                icon.rectTransform.DOPunchScale(new Vector3(0.12f, -0.12f, 0f), 0.15f);
+            });
+
+            _enterSequence.AppendInterval(0.15f);
+            _enterSequence.OnComplete(() =>
+            {
+                _enterSequence = null;
+                onComplete?.Invoke();
+            });
+        }
+
+        /// <summary>
+        /// 播放战斗胜利时敌人槽位微幅上浮消散淡出动画。
+        /// </summary>
+        /// <param name="delay">错峰延迟时间（秒）。</param>
+        /// <param name="onComplete">淡出完成回调。</param>
+        public void PlayVictoryFadeOut(float delay, Action onComplete = null)
+        {
+            EnsureCachedSlotLocalPos();
+
+            CanvasGroup group = gameObject.GetOrAddComponent<CanvasGroup>();
+            group.DOKill();
+            transform.DOKill();
+
+            _fadeSequence?.Kill();
+            _fadeSequence = DOTween.Sequence();
+
+            if (delay > 0f)
+            {
+                _fadeSequence.AppendInterval(delay);
+            }
+
+            // 微幅上浮 20px 并淡出 0.35s
+            _fadeSequence.Append(group.DOFade(0f, 0.35f).SetEase(Ease.OutQuad));
+            _fadeSequence.Join(transform.DOLocalMoveY(_slotOriginalLocalPos.y + 20f, 0.35f).SetEase(Ease.OutQuad));
+            _fadeSequence.OnComplete(() =>
+            {
+                _fadeSequence = null;
+                onComplete?.Invoke();
+            });
+        }
+
+        /// <summary>
+        /// 重置视觉状态，停止正在执行的入场/胜利动画并复原头像坐标、槽位位置与详情可见性。
+        /// </summary>
+        public void ResetVisualState()
+        {
+            if (_enterSequence != null)
+            {
+                _enterSequence.Kill();
+                _enterSequence = null;
+            }
+
+            if (_fadeSequence != null)
+            {
+                _fadeSequence.Kill();
+                _fadeSequence = null;
+            }
+
+            if (icon != null && _hasCachedOriginalTransform)
+            {
+                icon.rectTransform.DOKill();
+                icon.rectTransform.localPosition = _iconOriginalLocalPos;
+                icon.rectTransform.localScale = _iconOriginalScale;
+            }
+
+            if (_hasCachedSlotLocalPos)
+            {
+                transform.DOKill();
+                transform.localPosition = _slotOriginalLocalPos;
+            }
+
+            CanvasGroup group = GetComponent<CanvasGroup>();
+            if (group != null)
+            {
+                group.DOKill();
+                group.alpha = 1f;
+            }
+
+            SetDetailsVisible(true);
         }
 
         /// <summary>

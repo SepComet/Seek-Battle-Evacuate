@@ -18,8 +18,39 @@ namespace SepCore.UI
         [SerializeField] private FormatTextUI _speedText;
         [SerializeField] private FormatTextUI _atkText;
         [SerializeField] private FormatTextUI _matText;
+        [SerializeField] private Button _button;
+
+        private static readonly Color SelectedBgColor = new Color(0.86f, 0.95f, 1f, 1f);
 
         private int _iconVersion = 0;
+        private System.Action _onClick = null;
+
+        /// <summary>
+        /// 设置格子点击回调。
+        /// </summary>
+        public void SetOnClick(System.Action onClick)
+        {
+            _onClick = onClick;
+            if (_button != null)
+            {
+                _button.onClick.RemoveAllListeners();
+                if (_onClick != null)
+                {
+                    _button.onClick.AddListener(() => _onClick?.Invoke());
+                }
+            }
+        }
+
+        /// <summary>
+        /// 设置选中高亮。
+        /// </summary>
+        public void SetSelected(bool selected)
+        {
+            if (_bg != null)
+            {
+                _bg.color = selected ? SelectedBgColor : Color.white;
+            }
+        }
 
         /// <summary>
         /// 用存档角色填充格子；角色配置不存在时按空格子显示。
@@ -57,6 +88,12 @@ namespace SepCore.UI
             _atkText.Clear();
             _matText.Clear();
             HideIcon();
+            SetSelected(false);
+            if (_button != null)
+            {
+                _button.onClick.RemoveAllListeners();
+            }
+            _onClick = null;
         }
 
         private void HideIcon()

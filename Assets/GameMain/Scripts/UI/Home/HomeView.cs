@@ -4,9 +4,8 @@ using UnityEngine;
 namespace SepCore.UI
 {
     [DisallowMultipleComponent]
-    public partial class CombatReadinessView : MonoBehaviour
+    public partial class HomeView : MonoBehaviour
     {
-        [SerializeField] public global::TMPro.TextMeshProUGUI storageText;
         [SerializeField] public global::SepCore.UI.SquadForm squadForm;
         [SerializeField] public global::SepCore.UI.DeploymentForm deploymentForm;
     }

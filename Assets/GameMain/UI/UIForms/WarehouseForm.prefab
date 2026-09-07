@@ -365,41 +365,9 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 2757221997952473537}
     m_Modifications:
-    - target: {fileID: 368081548635187151, guid: 0f92765f37f7040a3a05e341b682a8b7, type: 3}
-      propertyPath: m_SizeDelta.x
-      value: 100
-      objectReference: {fileID: 0}
-    - target: {fileID: 2213250327679940777, guid: 0f92765f37f7040a3a05e341b682a8b7, type: 3}
-      propertyPath: m_SizeDelta.x
-      value: 600
-      objectReference: {fileID: 0}
-    - target: {fileID: 2298792640519324320, guid: 0f92765f37f7040a3a05e341b682a8b7, type: 3}
-      propertyPath: m_SizeDelta.x
-      value: 100
-      objectReference: {fileID: 0}
-    - target: {fileID: 3024079498947618077, guid: 0f92765f37f7040a3a05e341b682a8b7, type: 3}
-      propertyPath: m_SizeDelta.x
-      value: 100
-      objectReference: {fileID: 0}
-    - target: {fileID: 3568616283438071469, guid: 0f92765f37f7040a3a05e341b682a8b7, type: 3}
-      propertyPath: m_SizeDelta.x
-      value: 100
-      objectReference: {fileID: 0}
     - target: {fileID: 4806516253068417753, guid: 0f92765f37f7040a3a05e341b682a8b7, type: 3}
       propertyPath: m_Name
       value: InventoryForm
-      objectReference: {fileID: 0}
-    - target: {fileID: 5416459995294760792, guid: 0f92765f37f7040a3a05e341b682a8b7, type: 3}
-      propertyPath: m_fontSize
-      value: 32
-      objectReference: {fileID: 0}
-    - target: {fileID: 5416459995294760792, guid: 0f92765f37f7040a3a05e341b682a8b7, type: 3}
-      propertyPath: m_fontSizeBase
-      value: 32
-      objectReference: {fileID: 0}
-    - target: {fileID: 8965387801132203254, guid: 0f92765f37f7040a3a05e341b682a8b7, type: 3}
-      propertyPath: m_IsActive
-      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8982428363375202686, guid: 0f92765f37f7040a3a05e341b682a8b7, type: 3}
       propertyPath: m_Pivot.x
@@ -521,26 +489,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 2757221997952473537}
     m_Modifications:
-    - target: {fileID: 581397596165795062, guid: 55d795be9494749a6b8e95412746ad17, type: 3}
-      propertyPath: m_SizeDelta.y
-      value: 40
-      objectReference: {fileID: 0}
-    - target: {fileID: 1127489732524511656, guid: 55d795be9494749a6b8e95412746ad17, type: 3}
-      propertyPath: m_AnchoredPosition.y
-      value: -320
-      objectReference: {fileID: 0}
-    - target: {fileID: 1482612754550682015, guid: 55d795be9494749a6b8e95412746ad17, type: 3}
-      propertyPath: m_AnchoredPosition.y
-      value: -280
-      objectReference: {fileID: 0}
-    - target: {fileID: 5163393369251416990, guid: 55d795be9494749a6b8e95412746ad17, type: 3}
-      propertyPath: m_AnchoredPosition.y
-      value: -80
-      objectReference: {fileID: 0}
-    - target: {fileID: 7578577012445206417, guid: 55d795be9494749a6b8e95412746ad17, type: 3}
-      propertyPath: m_AnchoredPosition.y
-      value: -370
-      objectReference: {fileID: 0}
     - target: {fileID: 7892497687920211589, guid: 55d795be9494749a6b8e95412746ad17, type: 3}
       propertyPath: m_Pivot.x
       value: 1
@@ -624,14 +572,6 @@ PrefabInstance:
     - target: {fileID: 8273109668507922248, guid: 55d795be9494749a6b8e95412746ad17, type: 3}
       propertyPath: m_Name
       value: ItemDetailsForm
-      objectReference: {fileID: 0}
-    - target: {fileID: 8969115215394805968, guid: 55d795be9494749a6b8e95412746ad17, type: 3}
-      propertyPath: m_SizeDelta.y
-      value: 84
-      objectReference: {fileID: 0}
-    - target: {fileID: 8969115215394805968, guid: 55d795be9494749a6b8e95412746ad17, type: 3}
-      propertyPath: m_AnchoredPosition.y
-      value: -560
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
