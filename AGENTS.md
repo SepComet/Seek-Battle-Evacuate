@@ -55,5 +55,5 @@
 
 ## 开始改动前先读
 
-- `Docs/Tech/04_TurnBasedCombatDevelopmentTODO.md` — 当前进行中的里程碑（M2 已完成，M3 技能/目标/MP 待开始）、里程碑完成纪律、架构与数据所有权。**每次只做当前里程碑，不预留接口提前实现。**
-- 对应领域的 `Docs/Tech/01~03` 与 `Docs/GameDesign/04_TurnBasedCombat.md`。
+- `Docs/Tech/TODO.md` — 研发路线与当前里程碑（阶段 0 战斗已完成，当前主线为阶段 1 局外经济、顶级 UI 架构与消耗品闭环）、里程碑完成纪律、架构与数据所有权。**每次只做当前里程碑，不预留接口提前实现。**
+- 对应领域的 `Docs/Tech/01~03` 与 `Docs/GameDesign/` 系列设计文档。
