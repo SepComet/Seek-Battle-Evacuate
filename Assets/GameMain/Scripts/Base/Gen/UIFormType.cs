@@ -64,6 +64,10 @@ namespace SepCore.Definition
         /// 转场面板
         /// </summary>
         FadeForm = 109,
+        /// <summary>
+        /// 拖拽道具时顶层面板
+        /// </summary>
+        ItemDragOverlayForm = 110,
     }
 
 } 

@@ -12,7 +12,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "铜币"
+    "icon": "铜币",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5002,
@@ -27,7 +29,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "银币"
+    "icon": "银币",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5003,
@@ -42,7 +46,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "金币"
+    "icon": "金币",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5004,
@@ -57,7 +63,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "铂币"
+    "icon": "铂币",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5005,
@@ -72,7 +80,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "全币"
+    "icon": "全币",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5006,
@@ -87,7 +97,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "骨头 I"
+    "icon": "骨头 I",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5007,
@@ -102,7 +114,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "骨头 II"
+    "icon": "骨头 II",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5008,
@@ -117,7 +131,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "骨头 III"
+    "icon": "骨头 III",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5009,
@@ -132,7 +148,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "骨头 IV"
+    "icon": "骨头 IV",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5010,
@@ -147,7 +165,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "骨头 V"
+    "icon": "骨头 V",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5011,
@@ -162,7 +182,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "骨头 VI"
+    "icon": "骨头 VI",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5012,
@@ -177,7 +199,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "骨头 VII"
+    "icon": "骨头 VII",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5013,
@@ -192,7 +216,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "骨头 VIII"
+    "icon": "骨头 VIII",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5014,
@@ -207,7 +233,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "骨头 IX"
+    "icon": "骨头 IX",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5015,
@@ -222,7 +250,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "符文 I"
+    "icon": "符文 I",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5016,
@@ -237,7 +267,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "符文 II"
+    "icon": "符文 II",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5017,
@@ -252,7 +284,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "符文 III"
+    "icon": "符文 III",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5018,
@@ -267,7 +301,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "符文 IV"
+    "icon": "符文 IV",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5019,
@@ -282,7 +318,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "符文 V"
+    "icon": "符文 V",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5020,
@@ -297,7 +335,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "符文 VI"
+    "icon": "符文 VI",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5021,
@@ -312,7 +352,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "符文 VII"
+    "icon": "符文 VII",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5022,
@@ -327,7 +369,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "符文 VIII"
+    "icon": "符文 VIII",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5023,
@@ -342,7 +386,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "符文 IX"
+    "icon": "符文 IX",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5024,
@@ -357,7 +403,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "种子 I"
+    "icon": "种子 I",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5025,
@@ -372,7 +420,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "种子 II"
+    "icon": "种子 II",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5026,
@@ -387,7 +437,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "种子 III"
+    "icon": "种子 III",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5027,
@@ -402,7 +454,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "种子 IV"
+    "icon": "种子 IV",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5028,
@@ -417,7 +471,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "种子 V"
+    "icon": "种子 V",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5029,
@@ -432,7 +488,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "种子 VI"
+    "icon": "种子 VI",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5030,
@@ -447,7 +505,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "种子 VII"
+    "icon": "种子 VII",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5031,
@@ -462,7 +522,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "种子 VIII"
+    "icon": "种子 VIII",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5032,
@@ -477,7 +539,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "种子 IX"
+    "icon": "种子 IX",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5033,
@@ -492,7 +556,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "宝石 I"
+    "icon": "宝石 I",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5034,
@@ -507,7 +573,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "宝石 II"
+    "icon": "宝石 II",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5035,
@@ -522,7 +590,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "宝石 III"
+    "icon": "宝石 III",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5036,
@@ -537,7 +607,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "宝石 IV"
+    "icon": "宝石 IV",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5037,
@@ -552,7 +624,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "宝石 V"
+    "icon": "宝石 V",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5038,
@@ -567,7 +641,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "宝石 VI"
+    "icon": "宝石 VI",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5039,
@@ -582,7 +658,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "宝石 VII"
+    "icon": "宝石 VII",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5040,
@@ -597,7 +675,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "宝石 VIII"
+    "icon": "宝石 VIII",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5041,
@@ -612,7 +692,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "宝石 IX"
+    "icon": "宝石 IX",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5043,
@@ -627,7 +709,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "收集品 I"
+    "icon": "收集品 I",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5044,
@@ -642,7 +726,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "收集品 II"
+    "icon": "收集品 II",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5045,
@@ -657,7 +743,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "收集品 III"
+    "icon": "收集品 III",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5046,
@@ -672,7 +760,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "收集品 IV"
+    "icon": "收集品 IV",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5047,
@@ -687,7 +777,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "收集品 V"
+    "icon": "收集品 V",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5048,
@@ -702,7 +794,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "收集品 VI"
+    "icon": "收集品 VI",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5049,
@@ -717,7 +811,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "收集品 VII"
+    "icon": "收集品 VII",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5050,
@@ -732,7 +828,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "收集品 VIII"
+    "icon": "收集品 VIII",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5051,
@@ -747,7 +845,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "收集品 IX"
+    "icon": "收集品 IX",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5101,
@@ -762,7 +862,9 @@
     "atkBonus": 5,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "短剑 I"
+    "icon": "短剑 I",
+    "width": 1,
+    "height": 2
   },
   {
     "id": 5102,
@@ -777,7 +879,9 @@
     "atkBonus": 8,
     "matBonus": 8,
     "speedBonus": 0,
-    "icon": "短剑 II"
+    "icon": "短剑 II",
+    "width": 2,
+    "height": 1
   },
   {
     "id": 5103,
@@ -792,7 +896,9 @@
     "atkBonus": 10,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "短剑 III"
+    "icon": "短剑 III",
+    "width": 2,
+    "height": 2
   },
   {
     "id": 5104,
@@ -807,7 +913,9 @@
     "atkBonus": 7,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "菜刀 I"
+    "icon": "菜刀 I",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5105,
@@ -822,7 +930,9 @@
     "atkBonus": 12,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "菜刀 II"
+    "icon": "菜刀 II",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5106,
@@ -837,7 +947,9 @@
     "atkBonus": 15,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "菜刀 III"
+    "icon": "菜刀 III",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5107,
@@ -852,7 +964,9 @@
     "atkBonus": 10,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "阔剑 I"
+    "icon": "阔剑 I",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5108,
@@ -867,7 +981,9 @@
     "atkBonus": 15,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "阔剑 II"
+    "icon": "阔剑 II",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5109,
@@ -882,7 +998,9 @@
     "atkBonus": 20,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "阔剑 III"
+    "icon": "阔剑 III",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5110,
@@ -897,7 +1015,9 @@
     "atkBonus": 0,
     "matBonus": 6,
     "speedBonus": 0,
-    "icon": "小法杖 I"
+    "icon": "小法杖 I",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5111,
@@ -912,7 +1032,9 @@
     "atkBonus": 0,
     "matBonus": 10,
     "speedBonus": 0,
-    "icon": "小法杖 II"
+    "icon": "小法杖 II",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5112,
@@ -927,7 +1049,9 @@
     "atkBonus": 0,
     "matBonus": 13,
     "speedBonus": 0,
-    "icon": "小法杖 III"
+    "icon": "小法杖 III",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5113,
@@ -942,7 +1066,9 @@
     "atkBonus": 0,
     "matBonus": 9,
     "speedBonus": 0,
-    "icon": "中法杖 I"
+    "icon": "中法杖 I",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5114,
@@ -957,7 +1083,9 @@
     "atkBonus": 0,
     "matBonus": 14,
     "speedBonus": 0,
-    "icon": "中法杖 II"
+    "icon": "中法杖 II",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5115,
@@ -972,7 +1100,9 @@
     "atkBonus": 0,
     "matBonus": 20,
     "speedBonus": 0,
-    "icon": "中法杖 III"
+    "icon": "中法杖 III",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5116,
@@ -987,7 +1117,9 @@
     "atkBonus": 0,
     "matBonus": 7,
     "speedBonus": 0,
-    "icon": "大法杖 I"
+    "icon": "大法杖 I",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5117,
@@ -1002,7 +1134,9 @@
     "atkBonus": 0,
     "matBonus": 18,
     "speedBonus": 0,
-    "icon": "大法杖 II"
+    "icon": "大法杖 II",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5118,
@@ -1017,7 +1151,9 @@
     "atkBonus": 0,
     "matBonus": 25,
     "speedBonus": 0,
-    "icon": "大法杖 III"
+    "icon": "大法杖 III",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5201,
@@ -1032,7 +1168,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "头盔 I"
+    "icon": "头盔 I",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5202,
@@ -1047,7 +1185,9 @@
     "atkBonus": 0,
     "matBonus": 5,
     "speedBonus": 0,
-    "icon": "头盔 II"
+    "icon": "头盔 II",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5203,
@@ -1062,7 +1202,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "头盔 III"
+    "icon": "头盔 III",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5204,
@@ -1077,7 +1219,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "头盔 IV"
+    "icon": "头盔 IV",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5205,
@@ -1092,7 +1236,9 @@
     "atkBonus": 5,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "头盔 V"
+    "icon": "头盔 V",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5206,
@@ -1107,7 +1253,9 @@
     "atkBonus": 0,
     "matBonus": 1,
     "speedBonus": 2,
-    "icon": "术士长袍 I"
+    "icon": "术士长袍 I",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5207,
@@ -1122,7 +1270,9 @@
     "atkBonus": 0,
     "matBonus": 2,
     "speedBonus": 2,
-    "icon": "术士长袍 II"
+    "icon": "术士长袍 II",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5208,
@@ -1137,7 +1287,9 @@
     "atkBonus": 0,
     "matBonus": 3,
     "speedBonus": 2,
-    "icon": "术士长袍 III"
+    "icon": "术士长袍 III",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5209,
@@ -1152,7 +1304,9 @@
     "atkBonus": 0,
     "matBonus": 4,
     "speedBonus": 2,
-    "icon": "术士长袍 IV"
+    "icon": "术士长袍 IV",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5210,
@@ -1167,7 +1321,9 @@
     "atkBonus": 0,
     "matBonus": 5,
     "speedBonus": 2,
-    "icon": "术士长袍 V"
+    "icon": "术士长袍 V",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5301,
@@ -1182,7 +1338,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "小药"
+    "icon": "小药",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5302,
@@ -1197,7 +1355,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "中小药"
+    "icon": "中小药",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5303,
@@ -1212,7 +1372,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "中药"
+    "icon": "中药",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5304,
@@ -1227,7 +1389,9 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "中大药"
+    "icon": "中大药",
+    "width": 1,
+    "height": 1
   },
   {
     "id": 5305,
@@ -1242,6 +1406,8 @@
     "atkBonus": 0,
     "matBonus": 0,
     "speedBonus": 0,
-    "icon": "大药"
+    "icon": "大药",
+    "width": 1,
+    "height": 1
   }
 ]

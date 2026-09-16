@@ -75,5 +75,12 @@
     "UIGroupName": "Backpack",
     "allowMultiInstance": false,
     "pauseCoveredUIForm": false
+  },
+  {
+    "id": 110,
+    "assetName": "ItemDragOverlayForm",
+    "UIGroupName": "Overlay",
+    "allowMultiInstance": false,
+    "pauseCoveredUIForm": false
   }
 ]

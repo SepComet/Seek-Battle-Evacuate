@@ -4,12 +4,13 @@ using SepCore.Base;
 using SepCore.Definition;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityGameFramework.Runtime;
 
 namespace SepCore.UI
 {
-    public class WarehouseSlotItem : MonoBehaviour
+    public class WarehouseSlotItem : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
     {
         private static readonly Color RarityWhite = new Color32(245, 247, 248, 255);
         private static readonly Color RarityGreen = new Color32(93, 155, 97, 255);
@@ -25,10 +26,25 @@ namespace SepCore.UI
         [SerializeField] private Image rarity;
         [SerializeField] private TextMeshProUGUI quantityText;
 
+        public event System.Action<WarehouseSlotItem, PointerEventData> OnSlotPointerDown;
+        public event System.Action<WarehouseSlotItem, PointerEventData> OnSlotPointerUp;
+
         private int _slotId = 0;
         private bool _filled = false;
         private bool _clickBound = false;
         private int _iconVersion = 0;
+        private bool _useCustomPointer = false;
+
+        public int SlotId => _slotId;
+        public bool IsFilled => _filled;
+
+        /// <summary>
+        /// 开启自定义指针处理（禁用自带 Button 点击触发，交由长按/拖拽状态机管理）。
+        /// </summary>
+        public void EnableCustomPointerHandling(bool enable)
+        {
+            _useCustomPointer = enable;
+        }
 
         /// <summary>
         /// 设置格子在固定网格中的索引，点击事件以此作为唯一标识。
@@ -94,12 +110,60 @@ namespace SepCore.UI
 
         private void OnClick()
         {
-            if (!_filled)
+            if (!_filled || _useCustomPointer)
             {
                 return;
             }
 
             GameEntry.Event.Fire(this, WarehouseSlotItemClickEventArgs.Create(_slotId));
+        }
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            if (!_filled || eventData.button != PointerEventData.InputButton.Left)
+            {
+                return;
+            }
+
+            OnSlotPointerDown?.Invoke(this, eventData);
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            if (!_filled || eventData.button != PointerEventData.InputButton.Left)
+            {
+                return;
+            }
+
+            OnSlotPointerUp?.Invoke(this, eventData);
+        }
+
+        /// <summary>
+        /// 设置当前物品视图的整体透明度（用于拖拽时原位变暗）。
+        /// </summary>
+        public void SetAlpha(float alpha)
+        {
+            CanvasGroup group = GetComponent<CanvasGroup>();
+            if (group == null)
+            {
+                group = gameObject.AddComponent<CanvasGroup>();
+            }
+
+            group.alpha = alpha;
+        }
+
+        /// <summary>
+        /// 设置是否阻挡射线检测（悬浮拖拽物需禁用射线，防止阻挡底层网格检测）。
+        /// </summary>
+        public void SetRaycastTarget(bool enable)
+        {
+            CanvasGroup group = GetComponent<CanvasGroup>();
+            if (group == null)
+            {
+                group = gameObject.AddComponent<CanvasGroup>();
+            }
+
+            group.blocksRaycasts = enable;
         }
 
         private void HideIcon()

@@ -6,11 +6,6 @@ namespace SepCore.UI
     [DisallowMultipleComponent]
     public partial class InventoryView : MonoBehaviour
     {
-        [SerializeField] public global::UnityEngine.UI.Toggle allToggle;
-        [SerializeField] public global::UnityEngine.UI.Toggle lootToggle;
-        [SerializeField] public global::UnityEngine.UI.Toggle equipmentToggle;
-        [SerializeField] public global::UnityEngine.UI.Toggle consumablesToggle;
-        [SerializeField] public global::TMPro.TMP_InputField searchInput;
         [SerializeField] public global::UnityEngine.UI.Button sortButton;
         [SerializeField] public global::UnityEngine.UI.ScrollRect itemScroll;
         [SerializeField] public global::UnityEngine.RectTransform warehouseSlotRoot;

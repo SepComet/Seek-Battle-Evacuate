@@ -111,6 +111,18 @@ public partial class TbGlobalConfig
     /// </summary>
      public int WarehouseSlotCount => _data.WarehouseSlotCount;
     /// <summary>
+    /// 仓库固定列数
+    /// </summary>
+     public int WarehouseFixedColumn => _data.WarehouseFixedColumn;
+    /// <summary>
+    /// 仓库格子宽高
+    /// </summary>
+     public int WarehouseSlotSize => _data.WarehouseSlotSize;
+    /// <summary>
+    /// 仓库格子间距
+    /// </summary>
+     public int WarehouseSlotGap => _data.WarehouseSlotGap;
+    /// <summary>
     /// 共享背包格子数
     /// </summary>
      public int BackpackSlotCount => _data.BackpackSlotCount;
@@ -130,6 +142,10 @@ public partial class TbGlobalConfig
     /// 敌人队伍人数上限
     /// </summary>
      public int MaxEnemyPartySize => _data.MaxEnemyPartySize;
+    /// <summary>
+    /// 长按拖拽开始阈值
+    /// </summary>
+     public int DragHoldThresholdMs => _data.DragHoldThresholdMs;
     /// <summary>
     /// 非全员阵亡结算时阵亡角色恢复HP
     /// </summary>
@@ -214,6 +230,14 @@ public partial class TbGlobalConfig
     /// 战斗入场卡片动画开始间隔
     /// </summary>
      public int BattleInMoveIntervalMs => _data.BattleInMoveIntervalMs;
+    /// <summary>
+    /// 道具拖拽时相较于点击位置的偏移，像素
+    /// </summary>
+     public int ItemDragYOffset => _data.ItemDragYOffset;
+    /// <summary>
+    /// 进入长按过程中回退到列表滚动的像素阈值
+    /// </summary>
+     public int HoldDistanceThreshold => _data.HoldDistanceThreshold;
     
     public void ResolveRef(Tables tables)
     {

@@ -29,7 +29,6 @@
 
 - 战斗内核 `BattleRuntime` 是可独立测试的纯逻辑：**不读写 `SaveData`、不访问场景对象/地图敌人/掉落/局外结算**；外部统一通过 `TurnBattleComponent` 启动战斗、提交指令、接收结果。
 - 随机数走同一个本局随机源（`IRunRandomSource` / `RandomComponent`），战斗不重新播种。
-- 数值上限（堆叠、格数等）一律取自 Luban 配表，不写死；界面文案用 `FormatTextUI` 按 key 配置，不硬编码。
 
 ## UI 常见坑（详见 `Docs/Tech/03_UIMaintenance.md`）
 

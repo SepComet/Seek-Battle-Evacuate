@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using GameFramework.Event;
 using SepCore.Base;
 using SepCore.Definition;
+using SepCore.Run;
 using UnityEngine;
 using UnityGameFramework.Runtime;
 
@@ -88,6 +89,10 @@ namespace SepCore.UI
         private void OnDisable()
         {
             UnbindEvent();
+            if (GameEntry.Save != null && GameEntry.Save.IsReady)
+            {
+                GameEntry.Save.SaveDirty();
+            }
         }
 
         private void OnDestroy()
@@ -145,7 +150,7 @@ namespace SepCore.UI
             RefreshPreview(save.characters);
         }
 
-        private void RebuildWeaponList(List<ItemStack> warehouse)
+        private void RebuildWeaponList(List<GridItemStack> warehouse)
         {
             LoadoutView view = View;
             WarehouseSlotItem template = view.weaponSlotTemplate;
@@ -169,7 +174,7 @@ namespace SepCore.UI
             {
                 for (int i = 0; i < warehouse.Count; i++)
                 {
-                    ItemStack stack = warehouse[i];
+                    GridItemStack stack = warehouse[i];
                     if (stack.count <= 0)
                     {
                         continue;
@@ -178,7 +183,7 @@ namespace SepCore.UI
                     ItemConfig config = GameEntry.Luban.Get<ItemConfig>(stack.itemId);
                     if (config != null && config.EquipSlot == EquipmentSlotType.Weapon)
                     {
-                        _weaponStacks.Add(stack);
+                        _weaponStacks.Add(new ItemStack(stack.itemId, stack.count));
                     }
                 }
             }
@@ -193,7 +198,7 @@ namespace SepCore.UI
             }
         }
 
-        private void RebuildArmorList(List<ItemStack> warehouse)
+        private void RebuildArmorList(List<GridItemStack> warehouse)
         {
             LoadoutView view = View;
             WarehouseSlotItem template = view.armorSlotTemplate;
@@ -217,7 +222,7 @@ namespace SepCore.UI
             {
                 for (int i = 0; i < warehouse.Count; i++)
                 {
-                    ItemStack stack = warehouse[i];
+                    GridItemStack stack = warehouse[i];
                     if (stack.count <= 0)
                     {
                         continue;
@@ -226,7 +231,7 @@ namespace SepCore.UI
                     ItemConfig config = GameEntry.Luban.Get<ItemConfig>(stack.itemId);
                     if (config != null && config.EquipSlot == EquipmentSlotType.Armor)
                     {
-                        _armorStacks.Add(stack);
+                        _armorStacks.Add(new ItemStack(stack.itemId, stack.count));
                     }
                 }
             }
@@ -313,6 +318,7 @@ namespace SepCore.UI
 
             character.weaponItemId = newWeaponId;
             save.characters[_selectedCharacterIndex] = character;
+            MarkLoadoutDirty();
 
             RebuildWeaponList(save.mainWarehouse);
             RefreshPreview(save.characters);
@@ -354,6 +360,7 @@ namespace SepCore.UI
 
             character.armorItemId = newArmorId;
             save.characters[_selectedCharacterIndex] = character;
+            MarkLoadoutDirty();
 
             RebuildArmorList(save.mainWarehouse);
             RefreshPreview(save.characters);
@@ -378,6 +385,7 @@ namespace SepCore.UI
             AddToWarehouse(save.mainWarehouse, oldWeaponId, 1);
             character.weaponItemId = 0;
             save.characters[_selectedCharacterIndex] = character;
+            MarkLoadoutDirty();
 
             RebuildWeaponList(save.mainWarehouse);
             RefreshPreview(save.characters);
@@ -402,48 +410,47 @@ namespace SepCore.UI
             AddToWarehouse(save.mainWarehouse, oldArmorId, 1);
             character.armorItemId = 0;
             save.characters[_selectedCharacterIndex] = character;
+            MarkLoadoutDirty();
 
             RebuildArmorList(save.mainWarehouse);
             RefreshPreview(save.characters);
         }
 
-        private static void AddToWarehouse(List<ItemStack> warehouse, int itemId, int count)
+        private static void MarkLoadoutDirty()
+        {
+            if (GameEntry.Save != null && GameEntry.Save.IsReady)
+            {
+                GameEntry.Save.MarkCharacterDataDirty();
+                GameEntry.Save.MarkWarehouseDataDirty();
+                GameEntry.Save.MarkWarehouseLayoutDirty();
+            }
+        }
+
+        private static void AddToWarehouse(List<GridItemStack> warehouse, int itemId, int count)
         {
             if (warehouse == null || itemId <= 0 || count <= 0)
             {
                 return;
             }
 
-            ItemConfig config = GameEntry.Luban.Get<ItemConfig>(itemId);
-            int stackLimit = config != null && config.StackLimit > 0 ? config.StackLimit : 1;
-            int remaining = count;
-
-            for (int i = 0; i < warehouse.Count; i++)
+            GlobalConfig global = GameEntry.Luban.Global?.Data;
+            if (global == null)
             {
-                if (warehouse[i].itemId == itemId && warehouse[i].count < stackLimit)
-                {
-                    int space = stackLimit - warehouse[i].count;
-                    int toAdd = Math.Min(space, remaining);
-                    ItemStack s = warehouse[i];
-                    s.count += toAdd;
-                    warehouse[i] = s;
-                    remaining -= toAdd;
-                    if (remaining <= 0)
-                    {
-                        return;
-                    }
-                }
+                Log.Error("Global config is not ready.");
+                return;
             }
 
-            while (remaining > 0)
-            {
-                int toAdd = Math.Min(stackLimit, remaining);
-                warehouse.Add(new ItemStack(itemId, toAdd));
-                remaining -= toAdd;
-            }
+            int columns = global.WarehouseFixedColumn;
+            int totalSlotCount = global.WarehouseSlotCount;
+            int rows = (totalSlotCount + columns - 1) / columns;
+            GridItemContainer container = new GridItemContainer(columns, rows, id => GameEntry.Luban.Get<ItemConfig>(id));
+            container.LoadFromSaveData(warehouse);
+            container.TryAutoInsert(itemId, count, out _);
+            warehouse.Clear();
+            warehouse.AddRange(container.ToSaveData());
         }
 
-        private static bool RemoveFromWarehouse(List<ItemStack> warehouse, int itemId, int count)
+        private static bool RemoveFromWarehouse(List<GridItemStack> warehouse, int itemId, int count)
         {
             if (warehouse == null || itemId <= 0 || count <= 0)
             {
@@ -456,7 +463,7 @@ namespace SepCore.UI
                 {
                     if (warehouse[i].count > count)
                     {
-                        ItemStack s = warehouse[i];
+                        GridItemStack s = warehouse[i];
                         s.count -= count;
                         warehouse[i] = s;
                         return true;

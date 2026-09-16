@@ -9,9 +9,29 @@
 - 存档只保存局外状态：主仓库内容、角色装备、当前战备配置、已结束单局的结算记录。
 - 背包、保险箱、单局进度均为进入单局时创建的临时状态，不落盘；异常关闭直接丢弃。
 - 数值上限（堆叠上限、背包格数等）来自 Luban 配表（`ItemConfig.StackLimit`、`GlobalConfig.BackpackSlotCount` 等），不写死在存档中。
-- 存档使用 JSON 序列化，便于调试与手动修改；`SaveData.ToJson()` 序列化，`SaveData.FromJson(string)` 反序列化并补齐缺失字段（空列表/空数组）。
+- 存档使用 JSON 序列化，便于调试与手动修改；并采用**模块化拆分存储与脏标记按需落盘**机制。
 
-## 序列化格式
+## 模块化拆分与按需落盘架构
+
+为了杜绝频繁拖拽物品时的磁盘 I/O 过载，存档持久化拆分为位于 `Application.persistentDataPath/Save/` 目录下的独立文件：
+
+1. **`warehouse_data.json`（仓库物资数据）**：
+   - 包含 `WarehouseDataSave`：仅记录物品资产清单（`instanceId`、`itemId`、`count`）；
+   - 仅在资产发生实质增减（撤离带出、商店买卖、装备穿脱）时标记并落盘。
+2. **`warehouse_layout.json`（仓库网格布局）**：
+   - 包含 `WarehouseLayoutSave`：仅记录空间排布（`instanceId`、`x`、`y`、`isRotated`）；
+   - 挪动或旋转道具时仅在内存中更新并标记脏状态，在离开仓库界面或游戏退出时一次性批量落盘，拖拽期间 0 磁盘 I/O。
+3. **`character_data.json`（角色与战备数据）**：
+   - 包含 `CharacterDataSave`：角色列表 `characters`（穿戴装备）与战备配置 `loadout`；
+   - 仅在换装、调整出战或结算同步装备时落盘。
+4. **`meta_data.json`（全局元数据）**：
+   - 包含 `MetaDataSave`：版本号 `version`、更新时间戳 `updatedAt` 与结算历史 `runHistory`。
+
+### 兼容性与自愈迁移（Migration & Self-Healing）
+- **老存档无损迁移**：若检测到旧版单文件 `save.json`，系统自动加载并拆分为四个新文件写入 `Save/` 目录；
+- **布局丢失自愈**：若 `warehouse_layout.json` 丢失，物资资产不会损坏，系统会自动通过 `GridItemContainer.TryAutoInsert` 智能寻位恢复网格。
+
+## 序列化格式（单文件视图 / 历史格式）
 
 枚举在 JSON 中以整数值存储：`RunResultType`（`Extracted=1`、`Defeated=2`、`TimedOut=3`、`Quit=4`）、`DifficultyTier`（`Tier1=1`、`Tier2=2`、`Tier3=3`）。
 
@@ -20,8 +40,8 @@
   "version": 1,
   "updatedAt": 1756540000000,
   "mainWarehouse": [
-    { "itemId": 1001, "count": 3 },
-    { "itemId": 2005, "count": 1 }
+    { "itemId": 1001, "count": 3, "x": 0, "y": 0, "isRotated": false },
+    { "itemId": 2005, "count": 1, "x": 2, "y": 0, "isRotated": true }
   ],
   "characters": [
     { "characterId": 1, "weaponItemId": 1001, "armorItemId": 0 },
@@ -54,19 +74,22 @@
 | --- | --- | --- |
 | `version` | int | 存档结构版本，当前为 1；结构变更时递增并处理迁移 |
 | `updatedAt` | long | 最后写入时间，Unix 毫秒 |
-| `mainWarehouse` | `ItemStack[]` | 主仓库内容，格子数上限由 `GlobalConfig.WarehouseSlotCount` 配置，可空 |
+| `mainWarehouse` | `GridItemStack[]` | 主仓库内容（带网格坐标与旋转状态），容量由 `GlobalConfig.WarehouseSlotCount` 配置，可空 |
 | `characters` | `CharacterSave[]` | 拥有的角色，数组顺序即角色入队顺序（速度并列时按此顺序行动） |
 | `loadout` | `LoadoutSave` | 当前战备配置 |
 | `runHistory` | `RunRecord[]` | 已结束单局的结算记录，可空 |
 
-### ItemStack（物品堆叠）
+### GridItemStack（网格物品堆叠）
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `itemId` | int | 物品 ID，对应 `ItemConfig.Id` |
 | `count` | int | 数量，不超过配表 `ItemConfig.StackLimit` |
+| `x` | int | 网格列锚点坐标 AnchorX，从 0 开始 |
+| `y` | int | 网格行锚点坐标 AnchorY，从 0 开始 |
+| `isRotated` | bool | 是否顺时针旋转 90 度 |
 
-所有物品容器统一使用堆叠列表存储，不记录格子在背包中的位置。
+主仓库使用 `GridItemStack` 记录网格坐标；单局出战携带等非网格容器继续使用基础 `ItemStack` 堆叠列表存储。
 
 ### CharacterSave（角色）
 

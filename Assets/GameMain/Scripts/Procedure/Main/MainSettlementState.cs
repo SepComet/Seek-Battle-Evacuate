@@ -90,14 +90,27 @@ namespace SepCore.Procedure
                     RoundSession session = GameEntry.Round.Session;
                     if (save.mainWarehouse == null)
                     {
-                        save.mainWarehouse = new List<ItemStack>();
+                        save.mainWarehouse = new List<GridItemStack>();
                     }
+
+                    GlobalConfig global = GameEntry.Luban.Global?.Data;
+                    if (global == null)
+                    {
+                        Log.Error("Global config is not ready.");
+                        return;
+                    }
+
+                    int columns = global.WarehouseFixedColumn;
+                    int totalSlotCount = global.WarehouseSlotCount;
+                    int rows = (totalSlotCount + columns - 1) / columns;
+                    GridItemContainer container = new GridItemContainer(columns, rows, id => GameEntry.Luban.Get<ItemConfig>(id));
+                    container.LoadFromSaveData(save.mainWarehouse);
 
                     // 保险箱物品无论胜败全部带出
                     List<ItemStack> safeItems = session.SafeCase.ToNonEmptyList();
                     foreach (ItemStack item in safeItems)
                     {
-                        MergeIntoWarehouse(save.mainWarehouse, item);
+                        container.TryAutoInsert(item.itemId, item.count, out _);
                     }
 
                     // 背包物品仅撤离成功时带出
@@ -106,7 +119,7 @@ namespace SepCore.Procedure
                         List<ItemStack> backpackItems = session.Backpack.ToNonEmptyList();
                         foreach (ItemStack item in backpackItems)
                         {
-                            MergeIntoWarehouse(save.mainWarehouse, item);
+                            container.TryAutoInsert(item.itemId, item.count, out _);
                         }
 
                         // 同步出战角色在局内的最新穿戴装备至存档
@@ -128,6 +141,8 @@ namespace SepCore.Procedure
                             }
                         }
                     }
+
+                    save.mainWarehouse = container.ToSaveData();
                 }
 
                 // 2. 死亡/超时/主动退出时，已穿戴装备随角色丢失（保留保险箱内容）
@@ -214,42 +229,6 @@ namespace SepCore.Procedure
                 {
                     GameEntry.UI.CloseUIForm(battleForm);
                 }
-            }
-        }
-
-        private static void MergeIntoWarehouse(List<ItemStack> warehouse, ItemStack stack)
-        {
-            if (warehouse == null || stack.itemId <= 0 || stack.count <= 0)
-            {
-                return;
-            }
-
-            ItemConfig config = GameEntry.Luban.Get<ItemConfig>(stack.itemId);
-            int stackLimit = config != null && config.StackLimit > 0 ? config.StackLimit : 1;
-            int remaining = stack.count;
-
-            for (int i = 0; i < warehouse.Count; i++)
-            {
-                if (warehouse[i].itemId == stack.itemId && warehouse[i].count < stackLimit)
-                {
-                    int space = stackLimit - warehouse[i].count;
-                    int toAdd = Math.Min(space, remaining);
-                    ItemStack s = warehouse[i];
-                    s.count += toAdd;
-                    warehouse[i] = s;
-                    remaining -= toAdd;
-                    if (remaining <= 0)
-                    {
-                        return;
-                    }
-                }
-            }
-
-            while (remaining > 0)
-            {
-                int toAdd = Math.Min(stackLimit, remaining);
-                warehouse.Add(new ItemStack(stack.itemId, toAdd));
-                remaining -= toAdd;
             }
         }
     }

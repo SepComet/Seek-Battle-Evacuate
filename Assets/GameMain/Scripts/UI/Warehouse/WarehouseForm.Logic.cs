@@ -21,7 +21,7 @@ namespace SepCore.UI
         /// <summary>
         /// 用主仓库内容刷新整个仓库界面（物品列表）。
         /// </summary>
-        public void Refresh(IReadOnlyList<ItemStack> stacks)
+        public void Refresh(IReadOnlyList<GridItemStack> stacks)
         {
             EnsureEventBound();
             View.inventoryPanelForm.RefreshList(stacks);

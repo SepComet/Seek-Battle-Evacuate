@@ -92,3 +92,5 @@ Thumbs.db
 
 /Assets/StreamingAssets/*.dat
 /Assets/StreamingAssets/*.dat.meta
+
+/.codegraph

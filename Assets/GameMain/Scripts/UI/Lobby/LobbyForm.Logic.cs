@@ -38,9 +38,9 @@ namespace SepCore.UI
 
         protected override void OnClose(bool isShutdown, object userData)
         {
-            if (_currentPageType == LobbyPageType.Loadout)
+            if (GameEntry.Save != null && GameEntry.Save.IsReady)
             {
-                GameEntry.Save.Save();
+                GameEntry.Save.SaveDirty();
             }
 
             View.selectionMarkerObject.DOKill();
@@ -80,9 +80,9 @@ namespace SepCore.UI
 
         private void SwitchPage(LobbyPageType pageType, Toggle activeToggle)
         {
-            if (_currentPageType == LobbyPageType.Loadout && pageType != LobbyPageType.Loadout)
+            if (GameEntry.Save != null && GameEntry.Save.IsReady)
             {
-                GameEntry.Save.Save();
+                GameEntry.Save.SaveDirty();
             }
 
             _currentPageType = pageType;
@@ -153,15 +153,26 @@ namespace SepCore.UI
         private void RefreshWarehouse()
         {
             SaveData save = GameEntry.Save.Data;
-            View.warehouseForm.Refresh(save != null ? save.mainWarehouse : null);
+            if (save == null)
+            {
+                Log.Error("Save data is null, cannot refresh warehouse.");
+                return;
+            }
+
+            View.warehouseForm.Refresh(save.mainWarehouse);
             RefreshStorageStatus();
         }
 
         private void RefreshStorageStatus()
         {
             SaveData save = GameEntry.Save.Data;
-            int count = save != null && save.mainWarehouse != null ? save.mainWarehouse.Count : 0;
-            View.storageFormatText.Set(count);
+            if (save == null)
+            {
+                Log.Error("Save data is null, cannot refresh storage status.");
+                return;
+            }
+
+            View.storageFormatText.Set(save.mainWarehouse.Count);
         }
 
         private void RefreshLoadout()

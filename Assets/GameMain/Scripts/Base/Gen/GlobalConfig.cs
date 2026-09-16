@@ -44,11 +44,15 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         PatrolSpeed = _buf.ReadInt();
         PlayerSpeed = _buf.ReadInt();
         WarehouseSlotCount = _buf.ReadInt();
+        WarehouseFixedColumn = _buf.ReadInt();
+        WarehouseSlotSize = _buf.ReadInt();
+        WarehouseSlotGap = _buf.ReadInt();
         BackpackSlotCount = _buf.ReadInt();
         SecureSlotCount = _buf.ReadInt();
         MinPlayerPartySize = _buf.ReadInt();
         MaxPlayerPartySize = _buf.ReadInt();
         MaxEnemyPartySize = _buf.ReadInt();
+        DragHoldThresholdMs = _buf.ReadInt();
         ReviveHp = _buf.ReadInt();
         ReviveMp = _buf.ReadInt();
         EscapeSuccessPermille = _buf.ReadInt();
@@ -70,6 +74,8 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         BattleActorCardOutPixels = _buf.ReadInt();
         BattleEnemyCardOutPixels = _buf.ReadInt();
         BattleInMoveIntervalMs = _buf.ReadInt();
+        ItemDragYOffset = _buf.ReadInt();
+        HoldDistanceThreshold = _buf.ReadInt();
     }
 
     public static GlobalConfig DeserializeGlobalConfig(ByteBuf _buf)
@@ -166,6 +172,18 @@ public sealed partial class GlobalConfig : Luban.BeanBase
     /// </summary>
     public readonly int WarehouseSlotCount;
     /// <summary>
+    /// 仓库固定列数
+    /// </summary>
+    public readonly int WarehouseFixedColumn;
+    /// <summary>
+    /// 仓库格子宽高
+    /// </summary>
+    public readonly int WarehouseSlotSize;
+    /// <summary>
+    /// 仓库格子间距
+    /// </summary>
+    public readonly int WarehouseSlotGap;
+    /// <summary>
     /// 共享背包格子数
     /// </summary>
     public readonly int BackpackSlotCount;
@@ -185,6 +203,10 @@ public sealed partial class GlobalConfig : Luban.BeanBase
     /// 敌人队伍人数上限
     /// </summary>
     public readonly int MaxEnemyPartySize;
+    /// <summary>
+    /// 长按拖拽开始阈值
+    /// </summary>
+    public readonly int DragHoldThresholdMs;
     /// <summary>
     /// 非全员阵亡结算时阵亡角色恢复HP
     /// </summary>
@@ -269,6 +291,14 @@ public sealed partial class GlobalConfig : Luban.BeanBase
     /// 战斗入场卡片动画开始间隔
     /// </summary>
     public readonly int BattleInMoveIntervalMs;
+    /// <summary>
+    /// 道具拖拽时相较于点击位置的偏移，像素
+    /// </summary>
+    public readonly int ItemDragYOffset;
+    /// <summary>
+    /// 进入长按过程中回退到列表滚动的像素阈值
+    /// </summary>
+    public readonly int HoldDistanceThreshold;
    
     public const int __ID__ = -958250779;
     public override int GetTypeId() => __ID__;
@@ -321,6 +351,12 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         
         
         
+        
+        
+        
+        
+        
+        
     }
 
     public override string ToString()
@@ -334,23 +370,27 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         + "highThreatEnemyPartyEntity:" + HighThreatEnemyPartyEntity + ","
         + "evacuatePointEntity:" + EvacuatePointEntity + ","
         + "characterLeaderEntity:" + CharacterLeaderEntity + ","
-        + "CharacterRetinueEntity:" + CharacterRetinueEntity + ","
-        + "ItemEntity:" + ItemEntity + ","
-        + "LootRangeMinRadius:" + LootRangeMinRadius + ","
-        + "LootRangeMaxRadius:" + LootRangeMaxRadius + ","
+        + "characterRetinueEntity:" + CharacterRetinueEntity + ","
+        + "itemEntity:" + ItemEntity + ","
+        + "lootRangeMinRadius:" + LootRangeMinRadius + ","
+        + "lootRangeMaxRadius:" + LootRangeMaxRadius + ","
         + "evacuateTimeMs:" + EvacuateTimeMs + ","
-        + "WorldFloatTextEntity:" + WorldFloatTextEntity + ","
+        + "worldFloatTextEntity:" + WorldFloatTextEntity + ","
         + "enemyLoseTargetMs:" + EnemyLoseTargetMs + ","
         + "alertMax:" + AlertMax + ","
         + "chaseSpeed:" + ChaseSpeed + ","
         + "patrolSpeed:" + PatrolSpeed + ","
         + "playerSpeed:" + PlayerSpeed + ","
         + "warehouseSlotCount:" + WarehouseSlotCount + ","
+        + "warehouseFixedColumn:" + WarehouseFixedColumn + ","
+        + "warehouseSlotSize:" + WarehouseSlotSize + ","
+        + "warehouseSlotGap:" + WarehouseSlotGap + ","
         + "backpackSlotCount:" + BackpackSlotCount + ","
         + "secureSlotCount:" + SecureSlotCount + ","
         + "minPlayerPartySize:" + MinPlayerPartySize + ","
         + "maxPlayerPartySize:" + MaxPlayerPartySize + ","
         + "maxEnemyPartySize:" + MaxEnemyPartySize + ","
+        + "dragHoldThresholdMs:" + DragHoldThresholdMs + ","
         + "reviveHp:" + ReviveHp + ","
         + "reviveMp:" + ReviveMp + ","
         + "escapeSuccessPermille:" + EscapeSuccessPermille + ","
@@ -363,15 +403,17 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         + "cardStateTextDurationMs:" + CardStateTextDurationMs + ","
         + "cardStateTextFloatPx:" + CardStateTextFloatPx + ","
         + "newGameCharacterIds:" + Luban.StringUtil.CollectionToString(NewGameCharacterIds) + ","
-        + "LobbySelectionMarkerMoveDurationMs:" + LobbySelectionMarkerMoveDurationMs + ","
-        + "BattleResultDisplayDelayMs:" + BattleResultDisplayDelayMs + ","
-        + "BattleInDurationMs:" + BattleInDurationMs + ","
-        + "BattleInScale:" + BattleInScale + ","
-        + "BattleInPunchScale:" + BattleInPunchScale + ","
-        + "BattleOutDurationMs:" + BattleOutDurationMs + ","
-        + "BattleActorCardOutPixels:" + BattleActorCardOutPixels + ","
-        + "BattleEnemyCardOutPixels:" + BattleEnemyCardOutPixels + ","
-        + "BattleInMoveIntervalMs:" + BattleInMoveIntervalMs + ","
+        + "lobbySelectionMarkerMoveDurationMs:" + LobbySelectionMarkerMoveDurationMs + ","
+        + "battleResultDisplayDelayMs:" + BattleResultDisplayDelayMs + ","
+        + "battleInDurationMs:" + BattleInDurationMs + ","
+        + "battleInScale:" + BattleInScale + ","
+        + "battleInPunchScale:" + BattleInPunchScale + ","
+        + "battleOutDurationMs:" + BattleOutDurationMs + ","
+        + "battleActorCardOutPixels:" + BattleActorCardOutPixels + ","
+        + "battleEnemyCardOutPixels:" + BattleEnemyCardOutPixels + ","
+        + "battleInMoveIntervalMs:" + BattleInMoveIntervalMs + ","
+        + "itemDragYOffset:" + ItemDragYOffset + ","
+        + "holdDistanceThreshold:" + HoldDistanceThreshold + ","
         + "}";
     }
 }

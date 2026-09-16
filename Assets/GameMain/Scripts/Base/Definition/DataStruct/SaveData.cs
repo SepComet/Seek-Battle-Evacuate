@@ -26,9 +26,9 @@ namespace SepCore.Definition
         public long updatedAt;
 
         /// <summary>
-        /// 主仓库内容，无容量上限。
+        /// 主仓库内容（带网格坐标与旋转状态）。
         /// </summary>
-        public List<ItemStack> mainWarehouse;
+        public List<GridItemStack> mainWarehouse;
 
         /// <summary>
         /// 拥有的角色，数组顺序即入队顺序。
@@ -80,7 +80,7 @@ namespace SepCore.Definition
         {
             if (mainWarehouse == null)
             {
-                mainWarehouse = new List<ItemStack>();
+                mainWarehouse = new List<GridItemStack>();
             }
 
             if (characters == null)
