@@ -5,6 +5,15 @@ using UnityEngine;
 
 namespace SepCore.Net
 {
+    public enum NetConnectionState
+    {
+        Offline,
+        Connecting,
+        LoggingIn,
+        Online,
+        LoginFailed,
+    }
+
     /// <summary>
     /// 网络组件：持有连接与同步服务，主线程泵送消息，断线自动重连重登。
     /// 大厅经济按钮的可用性以 <see cref="OnlineReady"/> 为准。
@@ -34,6 +43,15 @@ namespace SepCore.Net
         /// </summary>
         public bool OnlineReady { get; private set; }
 
+        public long UserId => OnlineReady ? Sync.UserId : 0;
+        public NetworkLatencyMonitor Latency => Sync.Latency;
+
+        public NetConnectionState ConnectionState => OnlineReady
+            ? NetConnectionState.Online
+            : _loginInFlight
+                ? (IsConnected ? NetConnectionState.LoggingIn : NetConnectionState.Connecting)
+                : (IsConnected ? NetConnectionState.LoginFailed : NetConnectionState.Offline);
+
         /// <summary>
         /// 挂起自动重连（登录过程自己驱动登录时置 true，避免并发抢登）。
         /// </summary>
@@ -55,24 +73,15 @@ namespace SepCore.Net
         private void Update()
         {
             _connection.Pump();
+            if (OnlineReady && (!IsConnected || Sync.UserId <= 0)) OnDisconnected();
+            Sync.UpdateLatency(OnlineReady);
 
             if (OnlineReady || SuspendAutoLogin || _loginInFlight || !CanAttemptLogin() || Time.unscaledTime < _nextAttemptTime)
             {
                 return;
             }
 
-            UniTask.Void(async () =>
-            {
-                _loginInFlight = true;
-                try
-                {
-                    await TryLoginAsync();
-                }
-                finally
-                {
-                    _loginInFlight = false;
-                }
-            });
+            TryLoginAsync().Forget();
         }
 
         private bool CanAttemptLogin()
@@ -85,21 +94,30 @@ namespace SepCore.Net
         /// </summary>
         public async UniTask<bool> TryLoginAsync()
         {
-            DeviceIdentity.Load(out string device, out string token);
-            bool ok = await Sync.LoginAsync(_serverUri, device, token);
-            if (ok)
+            if (_loginInFlight) return false;
+            _loginInFlight = true;
+            OnlineReady = false;
+            try
             {
-                DeviceIdentity.SaveToken(Sync.Token);
-                OnlineReady = true;
-                Log.Info("Net online ready.");
-            }
-            else
-            {
-                OnlineReady = false;
-                _nextAttemptTime = Time.unscaledTime + ReconnectIntervalSeconds;
-            }
+                DeviceIdentity.Load(out string device, out string token);
+                bool ok = await Sync.LoginAsync(_serverUri, device, token);
+                if (ok)
+                {
+                    DeviceIdentity.SaveToken(Sync.Token);
+                    OnlineReady = true;
+                    Log.Info("Net online ready. UserId: {0}.", Sync.UserId);
+                }
+                else
+                {
+                    _nextAttemptTime = Time.unscaledTime + ReconnectIntervalSeconds;
+                }
 
-            return ok;
+                return ok;
+            }
+            finally
+            {
+                _loginInFlight = false;
+            }
         }
 
         /// <summary>

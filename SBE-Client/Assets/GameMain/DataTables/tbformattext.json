@@ -94,5 +94,133 @@
   {
     "name": "SettlementItemValue",
     "format": "价值  {0:N0}"
+  },
+  {
+    "name": "LobbyConnectionStatus",
+    "format": "{0}"
+  },
+  {
+    "name": "LobbyStatusConnected",
+    "format": "SERVER: CONNECTED"
+  },
+  {
+    "name": "LobbyStatusReconnecting",
+    "format": "SERVER: RECONNECTING"
+  },
+  {
+    "name": "LobbyStatusLocalReady",
+    "format": "LOCAL SAVE: READY"
+  },
+  {
+    "name": "LobbyStatusUnavailable",
+    "format": "SAVE: UNAVAILABLE"
+  },
+  {
+    "name": "LobbyCurrencyPending",
+    "format": "CREDITS: —"
+  },
+  {
+    "name": "LobbyExpedition",
+    "format": "EXPEDITION"
+  },
+  {
+    "name": "LobbyRoster",
+    "format": "ROSTER"
+  },
+  {
+    "name": "LobbySupply",
+    "format": "SUPPLY"
+  },
+  {
+    "name": "LobbyWarehouse",
+    "format": "WAREHOUSE"
+  },
+  {
+    "name": "LobbyBack",
+    "format": "BACK TO LOBBY"
+  },
+  {
+    "name": "LobbyTitle",
+    "format": "COMMAND HUB"
+  },
+  {
+    "name": "LobbyChooseAction",
+    "format": "SELECT AN OPERATION"
+  },
+  {
+    "name": "ShopUnavailable",
+    "format": "SUPPLY TERMINAL OFFLINE"
+  },
+  {
+    "name": "ShopUnavailableDetail",
+    "format": "Trade services will open in the next milestone."
+  },
+  {
+    "name": "NetworkStatusTitle",
+    "format": "NETWORK"
+  },
+  {
+    "name": "NetworkStatusOffline",
+    "format": "OFFLINE"
+  },
+  {
+    "name": "NetworkStatusConnecting",
+    "format": "CONNECTING"
+  },
+  {
+    "name": "NetworkStatusAuthenticating",
+    "format": "SIGNING IN"
+  },
+  {
+    "name": "NetworkStatusSynchronizing",
+    "format": "SYNCING"
+  },
+  {
+    "name": "NetworkStatusOnline",
+    "format": "ONLINE"
+  },
+  {
+    "name": "NetworkStatusFailed",
+    "format": "LOGIN FAILED"
+  },
+  {
+    "name": "NetworkStatusAccount",
+    "format": "ACCOUNT  {0}"
+  },
+  {
+    "name": "NetworkStatusAccountPending",
+    "format": "ACCOUNT  —"
+  },
+  {
+    "name": "NetworkStatusLatency",
+    "format": "RTT  {0} ms"
+  },
+  {
+    "name": "NetworkStatusAverage",
+    "format": "30s AVG  {0} ms"
+  },
+  {
+    "name": "NetworkStatusSampling",
+    "format": "RTT  SAMPLING"
+  },
+  {
+    "name": "NetworkStatusLatencyUnavailable",
+    "format": "RTT  —"
+  },
+  {
+    "name": "NetworkStatusAverageUnavailable",
+    "format": "30s AVG  —"
+  },
+  {
+    "name": "NetworkStatusProbeTimeout",
+    "format": "RTT  TIMEOUT"
+  },
+  {
+    "name": "NetworkStatusProbeStale",
+    "format": "RTT  STALE"
+  },
+  {
+    "name": "NetworkStatusValue",
+    "format": "{0}"
   }
 ]

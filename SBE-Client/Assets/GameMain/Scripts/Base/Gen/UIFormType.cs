@@ -68,6 +68,26 @@ namespace SepCore.Definition
         /// 拖拽道具时顶层面板
         /// </summary>
         ItemDragOverlayForm = 110,
+        /// <summary>
+        /// 战备出征
+        /// </summary>
+        HomeForm = 111,
+        /// <summary>
+        /// 特勤整备
+        /// </summary>
+        LoadoutForm = 112,
+        /// <summary>
+        /// 基地仓库
+        /// </summary>
+        WarehouseForm = 113,
+        /// <summary>
+        /// 后勤商贸
+        /// </summary>
+        ShopForm = 114,
+        /// <summary>
+        /// 网络状态常驻顶层面板
+        /// </summary>
+        NetworkStatusForm = 115,
     }
 
 } 

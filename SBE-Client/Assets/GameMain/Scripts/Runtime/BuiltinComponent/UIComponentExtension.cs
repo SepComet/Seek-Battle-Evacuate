@@ -7,6 +7,20 @@ namespace SepCore.UI
 {
     public static class UIComponentExtension
     {
+        public const string NetworkStatusGroupName = "NetworkStatus";
+
+        /// <summary>关闭场景界面，保留跨场景的网络状态层。</summary>
+        public static void CloseSceneUIForms(this UIComponent uiComponent)
+        {
+            foreach (UIForm form in uiComponent.GetAllLoadedUIForms())
+            {
+                if (form.UIGroup.Name != NetworkStatusGroupName)
+                {
+                    uiComponent.CloseUIForm(form);
+                }
+            }
+        }
+
         public static bool HasUIForm(this UIComponent uiComponent, UIFormType uiFormType, string uiGroupName = null)
         {
             return uiComponent.HasUIForm((int)uiFormType, uiGroupName);

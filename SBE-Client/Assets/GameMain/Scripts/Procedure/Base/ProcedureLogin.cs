@@ -4,6 +4,7 @@ using Cysharp.Threading.Tasks;
 using SepCore.Base;
 using SepCore.Definition;
 using SepCore.Net;
+using SepCore.UI;
 using UnityGameFramework.Runtime;
 using ProcedureOwner = GameFramework.Fsm.IFsm<GameFramework.Procedure.IProcedureManager>;
 
@@ -22,6 +23,12 @@ namespace SepCore.Procedure
         {
             base.OnEnter(procedureOwner);
             _leaving = false;
+            // 独立常驻组，与场景功能页分开；Form 自带 2000 深度偏移，最终排序 32000。
+            if (!GameEntry.UI.HasUIGroup(UIComponentExtension.NetworkStatusGroupName))
+            {
+                GameEntry.UI.AddUIGroup(UIComponentExtension.NetworkStatusGroupName, 3);
+            }
+            GameEntry.UI.OpenUIForm(UIFormType.NetworkStatusForm);
             if (GameEntry.Net != null)
             {
                 GameEntry.Net.SuspendAutoLogin = true;

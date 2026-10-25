@@ -82,5 +82,40 @@
     "UIGroupName": "Overlay",
     "allowMultiInstance": false,
     "pauseCoveredUIForm": false
+  },
+  {
+    "id": 111,
+    "assetName": "HomeForm",
+    "UIGroupName": "Default",
+    "allowMultiInstance": false,
+    "pauseCoveredUIForm": true
+  },
+  {
+    "id": 112,
+    "assetName": "LoadoutForm",
+    "UIGroupName": "Default",
+    "allowMultiInstance": false,
+    "pauseCoveredUIForm": true
+  },
+  {
+    "id": 113,
+    "assetName": "WarehouseForm",
+    "UIGroupName": "Default",
+    "allowMultiInstance": false,
+    "pauseCoveredUIForm": true
+  },
+  {
+    "id": 114,
+    "assetName": "ShopForm",
+    "UIGroupName": "Default",
+    "allowMultiInstance": false,
+    "pauseCoveredUIForm": true
+  },
+  {
+    "id": 115,
+    "assetName": "NetworkStatusForm",
+    "UIGroupName": "NetworkStatus",
+    "allowMultiInstance": false,
+    "pauseCoveredUIForm": false
   }
 ]
