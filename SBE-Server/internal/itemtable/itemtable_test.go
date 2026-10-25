@@ -122,6 +122,59 @@ func TestLoadMissingFileReturnsError(t *testing.T) {
 	}
 }
 
+// TestNewCatalogMatchesLoadCatalog 免 IO 的构造入口（测试装配内联配置用）
+// 必须与 JSON 加载路径产出等价目录。
+func TestNewCatalogMatchesLoadCatalog(t *testing.T) {
+	fromJSON, err := LoadCatalog(writeFixture(t))
+	if err != nil {
+		t.Fatalf("LoadCatalog: %v", err)
+	}
+	fromEntries, err := NewCatalog([]CatalogEntry{
+		{ID: 5001, Rarity: core.RarityWhite, StackLimit: 99},
+		{ID: 5002, Rarity: core.RarityWhite, StackLimit: 60},
+		{ID: 5101, Rarity: core.RarityBlue, StackLimit: 1, EquipSlot: 1},
+		{ID: 5201, Rarity: core.RarityRed, StackLimit: 1, EquipSlot: 2},
+	})
+	if err != nil {
+		t.Fatalf("NewCatalog: %v", err)
+	}
+	if len(fromEntries.Table) != len(fromJSON.Table) {
+		t.Fatalf("table sizes differ: %d vs %d", len(fromEntries.Table), len(fromJSON.Table))
+	}
+	for _, rarity := range core.RarityOrder {
+		if !equalInts(fromEntries.RarityPool(rarity), fromJSON.RarityPool(rarity)) {
+			t.Fatalf("rarity %d pool differs: %v vs %v",
+				rarity, fromEntries.RarityPool(rarity), fromJSON.RarityPool(rarity))
+		}
+	}
+	def, ok := fromEntries.Get(5101)
+	if !ok || def.Rarity != core.RarityBlue || def.StackLimit != 1 || def.EquipSlot != 1 {
+		t.Fatalf("item 5101 wrong: %+v ok=%v", def, ok)
+	}
+}
+
+// TestNewCatalogAppliesSameValidation 构造入口沿用加载路径的校验（不静默接受坏数据）。
+func TestNewCatalogAppliesSameValidation(t *testing.T) {
+	cases := []struct {
+		name    string
+		entries []CatalogEntry
+	}{
+		{"invalid id", []CatalogEntry{{ID: 0, Rarity: core.RarityWhite}}},
+		{"duplicate id", []CatalogEntry{
+			{ID: 5001, Rarity: core.RarityWhite}, {ID: 5001, Rarity: core.RarityGreen},
+		}},
+		{"rarity zero", []CatalogEntry{{ID: 5001, Rarity: 0}}},
+		{"rarity out of range", []CatalogEntry{{ID: 5001, Rarity: 6}}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if _, err := NewCatalog(c.entries); err == nil {
+				t.Fatal("want validation error")
+			}
+		})
+	}
+}
+
 func equalInts(a, b []int) bool {
 	if len(a) != len(b) {
 		return false
