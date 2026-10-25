@@ -7,19 +7,24 @@ package protocol
 // v2：新增 party/difficulty/carry 操作、快照战备字段、settle 战绩元数据与 history 消息。
 // v3：账号体系改为用户名+密码（register=注册账号、新增 login=账密登录），
 // 用户主键改为雪花 uid；register 不再携带 device，旧版本互连直接 bad_message 断代。
-const Version = 3
+// v4：探索内容上云——新增 start_run/encounter/loot 三条消息，settle 增补 battleLoot 并做
+// 开箱对账；Envelope 增加 run 会话相关字段（见 contracts.md §7）。
+const Version = 4
 
 // 消息类型。
 const (
-	MsgRegister = "register" // 注册账号（用户名+密码，重名冲突），body: username, password
-	MsgLogin    = "login"    // 账号密码登录，body: username, password
-	MsgAuth     = "auth"     // 凭 token 认证（断线重连），body: token
-	MsgPull     = "pull"     // 拉取全量经济快照
-	MsgMigrate  = "migrate"  // 首登迁移/初始化，body: migrate
-	MsgSettle   = "settle"   // 局结算对账（幂等），body: runId, outcome, ops
-	MsgOps      = "ops"      // 大厅零散操作批次（穿卸/布局/消耗/战备配置），body: ops
-	MsgHistory  = "history"  // 拉取最近战绩（settlements 审计数据）
-	MsgPing     = "ping"     // 已登录会话的轻量往返探测，不携带经济快照
+	MsgRegister  = "register"  // 注册账号（用户名+密码，重名冲突），body: username, password
+	MsgLogin     = "login"     // 账号密码登录，body: username, password
+	MsgAuth      = "auth"      // 凭 token 认证（断线重连），body: token
+	MsgPull      = "pull"      // 拉取全量经济快照
+	MsgMigrate   = "migrate"   // 首登迁移/初始化，body: migrate
+	MsgSettle    = "settle"    // 局结算对账（幂等），body: runId, outcome, ops, battleLoot
+	MsgOps       = "ops"       // 大厅零散操作批次（穿卸/布局/消耗/战备配置），body: ops
+	MsgHistory   = "history"   // 拉取最近战绩（settlements 审计数据）
+	MsgPing      = "ping"      // 已登录会话的轻量往返探测，不携带经济快照
+	MsgStartRun  = "start_run" // 开局：服务器分配种子并生成全图内容；幂等（返回活跃 run 现状）
+	MsgEncounter = "encounter" // 撞敌：校验敌点存在并返回队伍构成，body: runId, pointId
+	MsgLoot      = "loot"      // 开箱：校验点存在并标记消耗，body: runId, pointId
 
 	MsgOK  = "ok"
 	MsgErr = "err"
@@ -74,10 +79,22 @@ type Op struct {
 	Carry []Stack `json:"carry,omitempty"`
 }
 
-// Stack 无实例身份的物品堆（携带计划条目）。
+// Stack 无实例身份的物品堆（携带计划条目 / 战斗所得）。
 type Stack struct {
 	ItemID int `json:"itemId"`
 	Count  int `json:"count"`
+}
+
+// Vec2 瓦片坐标（start_run 下发的出生/撤离点，与 mapdef.Vec2 同形）。
+type Vec2 struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+}
+
+// LootRecord 一个已开箱点的物品清单（start_run 重连恢复用）。
+type LootRecord struct {
+	PointID string `json:"pointId"`
+	ItemIDs []int  `json:"itemIds"`
 }
 
 // MigrateItem 迁移上传的仓库物品（无 UID，服务器统一铸造）。
@@ -172,4 +189,24 @@ type Envelope struct {
 	// Code/Msg err 响应的错误码与说明。
 	Code string `json:"code,omitempty"`
 	Msg  string `json:"msg,omitempty"`
+
+	// ---- 探索 run（协议 v4，契约 §7）----
+	// Resume start_run 请求：true 表示这是断线重连的恢复路径，不得误建新局。
+	Resume bool `json:"resume,omitempty"`
+	// PointID encounter/loot 请求的交互主键（"r<i>" / "e<i>"，契约 §6）。
+	PointID string `json:"pointId,omitempty"`
+	// SpawnPoint/ExtractionPoint start_run 响应下发的出生/撤离点（显式值，不参与预测）。
+	SpawnPoint      *Vec2 `json:"spawnPoint,omitempty"`
+	ExtractionPoint *Vec2 `json:"extractionPoint,omitempty"`
+	// Consumed start_run 响应：已消耗点 ID，按开箱序（重连恢复用）。
+	Consumed []string `json:"consumed,omitempty"`
+	// Looted start_run 响应：已开箱清单，与 Consumed 同序（重连恢复用）。
+	Looted []LootRecord `json:"looted,omitempty"`
+	// EnemyPartyID/Threat encounter 响应：本局该敌点的权威队伍与威胁等级。
+	EnemyPartyID int `json:"enemyPartyId,omitempty"`
+	Threat       int `json:"threat,omitempty"`
+	// ItemIDs loot 响应（以及 start_run 的 looted 条目内部）：掉落清单，顺序即掉落序。
+	ItemIDs []int `json:"itemIds,omitempty"`
+	// BattleLoot settle 请求：本局战斗所得（客户端上报，本阶段服务器信任）。
+	BattleLoot []Stack `json:"battleLoot,omitempty"`
 }

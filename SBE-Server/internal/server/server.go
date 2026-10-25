@@ -13,6 +13,7 @@ import (
 	"sbe-server/internal/core"
 	"sbe-server/internal/memorystore"
 	"sbe-server/internal/protocol"
+	"sbe-server/internal/run"
 	"sbe-server/internal/snowflake"
 	"sbe-server/internal/store"
 	"sbe-server/internal/ws"
@@ -29,6 +30,9 @@ type Server struct {
 	Store  store.Store
 	Items  core.ItemTable
 	Limits core.Limits
+	// Run 探索局会话管理器。为 nil 时 start_run/encounter/loot 返回 internal 错误
+	// （测试里的纯经济用例不需要生成器配置，因此这里是可空装配点）。
+	Run *run.Manager
 }
 
 // New 创建应用服务器（内存存储；生产部署见 cmd/sbe-server 的 mysql 变体）。
@@ -140,6 +144,15 @@ func detailFor(env *protocol.Envelope, resp *protocol.Envelope) string {
 		}
 	case protocol.MsgHistory:
 		return fmt.Sprintf(" history: %d runs", len(resp.History))
+	case protocol.MsgStartRun:
+		return fmt.Sprintf(" start_run: run=%s seed=%d diff=%d resume=%t consumed=%d spawn=(%g,%g) extraction=(%g,%g)",
+			resp.RunID, resp.Seed, env.Difficulty, env.Resume, len(resp.Consumed),
+			resp.SpawnPoint.X, resp.SpawnPoint.Y, resp.ExtractionPoint.X, resp.ExtractionPoint.Y)
+	case protocol.MsgEncounter:
+		return fmt.Sprintf(" encounter: run=%s point=%s party=%d threat=%d",
+			env.RunID, env.PointID, resp.EnemyPartyID, resp.Threat)
+	case protocol.MsgLoot:
+		return fmt.Sprintf(" loot: run=%s point=%s items=%d", env.RunID, env.PointID, len(resp.ItemIDs))
 	}
 	return ""
 }
@@ -184,6 +197,11 @@ func (s *Server) dispatch(sess *session, env protocol.Envelope) protocol.Envelop
 				StartedAt:  env.StartedAt,
 				EndedAt:    env.EndedAt,
 			}
+			// 对账（契约 §7 settle）：带出物资 ⊆ 开箱所得 ∪ 携带入场 ∪ 战斗所得。
+			// 携带入场取服务器侧快照的 Carried（不是客户端上报），开箱所得来自本局消耗记录。
+			if err := s.reconcileSettle(sess.userID, env); err != nil {
+				return protocol.Envelope{}, err
+			}
 			state, already, err := s.Store.ApplySettle(context.Background(), sess.userID, env.RunID, meta, env.Ops, s.Items, s.Limits)
 			if err != nil {
 				return protocol.Envelope{}, err
@@ -192,8 +210,73 @@ func (s *Server) dispatch(sess *session, env protocol.Envelope) protocol.Envelop
 				log.Printf("[settle] run=%s user=%d idempotent replay (重复上报，回放首次结果)", env.RunID, sess.userID)
 			} else {
 				log.Printf("[settle] run=%s user=%d outcome=%d applied %d ops", env.RunID, sess.userID, env.Outcome, len(env.Ops))
+				// settle 是唯一的终结路径：只在真正落地后清除活跃 run。
+				if s.Run != nil {
+					s.Run.Finish(sess.userID, env.RunID)
+				}
 			}
 			return okEnv(env, state), nil
+		})
+	case protocol.MsgStartRun:
+		return s.requireAuth(sess, env, func() (protocol.Envelope, error) {
+			manager, err := s.runManager()
+			if err != nil {
+				return protocol.Envelope{}, err
+			}
+			view, err := manager.Start(sess.userID, env.Difficulty, env.Resume)
+			if err != nil {
+				return protocol.Envelope{}, err
+			}
+			resp := protocol.Envelope{
+				T:               protocol.MsgOK,
+				V:               protocol.Version,
+				RID:             env.RID,
+				RunID:           view.RunID,
+				Seed:            view.Seed,
+				SpawnPoint:      &protocol.Vec2{X: view.Spawn.X, Y: view.Spawn.Y},
+				ExtractionPoint: &protocol.Vec2{X: view.Extraction.X, Y: view.Extraction.Y},
+				Consumed:        view.Consumed,
+				Looted:          lootRecords(view.Looted),
+			}
+			if env.Resume && len(view.Consumed) > 0 {
+				log.Printf("[run] run=%s user=%d resumed with %d consumed points", view.RunID, sess.userID, len(view.Consumed))
+			}
+			return resp, nil
+		})
+	case protocol.MsgEncounter:
+		return s.requireAuth(sess, env, func() (protocol.Envelope, error) {
+			manager, err := s.runManager()
+			if err != nil {
+				return protocol.Envelope{}, err
+			}
+			partyID, threat, err := manager.Encounter(sess.userID, env.RunID, env.PointID)
+			if err != nil {
+				return protocol.Envelope{}, err
+			}
+			return protocol.Envelope{
+				T:            protocol.MsgOK,
+				V:            protocol.Version,
+				RID:          env.RID,
+				EnemyPartyID: partyID,
+				Threat:       threat,
+			}, nil
+		})
+	case protocol.MsgLoot:
+		return s.requireAuth(sess, env, func() (protocol.Envelope, error) {
+			manager, err := s.runManager()
+			if err != nil {
+				return protocol.Envelope{}, err
+			}
+			itemIDs, err := manager.Loot(sess.userID, env.RunID, env.PointID)
+			if err != nil {
+				return protocol.Envelope{}, err
+			}
+			return protocol.Envelope{
+				T:       protocol.MsgOK,
+				V:       protocol.Version,
+				RID:     env.RID,
+				ItemIDs: itemIDs,
+			}, nil
 		})
 	case protocol.MsgOps:
 		return s.requireAuth(sess, env, func() (protocol.Envelope, error) {
@@ -219,6 +302,45 @@ func (s *Server) dispatch(sess *session, env protocol.Envelope) protocol.Envelop
 	default:
 		return errEnv(env, protocol.ErrCodeBadMessage, "unknown message type "+env.T)
 	}
+}
+
+// runManager 取探索 run 管理器；未装配时返回错误（cmd/sbe-server 装配，测试可注入）。
+func (s *Server) runManager() (*run.Manager, error) {
+	if s.Run == nil {
+		return nil, fmt.Errorf("server: exploration run manager is not configured")
+	}
+	return s.Run, nil
+}
+
+// reconcileSettle 结算额度对账（契约 §7 settle）：
+// 带出物资（本批 add 按 itemId 汇总）⊆ 开箱所得 ∪ 携带入场（服务器快照的 Carried）∪ 战斗所得。
+//
+// 只有该用户存在活跃 run 且 runId 匹配时才校验（见 ticket 04 Comments 的边界说明）；
+// 未装配 run 管理器时同样跳过。
+func (s *Server) reconcileSettle(userID int64, env protocol.Envelope) error {
+	if s.Run == nil || !s.Run.Active(userID, env.RunID) {
+		// 无活跃 run 或 runId 不认识：跳过对账（v3 兼容与幂等回放路径），也不去多读一次快照。
+		return nil
+	}
+	// 携带入场额度取服务器侧快照（不是客户端上报）；读不到就不放行，不做静态兜底。
+	state, err := s.Store.Load(context.Background(), userID)
+	if err != nil {
+		return err
+	}
+	battleLoot := make([]core.Stack, len(env.BattleLoot))
+	for i, stack := range env.BattleLoot {
+		battleLoot[i] = core.Stack{ItemID: stack.ItemID, Count: stack.Count}
+	}
+	return s.Run.ValidateSettle(userID, env.RunID, battleLoot, core.SumAdds(env.Ops), state.Carried)
+}
+
+// lootRecords 把会话层的开箱清单转成线上结构。
+func lootRecords(records []run.LootRecord) []protocol.LootRecord {
+	out := make([]protocol.LootRecord, len(records))
+	for i, record := range records {
+		out[i] = protocol.LootRecord{PointID: record.PointID, ItemIDs: record.ItemIDs}
+	}
+	return out
 }
 
 // doRegister 注册账号：成功即视为已登录，回包带新 token 与 uid。

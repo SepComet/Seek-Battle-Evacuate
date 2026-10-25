@@ -18,6 +18,7 @@ import (
 	"os"
 
 	"sbe-server/internal/boot"
+	"sbe-server/internal/run"
 	"sbe-server/internal/server"
 	"sbe-server/internal/snowflake"
 )
@@ -54,6 +55,11 @@ func main() {
 	defer func() { _ = closeStore() }()
 
 	app := &server.Server{Store: st, Items: table, Limits: cfg.Limits}
+	// 探索局会话（协议 v4）：服务器持有本局内容并做交互校验与结算对账。
+	app.Run = run.NewManager(run.Config{Layout: cfg.Layout, Tables: cfg.Tables()})
+	stopSweeper := app.Run.StartSweeper(0)
+	defer stopSweeper()
+
 	log.Printf("sbe-server listening on ws://%s%s (store=%s, items=%d, maxParty=%d, worker=%d)",
 		*addr, *path, *storeKind, len(table), cfg.Limits.MaxPlayerPartySize, *workerID)
 	log.Printf("exploration content: rooms=%d resourcePoints=%d enemySpawnPoints=%d playerSpawns=%d extractions=%d",
@@ -61,6 +67,7 @@ func main() {
 		len(cfg.Layout.PlayerSpawnPoints), len(cfg.Layout.ExtractionPoints))
 	log.Printf("exploration tables: resourcePointTypes=%d enemyPartyThreats=%d difficulties=%d",
 		cfg.ResourcePoints.Len(), cfg.EnemyParties.ThreatCount(), cfg.Difficulties.Len())
+	log.Printf("exploration runs: single active run per user, idle TTL %s", run.DefaultTTL)
 
 	srv := &http.Server{Addr: *addr, Handler: app.Handler(*path)}
 	if err := srv.ListenAndServe(); err != nil {

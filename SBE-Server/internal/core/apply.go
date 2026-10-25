@@ -265,3 +265,24 @@ func applyCarry(s *State, op protocol.Op, items ItemTable, limits Limits) error 
 	s.Carried = carried
 	return nil
 }
+
+// SumAdds 按 itemId 汇总一批操作里 add 的 Count（结算对账的「带出物资」口径）。
+// 只统计 OpAdd：del/mov/wear 等不产生新的「取得」，不进入额度。
+func SumAdds(ops []protocol.Op) map[int]int {
+	sums := make(map[int]int)
+	for _, op := range ops {
+		if op.K == protocol.OpAdd {
+			sums[op.ItemID] += op.Count
+		}
+	}
+	return sums
+}
+
+// SumStacks 按 itemId 汇总一批无实例身份的物品堆（携带计划、战斗所得）。
+func SumStacks(stacks []Stack) map[int]int {
+	sums := make(map[int]int, len(stacks))
+	for _, st := range stacks {
+		sums[st.ItemID] += st.Count
+	}
+	return sums
+}
