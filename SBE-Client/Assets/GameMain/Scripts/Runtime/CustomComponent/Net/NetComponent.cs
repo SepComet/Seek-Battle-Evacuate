@@ -1,3 +1,4 @@
+using System;
 using Cysharp.Threading.Tasks;
 using SepCore.Definition;
 using UnityGameFramework.Runtime;
@@ -28,6 +29,7 @@ namespace SepCore.Net
         private NetRpc _rpc;
         private float _nextAttemptTime;
         private bool _loginInFlight;
+        private bool _backOnlinePending;
 
         /// <summary>
         /// 仓库同步服务（账本、登录、结算、快照落地）。后续业务域按同样形状挂为独立服务。
@@ -49,6 +51,13 @@ namespace SepCore.Net
         /// </summary>
         public bool OnlineReady { get; private set; }
 
+        /// <summary>
+        /// 重新上线事件：仅在 <see cref="OnlineReady"/> 从 false 变为 true 的迁移时触发
+        /// （登录成功路径），断线期间不触发。断线重连续局（ticket 07）以此作为恢复入口；
+        /// 事件不携带数据，订阅方经 <see cref="TryConsumeBackOnline"/> 取走一次性标记。
+        /// </summary>
+        public event Action BackOnline;
+
         public long UserId => OnlineReady ? Warehouse.UserId : 0;
         public NetworkLatencyMonitor Latency => _rpc.Latency;
 
@@ -62,6 +71,21 @@ namespace SepCore.Net
         /// 挂起自动重连（登录过程自己驱动登录时置 true，避免并发抢登）。
         /// </summary>
         public bool SuspendAutoLogin { get; set; }
+
+        /// <summary>
+        /// 取走"重新上线"一次性标记：自上次取走后发生过 false→true 迁移则返回 true 并清除，
+        /// 否则返回 false。供无法长期持订阅的轮询方（如单局流程）使用；事件订阅方直接用 <see cref="BackOnline"/>。
+        /// </summary>
+        public bool TryConsumeBackOnline()
+        {
+            if (!_backOnlinePending)
+            {
+                return false;
+            }
+
+            _backOnlinePending = false;
+            return true;
+        }
 
         private void Awake()
         {
@@ -113,6 +137,7 @@ namespace SepCore.Net
                 {
                     AccountSession.SaveToken(Warehouse.Token);
                     OnlineReady = true;
+                    OnBackOnline();
                     Log.Info("Net online ready. UserId: {0}.", Warehouse.UserId);
                 }
                 else if (result.Outcome == NetLoginOutcome.AuthRejected)
@@ -149,6 +174,7 @@ namespace SepCore.Net
                 {
                     AccountSession.Save(Warehouse.UserId, Warehouse.Token, username);
                     OnlineReady = true;
+                    OnBackOnline();
                     Log.Info("Net online ready. UserId: {0}.", Warehouse.UserId);
                 }
                 else
@@ -190,6 +216,16 @@ namespace SepCore.Net
             OnlineReady = false;
             _nextAttemptTime = Time.unscaledTime + ReconnectIntervalSeconds;
             Log.Warning("Net disconnected; will retry.");
+        }
+
+        /// <summary>
+        /// 登录成功后的重新上线迁移：两条登录路径成功前都先把 OnlineReady 置 false，
+        /// 因此这里的 OnlineReady=true 必然是 false→true 迁移（首登或断线重连），置一次性标记并通知订阅方。
+        /// </summary>
+        private void OnBackOnline()
+        {
+            _backOnlinePending = true;
+            BackOnline?.Invoke();
         }
 
         private void OnDestroy()

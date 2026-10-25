@@ -160,12 +160,30 @@ namespace SepCore.Procedure
                     string assetName = resConfig.Prefab;
                     Vector3 resPos = TileToWorldPosition(resPoint.Position);
 
-                    // 联网流程开局无清单：内容待 loot 响应灌入；离线路径清单随方案带上。
-                    ResourcePointData resData = resPoint.ContentsKnown
-                        ? new ResourcePointData(resEntityId, assetName, resPos, resPoint.ResourcePointId,
-                            resPoint.ItemIds, pointId: resPoint.PointId)
-                        : ResourcePointData.CreatePendingContents(resEntityId, assetName, resPos,
+                    // 服务器幂等：uid 已有活跃 run 时 start_run 无论 resume 真假都返回该 run 现状（契约 §7）。
+                    // 落入已开箱的点必须装配成"已开完"（清单就绪、掉落计数填满），否则箱子会被重新拾取。
+                    ResourcePointData resData;
+                    if (seedSource.Online &&
+                        ResourcePointRecovery.TryGetLootedItems(seedSource.StartRun.Looted, resPoint.PointId,
+                            out List<int> lootedItems))
+                    {
+                        resData = ResourcePointData.CreatePendingContents(resEntityId, assetName, resPos,
                             resPoint.ResourcePointId, resPoint.PointId);
+                        resData.ApplyItems(lootedItems);
+                        resData.DroppedItemCount = resData.ItemCount;
+                    }
+                    // 联网流程开局无清单：内容待 loot 响应灌入；离线路径清单随方案带上。
+                    else if (resPoint.ContentsKnown)
+                    {
+                        resData = new ResourcePointData(resEntityId, assetName, resPos, resPoint.ResourcePointId,
+                            resPoint.ItemIds, pointId: resPoint.PointId);
+                    }
+                    else
+                    {
+                        resData = ResourcePointData.CreatePendingContents(resEntityId, assetName, resPos,
+                            resPoint.ResourcePointId, resPoint.PointId);
+                    }
+
                     GameEntry.Entity.ShowEntity<ResourcePointLogic>(resData, "ResourcePoint", Constant.AssetPriority.SceneAsset);
                 }
 
