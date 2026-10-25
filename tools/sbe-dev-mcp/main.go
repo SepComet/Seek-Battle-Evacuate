@@ -1,6 +1,7 @@
 // sbe-dev-mcp：SBE（Seek-Battle-Evacuate）开发工作流 MCP server（stdio）。
-// 提供三个工具：luban_export（Luban 配置导出）、server_test（Go 服务端测试）、
-// consistency_check（表名/生成文件头/asmdef 引用一致性预检）。
+// 提供五个工具：luban_export（Luban 配置导出）、server_test（Go 服务端测试）、
+// consistency_check（表名/生成文件头/asmdef 引用一致性预检）、
+// deploy（Docker 栈一键部署）、smoke（服务器注册/ping/登录冒烟）。
 // 仅依赖 Go 标准库，构建：go build -o bin/sbe-dev-mcp.exe .
 package main
 
@@ -16,7 +17,7 @@ import (
 )
 
 const serverName = "sbe-dev"
-const serverVersion = "0.1.0"
+const serverVersion = "0.2.0"
 
 const maxContentChars = 48000
 

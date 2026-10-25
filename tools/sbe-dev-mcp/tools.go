@@ -77,6 +77,51 @@ func allTools() []tool {
 			schema: map[string]any{"type": "object", "properties": map[string]any{}, "additionalProperties": false},
 			fn:     toolConsistencyCheck,
 		},
+		{
+			name: "deploy",
+			description: "一键部署 SBE-Server Docker 栈（SBE-Server/docker-compose.yml：MySQL + 游戏服务器）。" +
+				"默认 docker compose up -d --build sbe-server 并 --force-recreate（改 Go 代码后的日常更新路径，规避镜像同名不换容器的坑），" +
+				"service=all 时重建整栈（首次部署）。默认等待服务器监听日志后返回 compose ps 与近期日志。" +
+				"需要 Docker Desktop 运行中；首次构建需基础镜像已拉取（golang:1.27-alpine / alpine:3.21，本机直连 docker.io 走 IPv6 黑洞，需代理）。",
+			schema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"service": map[string]any{
+						"type":        "string",
+						"description": "可选，要重建的服务：sbe-server（默认，含 force-recreate）或 all（整栈首次部署）",
+					},
+					"wait_listen": map[string]any{
+						"type":        "boolean",
+						"description": "可选，默认 true：轮询等待 sbe-server 的 listening 日志（最多 30 秒）",
+					},
+					"timeout_sec": map[string]any{
+						"type":        "number",
+						"description": "可选，compose up 超时秒数，默认 600",
+					},
+				},
+			},
+			fn: toolDeploy,
+		},
+		{
+			name:        "smoke",
+			description: "对运行中的 sbe-server 跑冒烟验证（register → ping → login，走 cmd/smoke）。" +
+				"默认地址 127.0.0.1:7777（容器栈映射端口）。部署工具跑完后用它确认服务可用；" +
+				"register 被拒且 code=internal 通常说明容器内二进制与数据库 schema 不匹配，需重新 deploy。",
+			schema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"addr": map[string]any{
+						"type":        "string",
+						"description": "可选，服务器地址 host:port，默认 127.0.0.1:7777",
+					},
+					"timeout_sec": map[string]any{
+						"type":        "number",
+						"description": "可选，超时秒数，默认 120",
+					},
+				},
+			},
+			fn: toolSmoke,
+		},
 	}
 }
 
@@ -90,6 +135,13 @@ func argString(args map[string]any, key, def string) string {
 func argBool(args map[string]any, key string) bool {
 	v, _ := args[key].(bool)
 	return v
+}
+
+func argBoolDefault(args map[string]any, key string, def bool) bool {
+	if v, ok := args[key].(bool); ok {
+		return v
+	}
+	return def
 }
 
 func argNumber(args map[string]any, key string, def float64) float64 {
