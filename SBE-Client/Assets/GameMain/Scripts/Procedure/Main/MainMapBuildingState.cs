@@ -231,7 +231,10 @@ namespace SepCore.Procedure
             }
             catch (Exception ex) when (!(ex is OperationCanceledException))
             {
+                // 构建中途异常（配置缺失、资源加载失败等）会留下半成品场景，
+                // 直接回大厅而不是停在这个状态里无从操作。
                 Log.Error("[ProcedureMain] Failed to build map with error: {0}", ex);
+                AbortToMenu(fsm);
             }
         }
 
