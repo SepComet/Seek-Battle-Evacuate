@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"time"
 
 	"sbe-server/internal/core"
 	"sbe-server/internal/memorystore"
@@ -60,6 +62,8 @@ func (sess *session) remember(rid int64, resp protocol.Envelope) {
 func (s *Server) handleConn(conn *ws.Conn) {
 	sess := &session{rids: make(map[int64]protocol.Envelope)}
 	defer func() { _ = conn.Close() }()
+	log.Printf("[ws] connected %s", conn.RemoteAddr())
+	defer log.Printf("[ws] disconnected %s", conn.RemoteAddr())
 
 	for {
 		_, raw, err := conn.ReadMessage()
@@ -69,24 +73,64 @@ func (s *Server) handleConn(conn *ws.Conn) {
 
 		var env protocol.Envelope
 		if err := json.Unmarshal(raw, &env); err != nil {
+			log.Printf("[ws] %s malformed json (%d bytes): %v", conn.RemoteAddr(), len(raw), err)
 			_ = s.writeErr(conn, env, protocol.ErrCodeBadMessage, "malformed json")
 			continue
 		}
 		if env.V != protocol.Version {
+			log.Printf("[ws] %s unsupported protocol version %d (t=%s)", conn.RemoteAddr(), env.V, env.T)
 			_ = s.writeErr(conn, env, protocol.ErrCodeBadMessage, "unsupported protocol version")
 			continue
 		}
 		if resp, dup := sess.rids[env.RID]; dup {
+			log.Printf("[ws] %s %s rid=%d -> cached (retry)", conn.RemoteAddr(), env.T, env.RID)
 			_ = s.write(conn, resp)
 			continue
 		}
 
+		start := time.Now()
 		resp := s.dispatch(sess, env)
 		sess.remember(env.RID, resp)
+		log.Printf("[ws] %s %s rid=%d user=%d ops=%d -> %s%s%s [%s]",
+			conn.RemoteAddr(), env.T, env.RID, sess.userID, len(env.Ops),
+			resp.T,
+			respStatusDetail(&resp),
+			detailFor(&env, &resp),
+			time.Since(start).Round(time.Microsecond))
 		if err := s.write(conn, resp); err != nil {
 			return
 		}
 	}
+}
+
+// respStatusDetail 错误响应附上错误码与信息。
+func respStatusDetail(resp *protocol.Envelope) string {
+	if resp.T == protocol.MsgErr {
+		return fmt.Sprintf("(%s: %s)", resp.Code, resp.Msg)
+	}
+	return ""
+}
+
+// detailFor 为关键业务消息补充一行摘要。
+func detailFor(env *protocol.Envelope, resp *protocol.Envelope) string {
+	if resp.T != protocol.MsgOK {
+		return ""
+	}
+	switch env.T {
+	case protocol.MsgMigrate:
+		if env.Migrate != nil && resp.Snapshot != nil {
+			return fmt.Sprintf(" migrate: %d items, %d chars", len(env.Migrate.Items), len(env.Migrate.Characters))
+		}
+	case protocol.MsgSettle:
+		if resp.Snapshot != nil {
+			return fmt.Sprintf(" settle: run=%s outcome=%d rows=%d", env.RunID, env.Outcome, len(resp.Snapshot.Items))
+		}
+	case protocol.MsgPull:
+		if resp.Snapshot != nil {
+			return fmt.Sprintf(" pull: rows=%d chars=%d", len(resp.Snapshot.Items), len(resp.Snapshot.Characters))
+		}
+	}
+	return ""
 }
 
 func (s *Server) dispatch(sess *session, env protocol.Envelope) protocol.Envelope {
@@ -116,9 +160,14 @@ func (s *Server) dispatch(sess *session, env protocol.Envelope) protocol.Envelop
 		})
 	case protocol.MsgSettle:
 		return s.requireAuth(sess, env, func() (protocol.Envelope, error) {
-			state, _, err := s.Store.ApplySettle(context.Background(), sess.userID, env.RunID, env.Outcome, env.Ops, s.Items)
+			state, already, err := s.Store.ApplySettle(context.Background(), sess.userID, env.RunID, env.Outcome, env.Ops, s.Items)
 			if err != nil {
 				return protocol.Envelope{}, err
+			}
+			if already {
+				log.Printf("[settle] run=%s user=%d idempotent replay (重复上报，回放首次结果)", env.RunID, sess.userID)
+			} else {
+				log.Printf("[settle] run=%s user=%d outcome=%d applied %d ops", env.RunID, sess.userID, env.Outcome, len(env.Ops))
 			}
 			return okEnv(env, state), nil
 		})
