@@ -225,5 +225,54 @@ namespace SepCore.Tests
             Assert.AreEqual(400, session.SafeCase.TotalValue);
             Assert.AreEqual(700, session.TotalLootValue);
         }
+
+        /// <summary>
+        /// 战斗所得按 itemId 汇总（结算上报 battleLoot 用）；同一物品多次拾取累加件数。
+        /// </summary>
+        [Test]
+        public void RecordBattleLoot_AggregatesByItemId()
+        {
+            RoundSession session = CreateEmptySession();
+
+            session.RecordBattleLoot(5001, 1);
+            session.RecordBattleLoot(5003, 2);
+            session.RecordBattleLoot(5001, 1);
+
+            Assert.AreEqual(2, session.BattleLoot.Count);
+            Assert.AreEqual(5001, session.BattleLoot[0].itemId);
+            Assert.AreEqual(2, session.BattleLoot[0].count);
+            Assert.AreEqual(5003, session.BattleLoot[1].itemId);
+            Assert.AreEqual(2, session.BattleLoot[1].count);
+        }
+
+        [TestCase(0, 1)]
+        [TestCase(-1, 1)]
+        [TestCase(5001, 0)]
+        [TestCase(5001, -3)]
+        public void RecordBattleLoot_IgnoresInvalidEntries(int itemId, int count)
+        {
+            RoundSession session = CreateEmptySession();
+
+            session.RecordBattleLoot(itemId, count);
+
+            Assert.IsEmpty(session.BattleLoot);
+        }
+
+        [Test]
+        public void BattleLoot_StartsEmpty()
+        {
+            RoundSession session = CreateEmptySession();
+
+            Assert.IsNotNull(session.BattleLoot);
+            Assert.IsEmpty(session.BattleLoot);
+        }
+
+        private RoundSession CreateEmptySession()
+        {
+            return new RoundSession(DifficultyTier.Tier1, 1, 1000,
+                new RoundItemContainer(4, id => CreateItem(id)),
+                new RoundItemContainer(2, id => CreateItem(id)),
+                new List<RoundCharacterState>());
+        }
     }
 }

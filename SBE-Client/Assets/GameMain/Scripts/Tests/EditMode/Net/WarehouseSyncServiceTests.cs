@@ -592,6 +592,49 @@ namespace SepCore.Tests
             Assert.That(ctx.Server.Settled, Does.Not.Contain("run-x"));
         }
 
+        /// <summary>
+        /// 战斗所得随结算上报（契约 §7 的 battleLoot）：服务器对账额度 = 开箱所得 + 携带入场 +
+        /// 战斗所得，客户端漏报会让带出敌人掉落的结算被整批拒绝。
+        /// 未传时不带字段（Go 侧 omitempty 语义）。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator SettleSendsBattleLoot()
+        {
+            Ctx ctx = CreateService();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
+
+            List<ItemStack> battleLoot = new List<ItemStack>
+            {
+                new ItemStack(5001, 2),
+                new ItemStack(5003, 1),
+            };
+            var record = new RoundRecord((RoundResultType)1, DifficultyTier.Tier1, 7, 100, 200);
+            yield return ctx.Service.SettleAsync("run-battle", record, battleLoot).ToCoroutine();
+
+            NetEnvelope settle = ctx.Connection.Sent.FirstOrDefault(e => e.t == NetMsg.Settle);
+            Assert.That(settle, Is.Not.Null);
+            Assert.That(settle.battleLoot, Is.Not.Null);
+            Assert.That(settle.battleLoot.Count, Is.EqualTo(2));
+            Assert.That(settle.battleLoot[0].itemId, Is.EqualTo(5001));
+            Assert.That(settle.battleLoot[0].count, Is.EqualTo(2));
+            Assert.That(settle.battleLoot[1].itemId, Is.EqualTo(5003));
+            Assert.That(settle.battleLoot[1].count, Is.EqualTo(1));
+        }
+
+        [UnityTest]
+        public IEnumerator SettleWithoutBattleLoot_OmitsField()
+        {
+            Ctx ctx = CreateService();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
+
+            var record = new RoundRecord((RoundResultType)1, DifficultyTier.Tier1, 7, 100, 200);
+            yield return ctx.Service.SettleAsync("run-noloot", record).ToCoroutine();
+
+            NetEnvelope settle = ctx.Connection.Sent.FirstOrDefault(e => e.t == NetMsg.Settle);
+            Assert.That(settle, Is.Not.Null);
+            Assert.That(settle.battleLoot, Is.Null);
+        }
+
         [UnityTest]
         public IEnumerator SnapshotWithOverlappingPositions_SelfHeals()
         {

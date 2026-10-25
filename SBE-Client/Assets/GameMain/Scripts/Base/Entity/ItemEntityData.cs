@@ -6,7 +6,8 @@ namespace SepCore.Entity
 {
     /// <summary>
     /// 场景道具实体数据。
-    /// 承载掉落在地图上的具体物品 ID、堆叠数量及稀有度。
+    /// 承载掉落在地图上的具体物品 ID、堆叠数量及稀有度，
+    /// 并标注是否来自敌人战斗掉落（结算据此上报 battleLoot 供服务器开箱对账）。
     /// </summary>
     [Serializable]
     public sealed class ItemEntityData : EntityDataBase
@@ -15,6 +16,7 @@ namespace SepCore.Entity
         [SerializeField] private int _count;
         [SerializeField] private Rarity _rarity;
         [SerializeField] private Vector3? _spawnFromPosition;
+        [SerializeField] private bool _isBattleLoot;
 
         public ItemEntityData(
             int entityId,
@@ -24,7 +26,8 @@ namespace SepCore.Entity
             int count,
             Rarity rarity,
             Quaternion? rotation = null,
-            Vector3? spawnFromPosition = null) : base(assetName, entityId)
+            Vector3? spawnFromPosition = null,
+            bool isBattleLoot = false) : base(assetName, entityId)
         {
             Position = position;
             Rotation = rotation ?? Quaternion.identity;
@@ -32,6 +35,7 @@ namespace SepCore.Entity
             _count = Mathf.Max(1, count);
             _rarity = rarity;
             _spawnFromPosition = spawnFromPosition;
+            _isBattleLoot = isBattleLoot;
         }
 
         /// <summary>
@@ -53,5 +57,10 @@ namespace SepCore.Entity
         /// 抛物线动画起始点坐标（若为 null 则不播放掉落动画）。
         /// </summary>
         public Vector3? SpawnFromPosition => _spawnFromPosition;
+
+        /// <summary>
+        /// 是否来自敌人战斗掉落。拾取时记入本局战斗所得，结算上报后计入服务器对账额度。
+        /// </summary>
+        public bool IsBattleLoot => _isBattleLoot;
     }
 }
