@@ -1,27 +1,25 @@
 using System;
 using System.Collections.Generic;
-using SepCore.CustomComponent;
 using UnityEngine;
 
 namespace SepCore.Exploration
 {
-    internal sealed class PlayerSpawnPointGenerator
+    /// <summary>
+    /// 玩家出生点生成（exploration-online-v1 契约 §3 第 4 段）。
+    /// 固定从 SubSeed(master, KindSpawn, 0) 派生 PRNG，只消费一次下标随机。
+    /// </summary>
+    internal static class PlayerSpawnPointGenerator
     {
-        private readonly IRoundRandomSource _random;
-
-        public PlayerSpawnPointGenerator(IRoundRandomSource random)
+        public static Vector2 PlacePoint(IReadOnlyList<Vector2> candidates, long masterSeed)
         {
-            _random = random;
-        }
-
-        public Vector2 Generate(IReadOnlyList<Vector2> definitions)
-        {
-            if (definitions.Count == 0)
+            if (candidates.Count == 0)
             {
                 throw new InvalidOperationException("Map definition does not contain a player spawn point.");
             }
 
-            return definitions[_random.NextInt(0, definitions.Count)];
+            SplitMix64 rng = new SplitMix64(
+                ExplorationSeed.SubSeed(masterSeed, ExplorationSeed.KindSpawn, 0));
+            return candidates[rng.NextInt(0, candidates.Count)];
         }
     }
 }
