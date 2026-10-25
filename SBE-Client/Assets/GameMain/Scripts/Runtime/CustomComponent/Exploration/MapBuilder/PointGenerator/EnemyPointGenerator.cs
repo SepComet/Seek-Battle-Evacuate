@@ -1,40 +1,76 @@
 using System;
 using System.Collections.Generic;
-using SepCore.CustomComponent;
 using SepCore.Definition;
 using UnityEngine;
 
 namespace SepCore.Exploration
 {
+    /// <summary>
+    /// 敌点生成（exploration-online-v1 契约 §3 第 2 段）。
+    /// 每个敌点从 SubSeed(master, KindEnemy, i) 派生独立 PRNG，
+    /// 消费序固定为：威胁 → 队伍池下标（threat=None 时不再消费）。
+    /// 摆位出口走同一条威胁选择路径，只是不继续消费队伍池随机。
+    /// </summary>
     internal sealed class EnemyPointGenerator
     {
         private readonly IReadOnlyList<EnemyPartyConfig> _enemyPartyConfigs;
-        private readonly IRoundRandomSource _random;
 
-        public EnemyPointGenerator(IReadOnlyList<EnemyPartyConfig> enemyPartyConfigs, IRoundRandomSource random)
+        public EnemyPointGenerator(IReadOnlyList<EnemyPartyConfig> enemyPartyConfigs)
         {
             _enemyPartyConfigs = enemyPartyConfigs;
-            _random = random;
         }
 
-        public List<EnemyPointBuildData> Generate(IReadOnlyList<Vector2> definitions,
+        /// <summary>
+        /// 摆位阶段：敌点存在性与威胁等级（威胁为 None 时视为不存在），不消费队伍池随机。
+        /// </summary>
+        public static EnemyPointPlacementData PlacePoint(Vector2 position, int index, long masterSeed,
             IReadOnlyList<WeightedEnemyParty> threatWeights)
         {
-            List<EnemyPointBuildData> results = new List<EnemyPointBuildData>();
-            foreach (Vector2 position in definitions)
-            {
-                EnemyPartyThreatLevel threatLevel = SelectThreatLevel(threatWeights);
-                if (threatLevel == EnemyPartyThreatLevel.None)
-                {
-                    continue;
-                }
+            return RollPlacement(position, index, masterSeed, threatWeights, out _);
+        }
 
-                List<EnemyPartyConfig> partyPool = BuildPartyPool(threatLevel);
-                int partyIndex = _random.NextInt(0, partyPool.Count);
-                results.Add(new EnemyPointBuildData(position, threatLevel, partyPool[partyIndex].Id));
+        /// <summary>
+        /// 完整生成：把 <see cref="PlacePoint"/> 的同一次掷点结果继续用于队伍池下标；
+        /// threat=None 时返回 null（该点不生成）。
+        /// </summary>
+        public EnemyPointBuildData BuildPoint(Vector2 position, int index, long masterSeed,
+            IReadOnlyList<WeightedEnemyParty> threatWeights)
+        {
+            EnemyPointPlacementData placement = RollPlacement(position, index, masterSeed, threatWeights,
+                out SplitMix64 pointRng);
+            if (!placement.Present)
+            {
+                return null;
             }
 
-            return results;
+            List<EnemyPartyConfig> partyPool = BuildPartyPool(placement.ThreatLevel);
+            if (partyPool.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"No enemy party config exists for threat level '{placement.ThreatLevel}'.");
+            }
+
+            int partyIndex = pointRng.NextInt(0, partyPool.Count);
+            return new EnemyPointBuildData(index, placement.Position, placement.ThreatLevel,
+                partyPool[partyIndex].Id);
+        }
+
+        /// <summary>
+        /// 摆位结果的唯一来源：新建本点 PRNG 并掷威胁等级，PRNG 交回调用方以便继续消费。
+        /// 完整生成与摆位出口都从这里取威胁，不存在第二套掷点逻辑。
+        /// </summary>
+        private static EnemyPointPlacementData RollPlacement(Vector2 position, int index, long masterSeed,
+            IReadOnlyList<WeightedEnemyParty> threatWeights, out SplitMix64 pointRng)
+        {
+            pointRng = CreatePointRng(masterSeed, index);
+            EnemyPartyThreatLevel threatLevel = SelectThreatLevel(pointRng, threatWeights);
+            return new EnemyPointPlacementData(position, threatLevel,
+                threatLevel != EnemyPartyThreatLevel.None);
+        }
+
+        private static SplitMix64 CreatePointRng(long masterSeed, int index)
+        {
+            return new SplitMix64(ExplorationSeed.SubSeed(masterSeed, ExplorationSeed.KindEnemy, index));
         }
 
         private List<EnemyPartyConfig> BuildPartyPool(EnemyPartyThreatLevel threatLevel)
@@ -51,7 +87,8 @@ namespace SepCore.Exploration
             return partyPool;
         }
 
-        private EnemyPartyThreatLevel SelectThreatLevel(IReadOnlyList<WeightedEnemyParty> configs)
+        private static EnemyPartyThreatLevel SelectThreatLevel(SplitMix64 pointRng,
+            IReadOnlyList<WeightedEnemyParty> configs)
         {
             int totalWeight = 0;
             foreach (WeightedEnemyParty config in configs)
@@ -59,7 +96,12 @@ namespace SepCore.Exploration
                 totalWeight += config.Weight;
             }
 
-            int value = _random.NextInt(0, totalWeight);
+            if (totalWeight <= 0)
+            {
+                throw new InvalidOperationException("Enemy threat weights are all zero.");
+            }
+
+            int value = pointRng.NextInt(0, totalWeight);
             foreach (WeightedEnemyParty config in configs)
             {
                 if (value < config.Weight)

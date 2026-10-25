@@ -87,8 +87,8 @@ namespace SepCore.Procedure
                 EnsureEntityGroup("Camera");
                 EnsureEntityGroup("Item");
 
-                // 5. 执行地图构建
-                MapBuilder builder = new MapBuilder(difficulty, GameEntry.Random.Random);
+                // 5. 执行地图构建（内容生成的 masterSeed 与本局战斗随机源种子同一来源）
+                MapBuilder builder = new MapBuilder(difficulty, GameEntry.Random.Seed);
                 MapBuildResult buildResult = await builder.BuildAsync();
 
                 if (cancellationToken.IsCancellationRequested)
