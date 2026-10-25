@@ -79,7 +79,7 @@ GOPROXY=https://mirrors.aliyun.com/goproxy/,direct go mod download
 go test ./...
 ```
 
-默认覆盖 core 校验、迁移、WebSocket 同步/重连、战绩排序/上限/幂等、runId 归属（同用户回放/跨用户拒绝）、账号注册/登录（重名冲突、错密拒绝）与真实配置导出格式。
+默认覆盖 core 校验、迁移、WebSocket 同步/重连、战绩排序/上限/幂等、runId 归属（同用户回放/跨用户拒绝）、账号注册/登录（重名冲突、错密拒绝）、真实配置导出格式，以及协议 v4 的探索 run 会话（`internal/run` 单元用例 + `internal/server/run_test.go` 的 fake WS 全流程：start_run 幂等与 resume、encounter/loot 的各拒绝分支与重试、settle 对账与额度、TTL 清理）。
 
 MySQL 集成用例默认跳过，一键运行（需要本机有 MySQL 服务在跑）：
 
@@ -102,8 +102,9 @@ bash tools/mysql_integration_test.sh -user root -pass 你的密码
 | `internal/mapdef` | 加载编辑器导出的 tbmapdefinition.json（房间 + 四类点位候选），校验敌人点房间归属 |
 | `internal/gametable` | 加载 tbresourcepointconfig.json / tbenemypartyconfig.json / tbdifficultyconfig.json 的生成表 |
 | `internal/mapgen` | 探索内容生成器（纯函数）：SplitMix64、子种子、`Generate` |
+| `internal/run` | 探索局会话（内存态）：开局幂等、交互校验与消耗记账、结算额度对账、TTL 清理 |
 | `internal/ws` | WebSocket 传输层（gorilla/websocket 薄包装） |
-| `internal/server` | 会话与分派：rid 去重、register/auth/pull/migrate/settle/ops/history |
+| `internal/server` | 会话与分派：rid 去重、register/auth/pull/migrate/settle/ops/history/start_run/encounter/loot |
 | `internal/memorystore` | 内存存储（开发/测试） |
 | `internal/mysqlstore` | MySQL 存储 |
 | `internal/snowflake` | 雪花 uid 铸号（41 位毫秒 \| 10 位 worker \| 12 位序列） |
@@ -112,17 +113,20 @@ bash tools/mysql_integration_test.sh -user root -pass 你的密码
 
 ## 协议摘要
 
-信封 `{"t":类型,"v":3,"rid":请求ID,...}`；响应 `{"t":"ok",...,"snapshot":{...}}` 或 `{"t":"err","rid":...,"code":...}`。旧版互连返回 `bad_message`，客户端与服务端需同步发版。
+信封 `{"t":类型,"v":4,"rid":请求ID,...}`；响应 `{"t":"ok",...,"snapshot":{...}}` 或 `{"t":"err","rid":...,"code":...}`。旧版互连返回 `bad_message`，客户端与服务端需同步发版。
 
 - `register{username,password}` → 注册账号，成功回新 token + `userId` + 快照；用户名 2~32 字符（trim 后）且全局唯一，重名返回 `conflict`，格式非法返回 `rejected`。
 - `login{username,password}` → 账密登录，成功回新 token + `userId` + 快照；用户不存在与密码错误统一返回 `unauthorized`。
 - `auth{token}` → 凭 token 断线重连，成功回 `userId` + 快照。`userId` 是雪花算法铸造的 64 位账号主键（uid），跨认证方式与断线重连保持不变，不是认证凭据。
 - `pull` → 全量局外快照
 - `migrate{migrate:{items[],characters[],party[],difficulty,carried[]}}` → 首登迁移（仅未初始化账号，一次性）
-- `settle{runId,outcome,difficulty,seed,startedAt,endedAt,ops[]}` → 结算对账；`runId` 幂等（同用户重复回放首次结果，元数据保留首次值）；`runId` 已被其他用户占用时返回 `rejected`
+- `settle{runId,outcome,difficulty,seed,startedAt,endedAt,battleLoot?,ops[]}` → 结算对账；`runId` 幂等（同用户重复回放首次结果，元数据保留首次值）；`runId` 已被其他用户占用时返回 `rejected`。**v4 新增对账**：本批 `add` op 按 itemId 汇总后，每个 itemId 的带出数量不得超过「开箱所得 + 携带入场 + 战斗所得」，超限整批不落地（详见下节）。
 - `ops{ops[]}` → 大厅零散操作；`rid` 去重防重试重复入账
 - `history` → 需登录，返回 `history:[{runId,outcome,difficulty,seed,startedAt,endedAt}]`，按 startedAt 倒序最多 100 条；空列表允许省略 history 字段。普通快照不携带战绩。
-- `ping` → 需登录，只返回 `{t:"ok",v:2,rid}`，不读取存储、不携带快照或战绩。客户端以单调时钟测量该请求的往返时间（含消息泵送时间），用于常驻网络状态显示。该字段与消息为协议 v2 的兼容扩展。
+- `ping` → 需登录，只返回 `{t:"ok",v:4,rid}`，不读取存储、不携带快照或战绩。客户端以单调时钟测量该请求的往返时间（含消息泵送时间），用于常驻网络状态显示。该字段与消息为协议 v2 的兼容扩展。
+- `start_run{difficulty,resume?}` → 开局（见「探索 run 会话」一节）
+- `encounter{runId,pointId}` → 撞敌校验，返回 `{enemyPartyId,threat}`
+- `loot{runId,pointId}` → 开箱，返回 `{itemIds}`
 
 快照新增 `party[] / difficulty / carried:[{itemId,count}]`。空队列、难度 0、空携带均表示未配置；零值字段允许省略。存量 v1 账号没有 user_loadout 行时采用这三个零值；旧 settlements 元数据新列默认 0。战绩由 settlements 存储，登录后覆盖客户端历史缓存，不迁移本地旧战绩。
 
@@ -184,5 +188,57 @@ C# 侧同一批常量在 `Assets/GameMain/Scripts/Tests/EditMode/Exploration/Map
 
 `internal/mapgen/mapgen_test.go` 另有真实配置冒烟：读 `config/` 下真实六份配置跑完整生成，
 只断言一致性不变量（点位与布局对齐、物品与队伍都在表内、敌点归属房间），不断言具体内容。
+
+## 探索 run 会话（`internal/run` + 协议 v4）
+
+服务器在开局时生成并持有全图内容，作为唯一权威；客户端只做摆位预测渲染，
+一切后果性交互（撞敌开战、开箱）走请求-响应获取权威数据。
+
+**会话生命周期**：单用户单活跃 run，状态全在内存（崩溃丢局可接受）。`settle` 是唯一的终结路径
+（撤离/死亡都是 outcome）；空闲超过 TTL（默认 4 小时，后台每 5 分钟扫一次）的 run 由 `Sweep` 清理。
+断线重连不重建 run——同一局的开箱进度随 run 存续。
+
+### start_run
+
+```
+请求: {"t":"start_run","v":4,"rid":n,"difficulty":2,"resume":false}
+响应: {"t":"ok","v":4,"rid":n,"runId":"<32 hex>","seed":123456789,
+       "spawnPoint":{"x":1,"y":-16},"extractionPoint":{"x":30,"y":-3},
+       "consumed":["r2"],"looted":[{"pointId":"r2","itemIds":[5001,5003]}]}
+```
+
+- 服务器分配主种子（`[1, 2147483647]`，crypto/rand；不走 `math/rand`），调 `mapgen.Generate` 生成全图，
+  出生/撤离点取生成结果（显式下发，不参与预测）。
+- **幂等**：该 uid 已有活跃 run → 不论 `resume` 真假都返回该 run 现状（同 runId/seed/点位，
+  以及 `consumed`/`looted` 的当前进度）。这就是断线重连的恢复路径，不另设消息。
+- `resume=true` 且无活跃 run → `rejected`，msg 含 `no active run`（客户端据此不误建新局）。
+- `difficulty` 必须是难度表中的 tier（且该 tier 有威胁权重），否则 `rejected` 且不开局。
+
+### encounter / loot
+
+```
+encounter: {"t":"encounter","v":4,"rid":n,"runId":"...","pointId":"e3"} → {"enemyPartyId":4101,"threat":2}
+loot:      {"t":"loot","v":4,"rid":n,"runId":"...","pointId":"r2"}      → {"itemIds":[5001,5003]}
+```
+
+- 点位主键（契约 §6）：物资点 `r<i>`、敌点 `e<i>`，`i` 是地图定义列表下标；只接受规范十进制写法。
+- 无活跃 run / runId 不匹配 / 点不是本局生成出来的（越界，或敌点威胁被掷为 None）→ `rejected`。
+- **encounter 幂等且不消耗点**：打赢打输、逃跑后敌人仍在，重复请求返回同一份队伍构成。
+- **loot 幂等**：首次成功即标记该点已消耗并记入 `consumed`/`looted`；重试回放同一清单
+  （本阶段每点只有一份清单，开一次即清空）。
+- 全部错误只用 `rejected`，msg 供日志与提示，客户端不解析。
+
+### settle 对账
+
+`settle` 请求新增可选字段 `battleLoot:[{itemId,count}]`（本局战斗所得，客户端上报，本阶段信任）。
+
+对账口径：本批 `add` op 按 itemId 汇总 `addedCount`，允许额度
+`allow[id] = lootedSum[id]（本局开箱所得）+ carriedInSum[id]（服务器快照的 Carried）+ battleLootSum[id]`；
+任一 `addedCount[id] > allow[id]` → `rejected`，整批不落地、run 保持活跃。
+
+- `carriedInSum` 取**服务器侧**快照的携带计划，不采信客户端当次上报。
+- **只有该用户存在活跃 run 且 `runId` 匹配时才校验**；无活跃 run 或 runId 不认识时跳过对账
+  （settle 可能来自旧版客户端或幂等补报，保持 v3 兼容），此边界见 ticket 04 Comments。
+- 结算真正落地（非幂等回放）后清除活跃 run——这是唯一的终结路径。
 
 客户端编译、EditMode 与真实运行验收按仓库纪律由已开启的 Editor 或用户执行；Go 测试通过不能替代 Unity 验收或真实 MySQL 验证。
