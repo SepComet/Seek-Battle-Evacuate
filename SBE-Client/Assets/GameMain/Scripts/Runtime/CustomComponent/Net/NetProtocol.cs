@@ -8,7 +8,9 @@ namespace SepCore.Net
     public static class NetMsg
     {
         // v3：账号体系改为用户名+密码（register=注册账号、login=账密登录），用户主键为雪花 uid。
-        public const int Version = 3;
+        // v4：探索内容上云——新增 start_run/encounter/loot，settle 增补 battleLoot；
+        //     信封增加 run 会话字段（契约 exploration-online-v1 §7）。
+        public const int Version = 4;
 
         public const string Register = "register";
         public const string Login = "login";
@@ -19,6 +21,15 @@ namespace SepCore.Net
         public const string Ops = "ops";
         public const string History = "history";
         public const string Ping = "ping";
+
+        /// <summary>开局：服务器分配种子并生成全图内容；幂等（返回活跃 run 现状）。</summary>
+        public const string StartRun = "start_run";
+
+        /// <summary>撞敌：校验敌点存在并返回队伍构成，body: runId, pointId。</summary>
+        public const string Encounter = "encounter";
+
+        /// <summary>开箱：校验点存在并标记消耗，body: runId, pointId。</summary>
+        public const string Loot = "loot";
 
         public const string OK = "ok";
         public const string Err = "err";
@@ -246,6 +257,36 @@ namespace SepCore.Net
     }
 
     /// <summary>
+    /// 瓦片坐标（start_run 下发的出生/撤离点），与服务端 protocol.Vec2 一致。
+    /// </summary>
+    [System.Serializable]
+    public class NetVec2
+    {
+        public float x;
+        public float y;
+
+        public NetVec2()
+        {
+        }
+
+        public NetVec2(float x, float y)
+        {
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+    /// <summary>
+    /// 一个已开箱点的物品清单（start_run 重连恢复用），与服务端 protocol.LootRecord 一致。
+    /// </summary>
+    [System.Serializable]
+    public class NetLootRecord
+    {
+        public string pointId;
+        public List<int> itemIds = new List<int>();
+    }
+
+    /// <summary>
     /// 消息信封，字段与服务端 protocol.Envelope 一致。
     /// </summary>
     [System.Serializable]
@@ -277,6 +318,38 @@ namespace SepCore.Net
         public NetSnapshot snapshot;
         public string code;
         public string msg;
+
+        // ---- 探索 run（协议 v4，契约 §7）----
+
+        /// <summary>start_run 请求：true 表示断线重连的恢复路径，不得误建新局。</summary>
+        public bool resume;
+
+        /// <summary>encounter/loot 请求的交互主键（"r&lt;i&gt;" / "e&lt;i&gt;"，契约 §6）。</summary>
+        public string pointId;
+
+        /// <summary>start_run 响应下发的出生点（显式值，不参与预测）。</summary>
+        public NetVec2 spawnPoint;
+
+        /// <summary>start_run 响应下发的撤离点（显式值，不参与预测）。</summary>
+        public NetVec2 extractionPoint;
+
+        /// <summary>start_run 响应：已消耗点 ID，按开箱序（重连恢复用）。</summary>
+        public List<string> consumed;
+
+        /// <summary>start_run 响应：已开箱清单，与 <see cref="consumed"/> 同序（重连恢复用）。</summary>
+        public List<NetLootRecord> looted;
+
+        /// <summary>encounter 响应：本局该敌点的权威队伍。</summary>
+        public int enemyPartyId;
+
+        /// <summary>encounter 响应：本局该敌点的权威威胁等级。</summary>
+        public int threat;
+
+        /// <summary>loot 响应（以及 start_run 的 looted 条目内部）：掉落清单，顺序即掉落序。</summary>
+        public List<int> itemIds;
+
+        /// <summary>settle 请求：本局战斗所得（客户端上报，本阶段服务器信任）。</summary>
+        public List<NetStack> battleLoot;
 
         public static NetEnvelope Create(string type)
         {

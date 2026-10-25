@@ -104,6 +104,20 @@ namespace SepCore.Net
             return await tcs.Task;
         }
 
+        /// <summary>
+        /// 放弃一个仍在等待的请求（调用方自行判定了超时）。移出等待表并以 null 完成，
+        /// 使对应的 <see cref="SendAsync"/> 立即收尾、不留下悬挂的等待项；
+        /// 迟到应答因 rid 不复用而不会匹配到任何请求。
+        /// </summary>
+        public void Abandon(long rid)
+        {
+            if (_pending.TryGetValue(rid, out UniTaskCompletionSource<NetEnvelope> tcs))
+            {
+                _pending.Remove(rid);
+                tcs.TrySetResult(null);
+            }
+        }
+
         private void OnMessageReceived(string message)
         {
             NetEnvelope resp = GameFramework.Utility.Json.ToObject<NetEnvelope>(message);
