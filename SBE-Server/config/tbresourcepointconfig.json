@@ -1,0 +1,187 @@
+[
+  {
+    "id": 1,
+    "name": "物资点1",
+    "lootConfigs": [
+      {
+        "difficulty": 1,
+        "minCount": 1,
+        "maxCount": 2,
+        "whiteWeight": 70,
+        "greenWeight": 25,
+        "blueWeight": 5,
+        "goldWeight": 0,
+        "redWeight": 0
+      },
+      {
+        "difficulty": 2,
+        "minCount": 1,
+        "maxCount": 3,
+        "whiteWeight": 45,
+        "greenWeight": 35,
+        "blueWeight": 15,
+        "goldWeight": 5,
+        "redWeight": 0
+      },
+      {
+        "difficulty": 3,
+        "minCount": 2,
+        "maxCount": 4,
+        "whiteWeight": 20,
+        "greenWeight": 30,
+        "blueWeight": 25,
+        "goldWeight": 15,
+        "redWeight": 10
+      }
+    ],
+    "prefab": "ResourcePoint1"
+  },
+  {
+    "id": 2,
+    "name": "物资点2",
+    "lootConfigs": [
+      {
+        "difficulty": 1,
+        "minCount": 1,
+        "maxCount": 2,
+        "whiteWeight": 80,
+        "greenWeight": 18,
+        "blueWeight": 2,
+        "goldWeight": 0,
+        "redWeight": 0
+      },
+      {
+        "difficulty": 2,
+        "minCount": 1,
+        "maxCount": 3,
+        "whiteWeight": 55,
+        "greenWeight": 30,
+        "blueWeight": 12,
+        "goldWeight": 3,
+        "redWeight": 0
+      },
+      {
+        "difficulty": 3,
+        "minCount": 2,
+        "maxCount": 4,
+        "whiteWeight": 30,
+        "greenWeight": 30,
+        "blueWeight": 22,
+        "goldWeight": 13,
+        "redWeight": 5
+      }
+    ],
+    "prefab": "ResourcePoint2"
+  },
+  {
+    "id": 3,
+    "name": "物资点3",
+    "lootConfigs": [
+      {
+        "difficulty": 1,
+        "minCount": 1,
+        "maxCount": 2,
+        "whiteWeight": 50,
+        "greenWeight": 35,
+        "blueWeight": 12,
+        "goldWeight": 3,
+        "redWeight": 0
+      },
+      {
+        "difficulty": 2,
+        "minCount": 2,
+        "maxCount": 3,
+        "whiteWeight": 30,
+        "greenWeight": 35,
+        "blueWeight": 22,
+        "goldWeight": 10,
+        "redWeight": 3
+      },
+      {
+        "difficulty": 3,
+        "minCount": 2,
+        "maxCount": 4,
+        "whiteWeight": 15,
+        "greenWeight": 25,
+        "blueWeight": 30,
+        "goldWeight": 20,
+        "redWeight": 10
+      }
+    ],
+    "prefab": "ResourcePoint3"
+  },
+  {
+    "id": 4,
+    "name": "物资点4",
+    "lootConfigs": [
+      {
+        "difficulty": 1,
+        "minCount": 1,
+        "maxCount": 3,
+        "whiteWeight": 65,
+        "greenWeight": 25,
+        "blueWeight": 8,
+        "goldWeight": 2,
+        "redWeight": 0
+      },
+      {
+        "difficulty": 2,
+        "minCount": 2,
+        "maxCount": 2,
+        "whiteWeight": 4,
+        "greenWeight": 40,
+        "blueWeight": 30,
+        "goldWeight": 8,
+        "redWeight": 2
+      },
+      {
+        "difficulty": 3,
+        "minCount": 3,
+        "maxCount": 3,
+        "whiteWeight": 5,
+        "greenWeight": 20,
+        "blueWeight": 25,
+        "goldWeight": 20,
+        "redWeight": 10
+      }
+    ],
+    "prefab": "ResourcePoint4"
+  },
+  {
+    "id": 5,
+    "name": "物资点5",
+    "lootConfigs": [
+      {
+        "difficulty": 1,
+        "minCount": 1,
+        "maxCount": 2,
+        "whiteWeight": 30,
+        "greenWeight": 35,
+        "blueWeight": 25,
+        "goldWeight": 8,
+        "redWeight": 2
+      },
+      {
+        "difficulty": 2,
+        "minCount": 2,
+        "maxCount": 3,
+        "whiteWeight": 20,
+        "greenWeight": 30,
+        "blueWeight": 25,
+        "goldWeight": 15,
+        "redWeight": 10
+      },
+      {
+        "difficulty": 3,
+        "minCount": 3,
+        "maxCount": 3,
+        "whiteWeight": 5,
+        "greenWeight": 10,
+        "blueWeight": 25,
+        "goldWeight": 25,
+        "redWeight": 20
+      }
+    ],
+    "prefab": "ResourcePoint5"
+  }
+]
