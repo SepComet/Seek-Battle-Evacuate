@@ -1,0 +1,42 @@
+services:
+  mysql:
+    image: mysql:8.4
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-sbe-dev-2026}
+      MYSQL_DATABASE: sbe
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # 首次初始化（数据卷为空）时按文件名顺序自动应用 0001~0004
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "3306:3306" # 仅供宿主机工具（mysqltest）访问；服务器走内部网络
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  sbe-server:
+    build: .
+    image: sbe-server:latest
+    depends_on:
+      mysql:
+        condition: service_healthy
+    command:
+      - -store
+      - mysql
+      - -dsn
+      - root:${MYSQL_ROOT_PASSWORD:-sbe-dev-2026}@tcp(mysql:3306)/sbe?charset=utf8mb4&parseTime=true
+      - -addr
+      - 0.0.0.0:7777
+      - -worker-id
+      - "1"
+    ports:
+      - "7777:7777"
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
