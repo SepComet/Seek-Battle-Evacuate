@@ -45,7 +45,7 @@ namespace SepCore.Exploration
                 AppendItemSeparator(builder, i, resourcePoints.Count);
             }
 
-            builder.Append("],\n");
+            builder.Append("  ],\n");
 
             AppendSpawnPoints(builder, "enemySpawnPoints", mapDefinition.EnemySpawnPoints);
             builder.Append(",\n");
@@ -53,7 +53,7 @@ namespace SepCore.Exploration
             builder.Append(",\n");
             AppendSpawnPoints(builder, "extractionPoints", mapDefinition.ExtractionPoints);
 
-            builder.Append("}\n");
+            builder.Append("\n}\n");
             return builder.ToString();
         }
 
@@ -139,7 +139,7 @@ namespace SepCore.Exploration
                 AppendItemSeparator(builder, i, rooms.Count);
             }
 
-            builder.Append("]");
+            builder.Append("  ]");
         }
 
         private static void AppendSpawnPoints(StringBuilder builder, string name, IReadOnlyList<Vector2> points)
@@ -153,7 +153,7 @@ namespace SepCore.Exploration
                 AppendItemSeparator(builder, i, points.Count);
             }
 
-            builder.Append("]");
+            builder.Append("  ]");
         }
 
         private static void AppendHeader(StringBuilder builder, string name)
