@@ -4,10 +4,9 @@
 //
 //	go run ./cmd/sbe-server -addr 127.0.0.1:7777
 //
-// 生产（MySQL，需先取驱动依赖并执行 migrations/0001_init.sql）：
+// 生产（MySQL，先执行 migrations/0001_init.sql 建表）：
 //
-//	go get github.com/go-sql-driver/mysql
-//	go build -tags sbe_mysql -o bin/sbe-server ./cmd/sbe-server
+//	go build -o bin/sbe-server ./cmd/sbe-server
 //	./bin/sbe-server -store mysql -dsn "user:pass@tcp(127.0.0.1:3306)/sbe?charset=utf8mb4&parseTime=true"
 package main
 

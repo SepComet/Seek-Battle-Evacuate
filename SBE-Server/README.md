@@ -19,20 +19,25 @@ go run ./cmd/sbe-server -addr 127.0.0.1:7777
 # 0. 建库并执行 migrations/0001_init.sql
 mysql -u root -p sbe < migrations/0001_init.sql
 
-# 1. 拉取 MySQL 驱动（一次性，需要网络）
-go get github.com/go-sql-driver/mysql
+# 1. 构建与启动（驱动已进 go.mod；如本机模块缓存没有依赖，见下方网络提示）
+go build -o bin/sbe-server ./cmd/sbe-server
 
-# 2. 以 sbe_mysql 标签构建
-go build -tags sbe_mysql -o bin/sbe-server ./cmd/sbe-server
-
-# 3. 启动
 ./bin/sbe-server \
   -store mysql \
   -dsn "user:pass@tcp(127.0.0.1:3306)/sbe?charset=utf8mb4&parseTime=true" \
   -addr 0.0.0.0:7777
 ```
 
-> 未加 `-tags sbe_mysql` 构建时只有内存存储（`-store mysql` 会报错）。默认构建保持零第三方依赖，可离线编译与测试。
+### 网络提示（模块代理）
+
+本机默认 GOPROXY（goproxy.cn）的 IPv6 路由不稳定会导致 `go: module ... connection forcibly closed`。
+若拉取依赖失败，改用阿里云镜像（无需改全局配置）：
+
+```bash
+GOPROXY=https://mirrors.aliyun.com/goproxy/,direct go mod download
+```
+
+或持久化：`go env -w GOPROXY=https://mirrors.aliyun.com/goproxy,direct`。
 
 ## 测试
 
@@ -48,10 +53,10 @@ go test ./...
 | `internal/protocol` | 线上消息结构（信封、操作集、快照） |
 | `internal/core` | 纯函数核心：操作集应用（校验+原子合并）、迁移初始化 |
 | `internal/itemtable` | 加载 Luban 导出的 tbitemconfig.json |
-| `internal/ws` | 最小 RFC 6455 WebSocket（握手、帧编解码、ping/pong） |
+| `internal/ws` | WebSocket 传输层（gorilla/websocket 薄包装） |
 | `internal/server` | 会话与分派：rid 去重、register/auth/pull/migrate/settle/ops |
 | `internal/memorystore` | 内存存储（开发/测试） |
-| `internal/mysqlstore` | MySQL 存储（build tag `sbe_mysql`） |
+| `internal/mysqlstore` | MySQL 存储 |
 | `internal/boot` | 存储装配工厂 |
 | `migrations/` | 建表 SQL |
 
@@ -73,7 +78,9 @@ go test ./...
 - `wear{cid,slot,uid|tid|itemId}` 穿上（同槽旧装备自动卸回原点）
 - `recruit{cid}` 花名册新增
 
-## 与 spec 的两处实现偏差（环境受限，均已确认可后补）
+## 与 spec 的实现状态
 
-1. **WebSocket 库**：spec 定 gorilla/websocket，因构建环境无外网、模块代理不可达，改为标准库手写最小实现（`internal/ws`）。行为以 RFC 6455 为准、有回环与回显测试；将来可整体替换。
-2. **Go 侧配置加载**：spec 定 Luban Go 代码生成，因生成物依赖 Luban 的 Go 运行时（外部模块），改为直接读取 gen_cli 导出的 `tbitemconfig.json`（同源生成物，见 `tools/sync_config`）。需要强类型共享时再切回。
+网络恢复后已按 spec 原案切换到 gorilla/websocket，MySQL 驱动也已进 go.mod（无需构建标签）。
+剩余一项保留决策：Go 侧配置加载直接读取 gen_cli 导出的 `tbitemconfig.json`（Luban 同源生成物，
+见 `tools/sync_config`）而非 Luban Go 代码生成——JSON 加载已满足 v1 校验需求，待服务器需要
+读更多表（掉落校验、商店）时再评估切换。

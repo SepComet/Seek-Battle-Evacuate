@@ -164,3 +164,10 @@ SBE 目前是纯单机：局外经济数据（仓库物品与布局、角色花�
 - ProcedureMainFsmTests 的 settle-经假连接扩展用例、MySQL store 集成测试（需 docker/本机 MySQL）留待后续。
 
 审查修复（已入库）：ProcedureLogin/M​ainSettlementState 两处编译错误；MySQL rewrite 显式保留 uid（防 AUTO_INCREMENT 重铸导致客户端引用失效）；LoadoutForm 四个穿卸入口补离线门控；SettleAsync 改用可注入延迟；DeviceIdentity 读取失败补 Log.Error；Go 两处 newToken 去重至 store.NewToken。
+
+### 偏差状态更新（2026-10-25，网络恢复后）
+
+- 偏差 1（WebSocket 库）已消除：依赖可拉取后切换回 spec 原案的 gorilla/websocket v1.5.3（`internal/ws` 变为薄包装，公共接口不变，应用层零改动；帧级用例由 gorilla 保障，保留回显/大载荷/非 ws 请求拒绝测试）。
+- MySQL 驱动 go-sql-driver/mysql v1.10.1 已进 go.mod，`sbe_mysql` 构建标签已移除，默认构建即含 MySQL 存储。
+- 偏差 2（配置 JSON 加载）转为保留决策：已满足 v1 校验需求，服务器需要读更多表时再评估 Luban Go 代码生成。
+- 网络备注：本机默认 GOPROXY（goproxy.cn）IPv6 路由不稳，拉包需走 `GOPROXY=https://mirrors.aliyun.com/goproxy/,direct`（README 有说明）。

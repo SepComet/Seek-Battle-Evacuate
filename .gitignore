@@ -93,5 +93,8 @@ Thumbs.db
 *.test
 coverage.out
 
+# sbe-dev MCP server build output (rebuild: see tools/sbe-dev-mcp/README.md)
+/tools/sbe-dev-mcp/bin/
+
 # Codegraph index
 /.codegraph

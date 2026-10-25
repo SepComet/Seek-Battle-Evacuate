@@ -1,8 +1,4 @@
-//go:build sbe_mysql
-// +build sbe_mysql
-
 // Package mysqlstore 基于 MySQL 的存储实现（部署用）。
-// 需要网络获取驱动后以 -tags sbe_mysql 构建，见 README。
 package mysqlstore
 
 import (

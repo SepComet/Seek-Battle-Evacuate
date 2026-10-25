@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"sbe-server/internal/memorystore"
+	"sbe-server/internal/mysqlstore"
 	"sbe-server/internal/store"
 )
 
@@ -13,7 +14,16 @@ func OpenStore(kind, dsn string) (st store.Store, closeFn func() error, err erro
 	switch kind {
 	case "", "memory":
 		return memorystore.New(), func() error { return nil }, nil
+	case "mysql":
+		if dsn == "" {
+			return nil, nil, fmt.Errorf("mysql store requires -dsn")
+		}
+		ms, err := mysqlstore.Open(dsn)
+		if err != nil {
+			return nil, nil, err
+		}
+		return ms, ms.Close, nil
 	default:
-		return nil, nil, fmt.Errorf("unknown store kind %q (mysql 需以 -tags sbe_mysql 构建)", kind)
+		return nil, nil, fmt.Errorf("unknown store kind %q", kind)
 	}
 }

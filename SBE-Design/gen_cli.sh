@@ -71,4 +71,14 @@ dotnet "$LUBAN_DLL" \
     -x "pathValidator.rootDir=$ASSET_ROOT" \
     -x "cleanUpOutputDir=false"
 
+# Normalize exported json files to LF line endings to prevent git workspace pollution.
+# Luban writes CRLF on Windows; on macOS output is already LF and this is a no-op.
+# Deliberately unconditional (no CR-detection guard): MSYS2 (Git Bash) transparently
+# strips CR when reading via its own paths, so a grep-based guard would silently
+# pass CRLF files through unconverted.
+for json_file in "$PATH_DATA_JSON"/*.json; do
+    [[ -f "$json_file" ]] || continue
+    tr -d '\r' < "$json_file" > "$json_file.tmp" && mv "$json_file.tmp" "$json_file"
+done
+
 echo "[INFO] Luban export completed."
