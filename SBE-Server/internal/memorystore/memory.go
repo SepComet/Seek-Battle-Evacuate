@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 
 	"sbe-server/internal/core"
@@ -12,7 +13,16 @@ import (
 	"sbe-server/internal/store"
 )
 
-type user struct {
+// account 一名账号：登录凭据哈希与局外状态。
+type account struct {
+	username     string
+	passwordHash string
+	state        core.State
+}
+
+// settleRecord runId 的持有者与首次结算后的状态。
+type settleRecord struct {
+	owner int64
 	state core.State
 }
 
@@ -20,29 +30,42 @@ type user struct {
 type Store struct {
 	mu sync.Mutex
 
-	usersByDevice map[string]int64
-	usersByID     map[int64]*user
-	tokens        map[string]int64
-	settles       map[string]core.State        // runId -> 首次结算后的状态（幂等命中时返回）
-	runs          map[int64][]protocol.SnapRun // userID -> 战绩审计记录（追加序，查询时排序）
-	nextUserID    int64
+	usersByID       map[int64]*account
+	usersByUsername map[string]int64
+	tokens          map[string]int64
+	settles         map[string]settleRecord      // runId -> 持有者与首次结算后的状态（同用户幂等回放；他人占用拒绝）
+	runs            map[int64][]protocol.SnapRun // userID -> 战绩审计记录（追加序，查询时排序）
+	mintUID         func() (int64, error)        // uid 铸造器（雪花）
 }
 
-// New 创建内存存储。
-func New() *Store {
+// New 创建内存存储。mintUID 为 uid 铸造函数（通常注入 snowflake.Node.Next）。
+func New(mintUID func() (int64, error)) *Store {
 	return &Store{
-		usersByDevice: make(map[string]int64),
-		usersByID:     make(map[int64]*user),
-		tokens:        make(map[string]int64),
-		settles:       make(map[string]core.State),
-		runs:          make(map[int64][]protocol.SnapRun),
+		usersByID:       make(map[int64]*account),
+		usersByUsername: make(map[string]int64),
+		tokens:          make(map[string]int64),
+		settles:         make(map[string]settleRecord),
+		runs:            make(map[int64][]protocol.SnapRun),
+		mintUID:         mintUID,
 	}
 }
 
 // Register 实现 store.Store。
-func (s *Store) Register(_ context.Context, device string) (int64, string, error) {
-	if device == "" || len(device) > 64 {
-		return 0, "", fmt.Errorf("%w: invalid device", core.ErrRejected)
+func (s *Store) Register(_ context.Context, username, password string) (int64, string, error) {
+	name, err := store.ValidateUsername(username)
+	if err != nil {
+		return 0, "", err
+	}
+	if err := store.ValidatePassword(password); err != nil {
+		return 0, "", err
+	}
+	hash, err := store.HashPassword(password)
+	if err != nil {
+		return 0, "", err
+	}
+	uid, err := s.mintUID()
+	if err != nil {
+		return 0, "", err
 	}
 	token, err := store.NewToken()
 	if err != nil {
@@ -51,16 +74,35 @@ func (s *Store) Register(_ context.Context, device string) (int64, string, error
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	userID, ok := s.usersByDevice[device]
-	if !ok {
-		s.nextUserID++
-		userID = s.nextUserID
-		s.usersByDevice[device] = userID
-		s.usersByID[userID] = &user{}
+	if _, taken := s.usersByUsername[name]; taken {
+		return 0, "", store.ErrUsernameTaken
 	}
-	s.tokens[token] = userID
-	return userID, token, nil
+	s.usersByUsername[name] = uid
+	s.usersByID[uid] = &account{username: name, passwordHash: hash}
+	s.tokens[token] = uid
+	return uid, token, nil
+}
+
+// Login 实现 store.Store。
+func (s *Store) Login(_ context.Context, username, password string) (int64, string, error) {
+	name := strings.TrimSpace(username)
+	token, err := store.NewToken()
+	if err != nil {
+		return 0, "", err
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	uid, ok := s.usersByUsername[name]
+	if !ok {
+		return 0, "", store.ErrInvalidCredentials
+	}
+	acc := s.usersByID[uid]
+	if !store.VerifyPassword(acc.passwordHash, password) {
+		return 0, "", store.ErrInvalidCredentials
+	}
+	s.tokens[token] = uid
+	return uid, token, nil
 }
 
 // Auth 实现 store.Store。
@@ -78,14 +120,15 @@ func (s *Store) Auth(_ context.Context, token string) (int64, error) {
 func (s *Store) Load(_ context.Context, userID int64) (core.State, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	u, ok := s.usersByID[userID]
+	acc, ok := s.usersByID[userID]
 	if !ok {
 		return core.State{}, fmt.Errorf("store: unknown user %d", userID)
 	}
-	return u.state.Clone(), nil
+	return acc.state.Clone(), nil
 }
 
 // ApplySettle 实现 store.Store。
+// runId 全局唯一：同用户重复提交回放首次快照；已被其他用户占用的 runId 拒绝。
 func (s *Store) ApplySettle(_ context.Context, userID int64, runID string, meta core.SettleMeta, ops []protocol.Op, items core.ItemTable, limits core.Limits) (core.State, bool, error) {
 	if runID == "" || len(runID) > 64 {
 		return core.State{}, false, fmt.Errorf("%w: invalid runId", core.ErrRejected)
@@ -94,20 +137,23 @@ func (s *Store) ApplySettle(_ context.Context, userID int64, runID string, meta 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	u, ok := s.usersByID[userID]
+	acc, ok := s.usersByID[userID]
 	if !ok {
 		return core.State{}, false, fmt.Errorf("store: unknown user %d", userID)
 	}
 	if prev, done := s.settles[runID]; done {
-		return prev.Clone(), true, nil
+		if prev.owner != userID {
+			return core.State{}, false, fmt.Errorf("%w: runId %s already used by another user", core.ErrRejected, runID)
+		}
+		return prev.state.Clone(), true, nil
 	}
 
-	next, err := core.Apply(u.state, ops, items, limits)
+	next, err := core.Apply(acc.state, ops, items, limits)
 	if err != nil {
 		return core.State{}, false, err
 	}
-	u.state = next
-	s.settles[runID] = next
+	acc.state = next
+	s.settles[runID] = settleRecord{owner: userID, state: next}
 	s.runs[userID] = append(s.runs[userID], protocol.SnapRun{
 		RunID: runID, Outcome: meta.Outcome, Difficulty: meta.Difficulty,
 		Seed: meta.Seed, StartedAt: meta.StartedAt, EndedAt: meta.EndedAt,
@@ -120,15 +166,15 @@ func (s *Store) ApplyOps(_ context.Context, userID int64, ops []protocol.Op, ite
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	u, ok := s.usersByID[userID]
+	acc, ok := s.usersByID[userID]
 	if !ok {
 		return core.State{}, fmt.Errorf("store: unknown user %d", userID)
 	}
-	next, err := core.Apply(u.state, ops, items, limits)
+	next, err := core.Apply(acc.state, ops, items, limits)
 	if err != nil {
 		return core.State{}, err
 	}
-	u.state = next
+	acc.state = next
 	return next.Clone(), nil
 }
 
@@ -137,18 +183,18 @@ func (s *Store) Migrate(_ context.Context, userID int64, payload protocol.Migrat
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	u, ok := s.usersByID[userID]
+	acc, ok := s.usersByID[userID]
 	if !ok {
 		return core.State{}, fmt.Errorf("store: unknown user %d", userID)
 	}
-	if u.state.Initialized {
+	if acc.state.Initialized {
 		return core.State{}, store.ErrAlreadyInitialized
 	}
-	next, err := core.Migrate(u.state, payload, items, limits)
+	next, err := core.Migrate(acc.state, payload, items, limits)
 	if err != nil {
 		return core.State{}, err
 	}
-	u.state = next
+	acc.state = next
 	return next.Clone(), nil
 }
 

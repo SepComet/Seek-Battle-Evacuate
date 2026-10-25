@@ -13,6 +13,7 @@ import (
 	"sbe-server/internal/core"
 	"sbe-server/internal/memorystore"
 	"sbe-server/internal/protocol"
+	"sbe-server/internal/snowflake"
 	"sbe-server/internal/store"
 	"sbe-server/internal/ws"
 )
@@ -32,7 +33,11 @@ type Server struct {
 
 // New 创建应用服务器（内存存储；生产部署见 cmd/sbe-server 的 mysql 变体）。
 func New(items core.ItemTable, limits core.Limits) *Server {
-	return &Server{Store: memorystore.New(), Items: items, Limits: limits}
+	node, err := snowflake.New(0)
+	if err != nil {
+		panic(fmt.Sprintf("server: snowflake init: %v", err))
+	}
+	return &Server{Store: memorystore.New(node.Next), Items: items, Limits: limits}
 }
 
 // Handler 返回挂载在指定路径的 WebSocket http.Handler。
@@ -143,6 +148,8 @@ func (s *Server) dispatch(sess *session, env protocol.Envelope) protocol.Envelop
 	switch env.T {
 	case protocol.MsgRegister:
 		return s.doRegister(sess, env)
+	case protocol.MsgLogin:
+		return s.doLogin(sess, env)
 	case protocol.MsgAuth:
 		return s.doAuth(sess, env)
 	case protocol.MsgPing:
@@ -214,19 +221,34 @@ func (s *Server) dispatch(sess *session, env protocol.Envelope) protocol.Envelop
 	}
 }
 
+// doRegister 注册账号：成功即视为已登录，回包带新 token 与 uid。
 func (s *Server) doRegister(sess *session, env protocol.Envelope) protocol.Envelope {
-	userID, token, err := s.Store.Register(context.Background(), env.Device)
+	uid, token, err := s.Store.Register(context.Background(), env.Username, env.Password)
 	if err != nil {
-		return errEnv(env, protocol.ErrCodeRejected, err.Error())
+		return errEnv(env, classify(err), err.Error())
 	}
-	sess.userID = userID
-	state, err := s.Store.Load(context.Background(), userID)
+	return s.afterLogin(sess, env, uid, token)
+}
+
+// doLogin 账号密码登录：成功即视为已登录，回包带新 token 与 uid。
+func (s *Server) doLogin(sess *session, env protocol.Envelope) protocol.Envelope {
+	uid, token, err := s.Store.Login(context.Background(), env.Username, env.Password)
+	if err != nil {
+		return errEnv(env, classify(err), err.Error())
+	}
+	return s.afterLogin(sess, env, uid, token)
+}
+
+// afterLogin 注册/登录成功后的公共尾段：加载状态、下发身份。
+func (s *Server) afterLogin(sess *session, env protocol.Envelope, uid int64, token string) protocol.Envelope {
+	sess.userID = uid
+	state, err := s.Store.Load(context.Background(), uid)
 	if err != nil {
 		return errEnv(env, protocol.ErrCodeInternal, err.Error())
 	}
 	resp := okEnv(env, state)
 	resp.Token = token
-	resp.UserID = userID
+	resp.UserID = uid
 	return resp
 }
 
@@ -260,7 +282,9 @@ func classify(err error) string {
 	switch {
 	case errors.Is(err, core.ErrRejected), errors.Is(err, store.ErrAlreadyInitialized):
 		return protocol.ErrCodeRejected
-	case errors.Is(err, store.ErrUnknownToken):
+	case errors.Is(err, store.ErrUsernameTaken):
+		return protocol.ErrCodeConflict
+	case errors.Is(err, store.ErrInvalidCredentials), errors.Is(err, store.ErrUnknownToken):
 		return protocol.ErrCodeUnauthorized
 	default:
 		return protocol.ErrCodeInternal

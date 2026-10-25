@@ -5,12 +5,15 @@ package protocol
 
 // Version 协议版本号，随消息携带，为将来灰度升级预留。
 // v2：新增 party/difficulty/carry 操作、快照战备字段、settle 战绩元数据与 history 消息。
-const Version = 2
+// v3：账号体系改为用户名+密码（register=注册账号、新增 login=账密登录），
+// 用户主键改为雪花 uid；register 不再携带 device，旧版本互连直接 bad_message 断代。
+const Version = 3
 
 // 消息类型。
 const (
-	MsgRegister = "register" // 注册匿名设备账号，body: device
-	MsgAuth     = "auth"     // 凭 token 认证，body: token
+	MsgRegister = "register" // 注册账号（用户名+密码，重名冲突），body: username, password
+	MsgLogin    = "login"    // 账号密码登录，body: username, password
+	MsgAuth     = "auth"     // 凭 token 认证（断线重连），body: token
 	MsgPull     = "pull"     // 拉取全量经济快照
 	MsgMigrate  = "migrate"  // 首登迁移/初始化，body: migrate
 	MsgSettle   = "settle"   // 局结算对账（幂等），body: runId, outcome, ops
@@ -25,8 +28,9 @@ const (
 // 错误码。
 const (
 	ErrCodeBadMessage   = "bad_message"  // 消息格式或版本不合法
-	ErrCodeUnauthorized = "unauthorized" // 未登录或 token 失效
-	ErrCodeRejected     = "rejected"     // 操作校验失败（物品不存在、堆叠超限等）
+	ErrCodeUnauthorized = "unauthorized" // 未登录、token 失效或账密错误
+	ErrCodeRejected     = "rejected"     // 操作校验失败（物品不存在、堆叠超限、凭据格式非法等）
+	ErrCodeConflict     = "conflict"     // 资源冲突（用户名已被占用）
 	ErrCodeInternal     = "internal"     // 服务器内部错误
 )
 
@@ -145,11 +149,12 @@ type Envelope struct {
 	T   string `json:"t"`
 	V   int    `json:"v,omitempty"`
 	RID int64  `json:"rid,omitempty"`
-	// Device register 时的设备 UUID。
-	Device string `json:"device,omitempty"`
+	// Username/Password register 与 login 携带的账号凭据。
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
 	// Token auth 时的令牌；ok 响应时为下发的新令牌。
 	Token string `json:"token,omitempty"`
-	// UserID register/auth 成功时返回的稳定账号标识，不是认证凭据。
+	// UserID register/login/auth 成功时返回的稳定账号标识（雪花 uid），不是认证凭据。
 	UserID  int64           `json:"userId,omitempty"`
 	RunID   string          `json:"runId,omitempty"`
 	Outcome int             `json:"outcome,omitempty"`

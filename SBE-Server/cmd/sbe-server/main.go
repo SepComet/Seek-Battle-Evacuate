@@ -4,7 +4,8 @@
 //
 //	go run ./cmd/sbe-server -addr 127.0.0.1:7777
 //
-// 生产（MySQL，先执行 migrations/0001_init.sql 与 0002_loadout.sql）：
+// 生产（MySQL，先依次执行 migrations/0001_init.sql、0002_loadout.sql、
+// 0003_warehouse_uid_per_user.sql、0004_account_auth.sql）：
 //
 //	go build -o bin/sbe-server ./cmd/sbe-server
 //	./bin/sbe-server -store mysql -dsn "user:pass@tcp(127.0.0.1:3306)/sbe?charset=utf8mb4&parseTime=true"
@@ -20,6 +21,7 @@ import (
 	"sbe-server/internal/globaltable"
 	"sbe-server/internal/itemtable"
 	"sbe-server/internal/server"
+	"sbe-server/internal/snowflake"
 )
 
 func main() {
@@ -30,6 +32,7 @@ func main() {
 	diffs := flag.String("difficulties", "config/tbdifficultyconfig.json", "Luban 导出的难度表 JSON 路径")
 	storeKind := flag.String("store", "memory", "存储类型：memory | mysql")
 	dsn := flag.String("dsn", "", "MySQL DSN（-store mysql 时必填）")
+	workerID := flag.Int64("worker-id", 1, "雪花 uid 铸号的 worker id（0~1023，多实例部署必须互异）")
 	flag.Parse()
 
 	table, err := itemtable.Load(*items)
@@ -42,15 +45,20 @@ func main() {
 		log.Fatalf("load global table: %v", err)
 	}
 
-	st, closeStore, err := boot.OpenStore(*storeKind, *dsn)
+	uidGen, err := snowflake.New(*workerID)
+	if err != nil {
+		log.Fatalf("snowflake: %v", err)
+	}
+
+	st, closeStore, err := boot.OpenStore(*storeKind, *dsn, uidGen)
 	if err != nil {
 		log.Fatalf("open store: %v", err)
 	}
 	defer func() { _ = closeStore() }()
 
 	app := &server.Server{Store: st, Items: table, Limits: limits}
-	log.Printf("sbe-server listening on ws://%s%s (store=%s, items=%d, maxParty=%d)",
-		*addr, *path, *storeKind, len(table), limits.MaxPlayerPartySize)
+	log.Printf("sbe-server listening on ws://%s%s (store=%s, items=%d, maxParty=%d, worker=%d)",
+		*addr, *path, *storeKind, len(table), limits.MaxPlayerPartySize, *workerID)
 
 	srv := &http.Server{Addr: *addr, Handler: app.Handler(*path)}
 	if err := srv.ListenAndServe(); err != nil {

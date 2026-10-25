@@ -118,7 +118,7 @@ Status: ready-for-human
 ### 人工回填清单
 
 - [ ] 在已有 Editor 确认当前项目无编译错误；网络 EditMode 已由 agent 实际复跑通过（见后续记录），人工仍需验证真实 UI 与运行流程。
-- [ ] 用独立 MySQL 测试库依次应用 0001/0002（已有 v1 库仅执行 0002 一次），设置 SBE_TEST_MYSQL_DSN 运行 mysqlstore 集成用例；不以跳过视为通过。
+- [ ] 用独立 MySQL 测试库依次应用 0001/0002/0003（已有 v1 库仅执行 0002 一次，v2 后新增 0003 warehouse 复合主键迁移），设置 SBE_TEST_MYSQL_DSN 运行 mysqlstore 集成用例（含 TestMySQLSettleOwnershipAndPerUserUID 的跨用户 runId 拒绝与按用户 uid 共存）；不以跳过视为通过。
 - [ ] 战备页调整队伍与顺序、切换难度，等待 ack 后重连确认恢复；移除最后一人后同页保持空队，Begin 禁用；重新打开页面可按未配置规则播种。
 - [ ] 离线后编队与难度不能修改；存量 v1 账户首次打开页面默认组队与难度能上报；确认无快照刷新循环。
 - [ ] 完成一局并重登，检查 difficulty/seed/startedAt/endedAt 与 outcome，确认历史覆盖本地缓存；补验 rejected settle 的已知分歧边界。

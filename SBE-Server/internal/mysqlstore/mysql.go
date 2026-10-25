@@ -7,21 +7,26 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
-	_ "github.com/go-sql-driver/mysql"
+	mysql "github.com/go-sql-driver/mysql"
 
 	"sbe-server/internal/core"
 	"sbe-server/internal/protocol"
 	"sbe-server/internal/store"
 )
 
+// mysqlErrDupEntry MySQL ER_DUP_ENTRY：唯一键冲突。
+const mysqlErrDupEntry uint16 = 1062
+
 // Store MySQL 存储。
 type Store struct {
-	db *sql.DB
+	db      *sql.DB
+	mintUID func() (int64, error) // uid 铸造器（雪花）
 }
 
-// Open 打开数据库连接池。
-func Open(dsn string) (*Store, error) {
+// Open 打开数据库连接池。mintUID 为 uid 铸造函数（通常注入 snowflake.Node.Next）。
+func Open(dsn string, mintUID func() (int64, error)) (*Store, error) {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, err
@@ -32,16 +37,29 @@ func Open(dsn string) (*Store, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("mysql ping: %w", err)
 	}
-	return &Store{db: db}, nil
+	return &Store{db: db, mintUID: mintUID}, nil
 }
 
 // Close 关闭连接池。
 func (s *Store) Close() error { return s.db.Close() }
 
-// Register 实现 store.Store。
-func (s *Store) Register(ctx context.Context, device string) (int64, string, error) {
-	if device == "" || len(device) > 64 {
-		return 0, "", fmt.Errorf("%w: invalid device", core.ErrRejected)
+// Register 实现 store.Store：校验凭据、铸 uid、落账号与 token。
+// 用户名唯一由 uk_users_username 兜底，冲突映射为 ErrUsernameTaken。
+func (s *Store) Register(ctx context.Context, username, password string) (int64, string, error) {
+	name, err := store.ValidateUsername(username)
+	if err != nil {
+		return 0, "", err
+	}
+	if err := store.ValidatePassword(password); err != nil {
+		return 0, "", err
+	}
+	hash, err := store.HashPassword(password)
+	if err != nil {
+		return 0, "", err
+	}
+	uid, err := s.mintUID()
+	if err != nil {
+		return 0, "", err
 	}
 	token, err := store.NewToken()
 	if err != nil {
@@ -54,31 +72,52 @@ func (s *Store) Register(ctx context.Context, device string) (int64, string, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	var userID int64
-	err = tx.QueryRowContext(ctx,
-		`SELECT id FROM users WHERE device_uuid = ? FOR UPDATE`, device).Scan(&userID)
-	if errors.Is(err, sql.ErrNoRows) {
-		res, err := tx.ExecContext(ctx,
-			`INSERT INTO users (device_uuid) VALUES (?)`, device)
-		if err != nil {
-			return 0, "", err
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO users (uid, username, password_hash) VALUES (?,?,?)`, uid, name, hash); err != nil {
+		var me *mysql.MySQLError
+		if errors.As(err, &me) && me.Number == mysqlErrDupEntry {
+			return 0, "", store.ErrUsernameTaken
 		}
-		userID, err = res.LastInsertId()
-		if err != nil {
-			return 0, "", err
-		}
-	} else if err != nil {
 		return 0, "", err
 	}
-
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO auth_tokens (token, user_id) VALUES (?, ?)`, token, userID); err != nil {
+		`INSERT INTO auth_tokens (token, user_id) VALUES (?, ?)`, token, uid); err != nil {
 		return 0, "", err
 	}
 	if err := tx.Commit(); err != nil {
 		return 0, "", err
 	}
-	return userID, token, nil
+	return uid, token, nil
+}
+
+// Login 实现 store.Store：校验口令后铸造并落 token。
+// 用户不存在与密码错误统一返回 ErrInvalidCredentials，防用户名枚举。
+func (s *Store) Login(ctx context.Context, username, password string) (int64, string, error) {
+	name := strings.TrimSpace(username)
+	token, err := store.NewToken()
+	if err != nil {
+		return 0, "", err
+	}
+
+	var uid int64
+	var storedHash string
+	err = s.db.QueryRowContext(ctx,
+		`SELECT uid, password_hash FROM users WHERE username = ?`, name).Scan(&uid, &storedHash)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, "", store.ErrInvalidCredentials
+	}
+	if err != nil {
+		return 0, "", err
+	}
+	if !store.VerifyPassword(storedHash, password) {
+		return 0, "", store.ErrInvalidCredentials
+	}
+
+	if _, err := s.db.ExecContext(ctx,
+		`INSERT INTO auth_tokens (token, user_id) VALUES (?, ?)`, token, uid); err != nil {
+		return 0, "", err
+	}
+	return uid, token, nil
 }
 
 // Auth 实现 store.Store。
@@ -93,17 +132,29 @@ func (s *Store) Auth(ctx context.Context, token string) (int64, error) {
 	return userID, err
 }
 
-// Load 实现 store.Store。
+// Load 实现 store.Store。只读快照不加锁：pull 无需与在途写互斥，
+// 读到写事务提交前的时点状态对客户端是合法视图，不应为此排队。
 func (s *Store) Load(ctx context.Context, userID int64) (core.State, error) {
-	state, err := s.loadForUpdate(ctx, s.db, userID)
-	return state, err
+	return s.load(ctx, s.db, userID, false)
 }
 
+// loadForUpdate 在事务内读取用户状态并对 users 行加排他锁（当前读），
+// 作为同用户读-改-写的串行化点：并发写事务在此排队，拿到锁即前任已提交。
+// 事务内若在本调用之前已有普通 SELECT（一致性读），REPEATABLE READ 会沿用
+// 更早建立的快照导致锁后仍读到旧数据——此时须先用 lockUser 拿锁。
 func (s *Store) loadForUpdate(ctx context.Context, q queryer, userID int64) (core.State, error) {
+	return s.load(ctx, q, userID, true)
+}
+
+func (s *Store) load(ctx context.Context, q queryer, userID int64, forUpdate bool) (core.State, error) {
 	state := core.State{}
 
+	lock := ""
+	if forUpdate {
+		lock = " FOR UPDATE"
+	}
 	if err := q.QueryRowContext(ctx,
-		`SELECT initialized, COALESCE((SELECT MAX(uid) FROM warehouse_items WHERE user_id = ?), 0) FROM users WHERE id = ?`,
+		`SELECT initialized, COALESCE((SELECT MAX(uid) FROM warehouse_items WHERE user_id = ?), 0) FROM users WHERE uid = ?`+lock,
 		userID, userID).Scan(&state.Initialized, &state.NextUID); err != nil {
 		return core.State{}, fmt.Errorf("load user: %w", err)
 	}
@@ -171,8 +222,8 @@ func (s *Store) loadForUpdate(ctx context.Context, q queryer, userID int64) (cor
 }
 
 // rewrite 全量重写用户经济行（在小规模数据量下简单可靠）。
-// 注意必须显式写回 uid：UID 是服务器铸造的稳定身份，客户端会引用它，
-// 让 AUTO_INCREMENT 重新铸号会使已下发的 uid 全部失效。
+// 注意必须显式写回 uid：UID 是服务器铸造的、按用户独立的稳定身份（0003 复合主键），
+// 客户端会引用它，重排或重新铸号会使已下发的 uid 全部失效。
 func rewrite(ctx context.Context, tx *sql.Tx, userID int64, state core.State) error {
 	if _, err := tx.ExecContext(ctx, `DELETE FROM warehouse_items WHERE user_id = ?`, userID); err != nil {
 		return err
@@ -220,7 +271,20 @@ func rewrite(ctx context.Context, tx *sql.Tx, userID int64, state core.State) er
 	return nil
 }
 
+// lockUser 锁定用户行（当前读），必须是写事务的第一条语句：
+// 之后的一致性读才会以持锁后的数据建立快照，避免 REPEATABLE READ 读到锁前旧数据。
+func (s *Store) lockUser(ctx context.Context, tx *sql.Tx, userID int64) error {
+	var id int64
+	if err := tx.QueryRowContext(ctx,
+		`SELECT uid FROM users WHERE uid = ? FOR UPDATE`, userID).Scan(&id); err != nil {
+		return fmt.Errorf("lock user %d: %w", userID, err)
+	}
+	return nil
+}
+
 // ApplySettle 实现 store.Store。
+// runId 全局唯一（settlements 主键）：同用户重复提交回放首次快照；
+// 已被其他用户占用的 runId 拒绝，防止借幂等回放读取他人快照。
 func (s *Store) ApplySettle(ctx context.Context, userID int64, runID string, meta core.SettleMeta, ops []protocol.Op, items core.ItemTable, limits core.Limits) (core.State, bool, error) {
 	if runID == "" || len(runID) > 64 {
 		return core.State{}, false, fmt.Errorf("%w: invalid runId", core.ErrRejected)
@@ -232,9 +296,15 @@ func (s *Store) ApplySettle(ctx context.Context, userID int64, runID string, met
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	// 先锁用户行再做幂等检查：幂等检查本身是一致性读，
+	// 锁在其之前才能保证后续 loadForUpdate 读到的是持锁后的最新状态。
+	if err := s.lockUser(ctx, tx, userID); err != nil {
+		return core.State{}, false, err
+	}
+
 	var snapshotJSON string
 	err = tx.QueryRowContext(ctx,
-		`SELECT snapshot_json FROM settlements WHERE run_id = ?`, runID).Scan(&snapshotJSON)
+		`SELECT snapshot_json FROM settlements WHERE run_id = ? AND user_id = ?`, runID, userID).Scan(&snapshotJSON)
 	if err == nil {
 		var snap protocol.Snapshot
 		if err := json.Unmarshal([]byte(snapshotJSON), &snap); err != nil {
@@ -264,6 +334,11 @@ func (s *Store) ApplySettle(ctx context.Context, userID int64, runID string, met
 	if _, err := tx.ExecContext(ctx,
 		`INSERT INTO settlements (run_id, user_id, outcome, difficulty, seed, started_at, ended_at, snapshot_json) VALUES (?,?,?,?,?,?,?,?)`,
 		runID, userID, meta.Outcome, meta.Difficulty, meta.Seed, meta.StartedAt, meta.EndedAt, string(snapJSON)); err != nil {
+		var me *mysql.MySQLError
+		if errors.As(err, &me) && me.Number == mysqlErrDupEntry {
+			// 同用户重复已被幂等检查拦截，主键冲突只剩 runId 被其他用户占用一种来源。
+			return core.State{}, false, fmt.Errorf("%w: runId %s already used by another user", core.ErrRejected, runID)
+		}
 		return core.State{}, false, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -307,7 +382,7 @@ func (s *Store) Migrate(ctx context.Context, userID int64, payload protocol.Migr
 
 	var initialized bool
 	if err := tx.QueryRowContext(ctx,
-		`SELECT initialized FROM users WHERE id = ? FOR UPDATE`, userID).Scan(&initialized); err != nil {
+		`SELECT initialized FROM users WHERE uid = ? FOR UPDATE`, userID).Scan(&initialized); err != nil {
 		return core.State{}, err
 	}
 	if initialized {
@@ -325,7 +400,7 @@ func (s *Store) Migrate(ctx context.Context, userID int64, payload protocol.Migr
 	if err := rewrite(ctx, tx, userID, next); err != nil {
 		return core.State{}, err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE users SET initialized = 1 WHERE id = ?`, userID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE users SET initialized = 1 WHERE uid = ?`, userID); err != nil {
 		return core.State{}, err
 	}
 	if err := tx.Commit(); err != nil {

@@ -7,13 +7,14 @@ import (
 	"sbe-server/internal/protocol"
 )
 
-func TestLoginReturnsStableUniqueUserID(t *testing.T) {
+// 账号身份稳定性：uid 全局唯一且跨认证方式稳定；凭据错误不泄露身份。
+func TestRegisterLoginIdentityStability(t *testing.T) {
 	srv := New(items(), limits())
 	ts := httptest.NewServer(srv.Handler("/ws"))
 	defer ts.Close()
 	addr := ts.Listener.Addr().String()
 
-	first := dial(t, addr).call(protocol.Envelope{T: protocol.MsgRegister, Device: "status-device"})
+	first := dial(t, addr).call(protocol.Envelope{T: protocol.MsgRegister, Username: "status-player", Password: "secret-7"})
 	if first.T != protocol.MsgOK || first.UserID <= 0 || first.Token == "" || first.Snapshot == nil {
 		t.Fatalf("register missing identity or login data: %+v", first)
 	}
@@ -21,15 +22,23 @@ func TestLoginReturnsStableUniqueUserID(t *testing.T) {
 	if auth.T != protocol.MsgOK || auth.UserID != first.UserID || auth.Snapshot == nil {
 		t.Fatalf("reconnect changed identity: first=%d auth=%+v", first.UserID, auth)
 	}
-	reregister := dial(t, addr).call(protocol.Envelope{T: protocol.MsgRegister, Device: "status-device"})
-	if reregister.T != protocol.MsgOK || reregister.UserID != first.UserID {
-		t.Fatalf("same device changed identity: first=%d again=%+v", first.UserID, reregister)
+	again := dial(t, addr).call(protocol.Envelope{T: protocol.MsgLogin, Username: "status-player", Password: "secret-7"})
+	if again.T != protocol.MsgOK || again.UserID != first.UserID || again.Token == "" {
+		t.Fatalf("login changed identity: first=%d again=%+v", first.UserID, again)
 	}
-	other := dial(t, addr).call(protocol.Envelope{T: protocol.MsgRegister, Device: "status-other"})
+	wrongPass := dial(t, addr).call(protocol.Envelope{T: protocol.MsgLogin, Username: "status-player", Password: "wrong-pass"})
+	if wrongPass.T != protocol.MsgErr || wrongPass.Code != protocol.ErrCodeUnauthorized || wrongPass.UserID != 0 {
+		t.Fatalf("wrong password must be unauthorized without identity: %+v", wrongPass)
+	}
+	duplicate := dial(t, addr).call(protocol.Envelope{T: protocol.MsgRegister, Username: "status-player", Password: "secret-8"})
+	if duplicate.T != protocol.MsgErr || duplicate.Code != protocol.ErrCodeConflict {
+		t.Fatalf("duplicate username must be conflict: %+v", duplicate)
+	}
+	other := dial(t, addr).call(protocol.Envelope{T: protocol.MsgRegister, Username: "status-other", Password: "secret-9"})
 	if other.T != protocol.MsgOK || other.UserID <= 0 || other.UserID == first.UserID {
-		t.Fatalf("different users share an identity: first=%d other=%+v", first.UserID, other)
+		t.Fatalf("different accounts share an identity: first=%d other=%+v", first.UserID, other)
 	}
-	bad := dial(t, addr).call(protocol.Envelope{T: protocol.MsgAuth, Token: "invalid", UserID: first.UserID})
+	bad := dial(t, addr).call(protocol.Envelope{T: protocol.MsgAuth, Token: "invalid"})
 	if bad.T != protocol.MsgErr || bad.Code != protocol.ErrCodeUnauthorized || bad.UserID != 0 {
 		t.Fatalf("invalid credentials received an identity: %+v", bad)
 	}
@@ -44,7 +53,7 @@ func TestPingRequiresLoginAndReturnsOnlyAcknowledgement(t *testing.T) {
 	if unauthorized.T != protocol.MsgErr || unauthorized.Code != protocol.ErrCodeUnauthorized {
 		t.Fatalf("unauthenticated ping accepted: %+v", unauthorized)
 	}
-	reg := c.call(protocol.Envelope{T: protocol.MsgRegister, Device: "ping-device"})
+	reg := c.call(protocol.Envelope{T: protocol.MsgRegister, Username: "ping-player", Password: "secret-a"})
 	if reg.T != protocol.MsgOK {
 		t.Fatalf("register: %+v", reg)
 	}

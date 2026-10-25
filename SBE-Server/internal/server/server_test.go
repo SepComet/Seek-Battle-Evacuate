@@ -125,9 +125,9 @@ func TestFullFlowRegisterMigrateSettleIdempotentEquip(t *testing.T) {
 	defer ts.Close()
 	addr := ts.Listener.Addr().String()
 
-	// 1. 注册：新设备得到 token 与空快照
+	// 1. 注册：新账号得到 token 与空快照
 	c := dial(t, addr)
-	regResp := c.call(protocol.Envelope{T: protocol.MsgRegister, Device: "device-uuid-1"})
+	regResp := c.call(protocol.Envelope{T: protocol.MsgRegister, Username: "player-1", Password: "secret-1"})
 	if regResp.T != protocol.MsgOK || regResp.Token == "" {
 		t.Fatalf("register failed: %+v", regResp)
 	}
@@ -210,7 +210,7 @@ func TestSettleRejectsUnknownItemAtomically(t *testing.T) {
 	defer ts.Close()
 
 	c := dial(t, ts.Listener.Addr().String())
-	mustOK(c, protocol.Envelope{T: protocol.MsgRegister, Device: "d2"})
+	mustOK(c, protocol.Envelope{T: protocol.MsgRegister, Username: "player-reject", Password: "secret-2"})
 	mustOK(c, protocol.Envelope{T: protocol.MsgMigrate, Migrate: &protocol.MigratePayload{
 		Characters: []protocol.MigrateChar{{CID: 1001}},
 	}})
@@ -240,7 +240,7 @@ func TestRidRetryReturnsCachedResponse(t *testing.T) {
 	defer ts.Close()
 
 	c := dial(t, ts.Listener.Addr().String())
-	mustOK(c, protocol.Envelope{T: protocol.MsgRegister, Device: "d3"})
+	mustOK(c, protocol.Envelope{T: protocol.MsgRegister, Username: "player-rid", Password: "secret-3"})
 
 	ops := []protocol.Op{{K: protocol.OpAdd, TID: 1, ItemID: 5001, Count: 3, X: 0, Y: 0}}
 	first := mustOK(c, protocol.Envelope{T: protocol.MsgOps, Ops: ops})
@@ -264,7 +264,7 @@ func TestLoadoutSyncSettleHistory(t *testing.T) {
 
 	// 1. 注册 + 迁移：携带完整战备配置
 	c := dial(t, addr)
-	reg := c.call(protocol.Envelope{T: protocol.MsgRegister, Device: "loadout-device"})
+	reg := c.call(protocol.Envelope{T: protocol.MsgRegister, Username: "loadout-player", Password: "secret-4"})
 	if reg.T != protocol.MsgOK || reg.Token == "" {
 		t.Fatalf("register failed: %+v", reg)
 	}
@@ -339,7 +339,7 @@ func TestLoadoutSyncSettleHistory(t *testing.T) {
 func TestHistoryReturnsLatest100ForCurrentUser(t *testing.T) {
 	srv := New(items(), limits())
 	sess := &session{}
-	reg := srv.dispatch(sess, protocol.Envelope{T: protocol.MsgRegister, Device: "history-limit"})
+	reg := srv.dispatch(sess, protocol.Envelope{T: protocol.MsgRegister, Username: "history-player", Password: "secret-5"})
 	if reg.T != protocol.MsgOK {
 		t.Fatalf("register: %+v", reg)
 	}
@@ -354,18 +354,19 @@ func TestHistoryReturnsLatest100ForCurrentUser(t *testing.T) {
 		t.Fatalf("history cap/order: %+v", hist)
 	}
 	other := &session{}
-	srv.dispatch(other, protocol.Envelope{T: protocol.MsgRegister, Device: "history-other"})
+	srv.dispatch(other, protocol.Envelope{T: protocol.MsgRegister, Username: "history-other", Password: "secret-6"})
 	if hist := srv.dispatch(other, protocol.Envelope{T: protocol.MsgHistory}); hist.T != protocol.MsgOK || len(hist.History) != 0 {
 		t.Fatalf("other user received history: %+v", hist)
 	}
 }
 
-func TestVersionOneRejected(t *testing.T) {
+func TestLegacyVersionRejected(t *testing.T) {
 	srv := New(items(), limits())
 	ts := httptest.NewServer(srv.Handler("/ws"))
 	defer ts.Close()
 	c := dial(t, ts.Listener.Addr().String())
-	if err := c.conn.WriteMessage([]byte(`{"t":"register","v":1,"rid":1,"device":"legacy"}`)); err != nil {
+	// v2 客户端对 v3 服务器：直接 bad_message 断代
+	if err := c.conn.WriteMessage([]byte(`{"t":"register","v":2,"rid":1,"device":"legacy"}`)); err != nil {
 		t.Fatal(err)
 	}
 	_ = c.conn.SetReadDeadline(time.Now().Add(3 * time.Second))
