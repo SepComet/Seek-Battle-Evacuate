@@ -112,7 +112,7 @@ namespace SepCore.Net
                 return;
             }
 
-            UniTask.Void(Sync.FlushAsync);
+            Sync.FlushAsync().Forget();
         }
 
         private void OnDisconnected()

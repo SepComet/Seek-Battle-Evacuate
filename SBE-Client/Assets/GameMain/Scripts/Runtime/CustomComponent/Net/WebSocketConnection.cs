@@ -34,8 +34,9 @@ namespace SepCore.Net
         {
             Close();
 
+            // 注意：Unity 的 Mono 档没有 KeepAliveInterval（.NET Core API）；
+            // 局域网场景下依赖 TCP 本身保活，服务器侧也未设空闲超时。
             ClientWebSocket socket = new ClientWebSocket();
-            socket.KeepAliveInterval = TimeSpan.FromSeconds(15);
             _cts = new CancellationTokenSource();
 
             try

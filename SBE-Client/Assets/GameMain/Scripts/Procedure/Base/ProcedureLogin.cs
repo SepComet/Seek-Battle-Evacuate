@@ -27,7 +27,7 @@ namespace SepCore.Procedure
             }
 
             Log.Info("[ProcedureLogin] Waiting for server...");
-            UniTask.Void(() => RunAsync(procedureOwner));
+            RunAsync(procedureOwner);
         }
 
         private async UniTaskVoid RunAsync(ProcedureOwner procedureOwner)
