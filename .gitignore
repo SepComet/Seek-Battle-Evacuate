@@ -98,3 +98,13 @@ coverage.out
 
 # Codegraph index
 /.codegraph
+
+# Local issue tracker (.scratch, see docs/agents/issue-tracker.md):
+# specs and tickets stay tracked; session artifacts (test evidence, editor
+# scripts, screenshots) stay local and are CRLF, conflicting with repo LF policy.
+/.scratch/**
+!.scratch/
+!.scratch/*/
+!.scratch/*/spec.md
+!.scratch/*/issues/
+!.scratch/*/issues/**
