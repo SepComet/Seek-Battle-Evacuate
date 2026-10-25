@@ -1,7 +1,9 @@
 using System;
+using Cysharp.Threading.Tasks;
 using SepCore.CustomComponent;
 using SepCore.Definition;
 using SepCore.Exploration;
+using SepCore.Net;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityGameFramework.Runtime;
@@ -11,6 +13,8 @@ namespace SepCore.Entity
     /// <summary>
     /// 资源点实体逻辑。
     /// 实现 IHoldInteractable 接口，支持被领队探测器长按交互、按稀有度累计耗时逐件向外掉落道具。
+    /// 联网流程开局不带物品清单：长按开始即发起 loot 请求，响应到达后才推进搜索进度并逐件掉落；
+    /// 请求失败（超时/断线/拒绝）结束本次交互、恢复移动并提示，箱子保持可再次交互。
     /// </summary>
     public sealed class ResourcePointLogic : EntityBase, IHoldInteractable
     {
@@ -28,6 +32,8 @@ namespace SepCore.Entity
         private float[] _itemDropThresholds;
         private float _totalSearchTime;
         private PlayerCharacterController _interactingController;
+        private bool _lootRequestInFlight;
+        private bool _searching;
 
         /// <summary>
         /// 当前绑定的资源点实体数据。
@@ -56,8 +62,8 @@ namespace SepCore.Entity
 
         public void OnInteract(GameObject interactor)
         {
-            Log.Info("Interacting with ResourcePoint '{0}' (ConfigId: {1}).",
-                Entity.Id, _data != null ? _data.ResourcePointId : 0);
+            Log.Info("Interacting with ResourcePoint '{0}' (ConfigId: {1}, PointId: {2}).",
+                Entity.Id, _data != null ? _data.ResourcePointId : 0, _data != null ? _data.PointId : null);
         }
 
         public void OnInteractStart(GameObject interactor)
@@ -67,27 +73,32 @@ namespace SepCore.Entity
                 return;
             }
 
-            _interactingController = interactor != null
-                ? (interactor.GetComponent<PlayerCharacterController>() ?? interactor.GetComponentInParent<PlayerCharacterController>())
-                : null;
-
-            if (_interactingController != null)
+            // 内容未到货（联网流程）：长按开始只发起 loot 请求，不锁定移动、不推进进度；
+            // 请求在后台进行，本帧立即返回。到货后玩家继续按着即由 OnInteractHold 进入搜索。
+            if (!_data.ContentsReady)
             {
-                _interactingController.CanMove = false;
+                if (!_lootRequestInFlight)
+                {
+                    RequestLootAsync(_data).Forget();
+                }
+
+                return;
             }
 
-            if (_slider != null)
-            {
-                _slider.gameObject.SetActive(true);
-                UpdateSlider();
-            }
+            BeginSearching(interactor);
         }
 
         public void OnInteractHold(GameObject interactor, float deltaTime)
         {
-            if (!CanInteract || _data == null)
+            if (!CanInteract || _data == null || !_data.ContentsReady || _lootRequestInFlight)
             {
                 return;
+            }
+
+            if (!_searching)
+            {
+                // 联网流程：清单在长按期间才到货，此时补上搜索起点（锁定移动、显示进度）。
+                BeginSearching(interactor);
             }
 
             _data.SearchProgressTime = Mathf.Min(_totalSearchTime, _data.SearchProgressTime + Mathf.Max(0f, deltaTime));
@@ -191,8 +202,104 @@ namespace SepCore.Entity
             _slider = null;
             _itemDropThresholds = null;
             _totalSearchTime = 0f;
+            _lootRequestInFlight = false;
+            _searching = false;
 
             base.OnHide(isShutdown, userData);
+        }
+
+        /// <summary>
+        /// 向服务器请求本箱清单。请求在后台进行，本方法返回后主循环不受影响；
+        /// 成功则灌入清单、重算搜索阈值并显示进度，失败则结束交互、恢复移动并提示。
+        /// </summary>
+        private async UniTaskVoid RequestLootAsync(ResourcePointData data)
+        {
+            if (string.IsNullOrEmpty(data.PointId))
+            {
+                // 联网流程的箱子必须携带交互主键（契约 §6），缺失即是装配缺陷，中止本次交互。
+                Log.Error("Resource point '{0}' has no pointId; cannot request loot.", data.ResourcePointId);
+                OnInteractEnd(null);
+                return;
+            }
+
+            if (GameEntry.Net == null || !GameEntry.Net.OnlineReady)
+            {
+                // 联网物品清单只可能出现在联网流程里；走到这里说明状态错乱，直接中止本次交互。
+                Log.Error("Resource point '{0}' has no contents and the network is not ready.", data.PointId);
+                OnInteractEnd(null);
+                NetworkNotice.ShowInteractionRejected();
+                return;
+            }
+
+            _lootRequestInFlight = true;
+            try
+            {
+                LootResult result = await GameEntry.Net.Run.LootAsync(data.PointId);
+                if (result.Success)
+                {
+                    // 实体可能已被隐藏并池化复用给另一个物资点：只有仍是同一个数据实例才灌入，
+                    // 否则会把 A 箱的清单写进 B 箱。
+                    if (!Available || !ReferenceEquals(_data, data))
+                    {
+                        return;
+                    }
+
+                    data.ApplyItems(result.ItemIds);
+                    InitializeDropThresholds();
+
+                    // 只刷新进度值，不主动显示进度条：玩家在等待期间已松手时不应弹条，
+                    // 继续按着则由下一次 OnInteractHold 的 BeginSearching 显示。
+                    if (_slider != null)
+                    {
+                        _slider.maxValue = 1f;
+                        UpdateSlider();
+                    }
+
+                    Log.Info("Resource point '{0}' contents received: {1} items.", data.PointId, data.ItemCount);
+                    return;
+                }
+
+                Log.Warning("Resource point '{0}' loot request failed: {1}.", data.PointId, result.Outcome);
+                if (Available && ReferenceEquals(_data, data))
+                {
+                    OnInteractEnd(null);
+                }
+
+                NetworkNotice.ShowInteractionRejected();
+            }
+            finally
+            {
+                if (ReferenceEquals(_data, data))
+                {
+                    _lootRequestInFlight = false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 进入搜索流程：锁定交互者移动并显示搜索进度。
+        /// 离线路径在长按开始时直接进入；联网路径在 loot 响应到达后由 OnInteractHold 补进入。
+        /// </summary>
+        private void BeginSearching(GameObject interactor)
+        {
+            if (interactor != null)
+            {
+                _interactingController = interactor.GetComponent<PlayerCharacterController>()
+                    ?? interactor.GetComponentInParent<PlayerCharacterController>();
+            }
+
+            if (_interactingController != null)
+            {
+                _interactingController.CanMove = false;
+            }
+
+            _searching = true;
+
+            if (_slider != null)
+            {
+                _slider.gameObject.SetActive(true);
+                UpdateSlider();
+            }
         }
 
         private void InitializeDropThresholds()
@@ -238,6 +345,8 @@ namespace SepCore.Entity
                 _interactingController.CanMove = true;
                 _interactingController = null;
             }
+
+            _searching = false;
         }
 
         private void DropItem(int index)

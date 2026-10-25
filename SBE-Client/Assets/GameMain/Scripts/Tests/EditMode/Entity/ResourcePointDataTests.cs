@@ -146,5 +146,119 @@ namespace SepCore.Tests
 
             Assert.IsTrue(data.IsCompleted);
         }
+
+        [Test]
+        public void Constructor_StoresPointId()
+        {
+            ResourcePointData data = new ResourcePointData(
+                entityId: 1,
+                assetName: "ResourcePoint1",
+                position: Vector3.zero,
+                resourcePointId: 1,
+                itemIds: new List<int>(),
+                pointId: "r2");
+
+            Assert.AreEqual("r2", data.PointId);
+            Assert.IsTrue(data.ContentsReady);
+        }
+
+        /// <summary>
+        /// 联网流程：开局内容待定（等 loot 响应）时，箱子必须仍可交互，
+        /// 否则玩家根本无法发起第一次开箱请求。
+        /// </summary>
+        [Test]
+        public void CreatePendingContents_IsInteractableAndNotCompleted()
+        {
+            ResourcePointData data = ResourcePointData.CreatePendingContents(
+                entityId: 7, assetName: "ResourcePoint1", position: Vector3.zero,
+                resourcePointId: 1, pointId: "r0");
+
+            Assert.AreEqual("r0", data.PointId);
+            Assert.IsFalse(data.ContentsReady);
+            Assert.AreEqual(0, data.ItemCount);
+            Assert.IsFalse(data.IsCompleted);
+        }
+
+        /// <summary>
+        /// loot 响应到达后灌入清单：内容就绪、数量正确、掉落进度归零，随后按阈值逐件掉完才算完成。
+        /// </summary>
+        [Test]
+        public void ApplyItems_FillsContentsThenCompletesAfterAllDropped()
+        {
+            ResourcePointData data = ResourcePointData.CreatePendingContents(
+                entityId: 7, assetName: "ResourcePoint1", position: Vector3.zero,
+                resourcePointId: 1, pointId: "r0");
+
+            data.ApplyItems(new[] { 5001, 5003 });
+
+            Assert.IsTrue(data.ContentsReady);
+            Assert.AreEqual(2, data.ItemCount);
+            CollectionAssert.AreEqual(new[] { 5001, 5003 }, data.ItemIds);
+            Assert.AreEqual(0, data.DroppedItemCount);
+            Assert.AreEqual(0f, data.SearchProgressTime);
+            Assert.IsFalse(data.IsCompleted);
+
+            data.DroppedItemCount = 1;
+            Assert.IsFalse(data.IsCompleted);
+
+            data.DroppedItemCount = 2;
+            Assert.IsTrue(data.IsCompleted);
+        }
+
+        [Test]
+        public void ApplyItems_EmptyLoot_CompletesImmediately()
+        {
+            ResourcePointData data = ResourcePointData.CreatePendingContents(
+                entityId: 7, assetName: "ResourcePoint1", position: Vector3.zero,
+                resourcePointId: 1, pointId: "r0");
+
+            data.ApplyItems(new List<int>());
+
+            Assert.IsTrue(data.ContentsReady);
+            Assert.IsTrue(data.IsCompleted);
+        }
+
+        [Test]
+        public void ApplyItems_IsDefensiveCopy()
+        {
+            ResourcePointData data = ResourcePointData.CreatePendingContents(
+                entityId: 7, assetName: "ResourcePoint1", position: Vector3.zero,
+                resourcePointId: 1, pointId: "r0");
+
+            List<int> source = new List<int> { 101, 102 };
+            data.ApplyItems(source);
+            source.Add(103);
+
+            Assert.AreEqual(2, data.ItemCount);
+            CollectionAssert.AreEqual(new[] { 101, 102 }, data.ItemIds);
+        }
+
+        [Test]
+        public void ApplyItems_Null_ThrowsArgumentNullException()
+        {
+            ResourcePointData data = ResourcePointData.CreatePendingContents(
+                entityId: 7, assetName: "ResourcePoint1", position: Vector3.zero,
+                resourcePointId: 1, pointId: "r0");
+
+            Assert.Throws<ArgumentNullException>(() => data.ApplyItems(null));
+        }
+
+        /// <summary>
+        /// 内容只允许灌入一次：重复灌入说明状态机出错，直接抛错而不是静默覆盖
+        /// （覆盖会丢掉已经掉落一半的进度）。
+        /// </summary>
+        [Test]
+        public void ApplyItems_WhenContentsAlreadyReady_Throws()
+        {
+            ResourcePointData data = new ResourcePointData(
+                entityId: 1,
+                assetName: "ResourcePoint1",
+                position: Vector3.zero,
+                resourcePointId: 1,
+                itemIds: new List<int> { 101 },
+                pointId: "r0");
+
+            Assert.Throws<InvalidOperationException>(() => data.ApplyItems(new[] { 102 }));
+        }
     }
 }

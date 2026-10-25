@@ -6,13 +6,14 @@ namespace SepCore.Entity
 {
     /// <summary>
     /// 敌人队伍实体数据。
-    /// 包含敌人队伍配置 ID、威胁等级以及所属房间索引与矩形边界。
+    /// 包含敌人队伍配置 ID、威胁等级、交互主键以及所属房间索引与矩形边界。
     /// </summary>
     [Serializable]
     public sealed class EnemyPartyData : EntityDataBase
     {
         [SerializeField] private int _enemyPartyId;
         [SerializeField] private EnemyPartyThreatLevel _threatLevel;
+        [SerializeField] private string _pointId;
         [SerializeField] private int _roomIndex;
         [SerializeField] private Vector2 _roomMin;
         [SerializeField] private Vector2 _roomMax;
@@ -26,13 +27,15 @@ namespace SepCore.Entity
             int roomIndex = -1,
             Vector2 roomMin = default,
             Vector2 roomMax = default,
-            Quaternion? rotation = null)
+            Quaternion? rotation = null,
+            string pointId = null)
             : base(assetName, entityId)
         {
             Position = position;
             Rotation = rotation ?? Quaternion.identity;
             _enemyPartyId = enemyPartyId;
             _threatLevel = threatLevel;
+            _pointId = pointId;
             _roomIndex = roomIndex;
             _roomMin = roomMin;
             _roomMax = roomMax;
@@ -42,6 +45,11 @@ namespace SepCore.Entity
         /// 敌人队伍配置 ID（对应 EnemyPartyConfig.Id）
         /// </summary>
         public int EnemyPartyId => _enemyPartyId;
+
+        /// <summary>
+        /// 交互主键 "e&lt;下标&gt;"（契约 §6），encounter 请求以它为准。
+        /// </summary>
+        public string PointId => _pointId;
 
         /// <summary>
         /// 敌人队伍威胁等级
