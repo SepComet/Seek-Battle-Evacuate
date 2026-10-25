@@ -107,10 +107,19 @@ namespace SepCore.Net
                 {
                     GridItemStack s = saveStacks[paired];
                     saveStackUsed[paired] = true;
-                    if (s.count < row.Count)
+                    bool positionChanged = s.x != row.X || s.y != row.Y || s.isRotated != row.Rotated;
+                    if (s.count == row.Count)
+                    {
+                        // 数量相等：纯移位/旋转
+                        if (positionChanged)
+                        {
+                            movs.Add(NetOp.Mov(row.Uid, s.x, s.y, s.isRotated));
+                        }
+                    }
+                    else if (s.count < row.Count)
                     {
                         dels.Add(NetOp.Del(row.Uid, row.Count - s.count));
-                        if (s.x != row.X || s.y != row.Y || s.isRotated != row.Rotated)
+                        if (positionChanged)
                         {
                             movs.Add(NetOp.Mov(row.Uid, s.x, s.y, s.isRotated));
                         }
