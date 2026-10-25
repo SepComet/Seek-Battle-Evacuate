@@ -11,13 +11,25 @@ import (
 )
 
 // configs 服务器启动时加载的全套配置。
-// 前四项供既有的局外校验使用，后三项供探索内容生成使用（ticket 01 只加载与校验）。
+// 前四项供既有的局外校验使用，后四项供探索内容生成使用
+// （生成器入参见 internal/gametable.Tables 与 internal/mapgen.Generate）。
 type configs struct {
 	Catalog        *itemtable.Catalog
 	Limits         core.Limits
 	Layout         *mapdef.Layout
 	ResourcePoints *gametable.ResourceTable
 	EnemyParties   *gametable.EnemyPartyTable
+	Difficulties   *gametable.DifficultyTable
+}
+
+// Tables 把四份生成配置装配成生成器入参（不含 IO，纯搬运）。
+func (c *configs) Tables() *gametable.Tables {
+	return &gametable.Tables{
+		Resources:    c.ResourcePoints,
+		Parties:      c.EnemyParties,
+		Difficulties: c.Difficulties,
+		Items:        c.Catalog,
+	}
 }
 
 // loadConfigs 按固定顺序加载全部配置，任一失败立即返回 error（main 中据此 log.Fatalf）。
@@ -50,6 +62,13 @@ func loadConfigs(itemsPath, globalPath, difficultyPath, mapPath, resourcePointPa
 		return nil, fmt.Errorf("load enemy party table: %w", err)
 	}
 
+	// 难度表的威胁权重（生成敌点用）；tier 集合已在 globaltable.Load 中加载用于校验，
+	// 这里只取生成所需的权重，两份配置都指同一个文件。
+	difficultyTable, err := gametable.LoadDifficulties(difficultyPath)
+	if err != nil {
+		return nil, fmt.Errorf("load difficulty weights: %w", err)
+	}
+
 	for i, point := range layout.ResourcePoints {
 		if _, ok := resourceTable.Get(point.ResourcePointID); !ok {
 			return nil, fmt.Errorf("load map definition: resource point %d (%g,%g) references unknown resourcePointId %d",
@@ -63,5 +82,6 @@ func loadConfigs(itemsPath, globalPath, difficultyPath, mapPath, resourcePointPa
 		Layout:         layout,
 		ResourcePoints: resourceTable,
 		EnemyParties:   partyTable,
+		Difficulties:   difficultyTable,
 	}, nil
 }

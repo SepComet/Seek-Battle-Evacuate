@@ -59,8 +59,8 @@ func main() {
 	log.Printf("exploration content: rooms=%d resourcePoints=%d enemySpawnPoints=%d playerSpawns=%d extractions=%d",
 		len(cfg.Layout.Rooms), len(cfg.Layout.ResourcePoints), len(cfg.Layout.EnemySpawnPoints),
 		len(cfg.Layout.PlayerSpawnPoints), len(cfg.Layout.ExtractionPoints))
-	log.Printf("exploration tables: resourcePointTypes=%d enemyPartyThreats=%d",
-		cfg.ResourcePoints.Len(), cfg.EnemyParties.ThreatCount())
+	log.Printf("exploration tables: resourcePointTypes=%d enemyPartyThreats=%d difficulties=%d",
+		cfg.ResourcePoints.Len(), cfg.EnemyParties.ThreatCount(), cfg.Difficulties.Len())
 
 	srv := &http.Server{Addr: *addr, Handler: app.Handler(*path)}
 	if err := srv.ListenAndServe(); err != nil {
