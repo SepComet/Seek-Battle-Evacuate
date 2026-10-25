@@ -100,9 +100,10 @@ namespace SepCore.Tests
         [Test]
         public void FromPlacement_WithoutPartyForRolledThreat_Throws()
         {
+            // 测试配置只有 Low 与 High 两支；Middle 无队伍，取占位队伍必须抛错而不是静默兜底。
             List<EnemyPointPlacementData> enemies = new List<EnemyPointPlacementData>
             {
-                new EnemyPointPlacementData(0, Vector2.zero, EnemyPartyThreatLevel.High, true),
+                new EnemyPointPlacementData(0, Vector2.zero, EnemyPartyThreatLevel.Middle, true),
             };
             MapPlacement placement = new MapPlacement(DifficultyTier.Tier1, Vector2.zero, Vector2.zero,
                 new List<ResourcePointPlacementData>(), enemies, new List<RoomDefinition>());

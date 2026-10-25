@@ -632,7 +632,8 @@ namespace SepCore.Tests
 
             NetEnvelope settle = ctx.Connection.Sent.FirstOrDefault(e => e.t == NetMsg.Settle);
             Assert.That(settle, Is.Not.Null);
-            Assert.That(settle.battleLoot, Is.Null);
+            // JsonUtility 把 null 列表序列化为 "[]"，回读为空列表；服务器 json omitempty 对两者同义。
+            Assert.That(settle.battleLoot, Is.Null.Or.Empty);
         }
 
         [UnityTest]
