@@ -107,7 +107,7 @@ type session struct {
 	looted []LootRecord
 	index  map[string]int
 
-	startedAt   time.Time
+	// lastTouched 最近一次有效交互（含开局与幂等复用）的时刻，TTL 清理以此判定。
 	lastTouched time.Time
 }
 
@@ -184,7 +184,6 @@ func (m *Manager) Start(userID int64, difficulty int, resume bool) (View, error)
 		extraction:  content.ExtractionPoint,
 		content:     content,
 		index:       make(map[string]int),
-		startedAt:   now,
 		lastTouched: now,
 	}
 	m.sessions[userID] = sess
