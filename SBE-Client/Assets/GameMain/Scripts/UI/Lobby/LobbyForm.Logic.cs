@@ -1,4 +1,5 @@
 using GameFramework.Event;
+using SepCore.Base;
 using SepCore.Definition;
 using UnityGameFramework.Runtime;
 
@@ -25,6 +26,7 @@ namespace SepCore.UI
             View.expeditionButton.onClick.AddListener(OpenExpedition);
             View.rosterButton.onClick.AddListener(OpenRoster);
             View.warehouseButton.onClick.AddListener(OpenWarehouse);
+            View.logoutButton.onClick.AddListener(OnLogoutClick);
             GameEntry.Event.Subscribe(OpenUIFormFailureEventArgs.EventId, OnOpenPageFailure);
             SetNavigationEnabled(true);
         }
@@ -49,6 +51,7 @@ namespace SepCore.UI
             View.expeditionButton.onClick.RemoveListener(OpenExpedition);
             View.rosterButton.onClick.RemoveListener(OpenRoster);
             View.warehouseButton.onClick.RemoveListener(OpenWarehouse);
+            View.logoutButton.onClick.RemoveListener(OnLogoutClick);
             GameEntry.Event.Unsubscribe(OpenUIFormFailureEventArgs.EventId, OnOpenPageFailure);
             _openingSerialId = null;
             _navigationPending = false;
@@ -76,8 +79,15 @@ namespace SepCore.UI
             View.expeditionButton.interactable = enabled;
             View.rosterButton.interactable = enabled;
             View.warehouseButton.interactable = enabled;
+            View.logoutButton.interactable = enabled;
             // P1-M1 只注册入口，交易能力在 P1-M3 开放。
             View.supplyButton.interactable = false;
+        }
+
+        private void OnLogoutClick()
+        {
+            // 编排交回流程层：断开连接、清会话与缓存、回到登录流程由 ProcedureMenu 处理。
+            GameEntry.Event.Fire(this, LogoutRequestedEventArgs.Create());
         }
 
         private void OnOpenPageFailure(object sender, GameEventArgs e)

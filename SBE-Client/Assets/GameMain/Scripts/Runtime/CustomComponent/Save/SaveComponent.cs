@@ -235,6 +235,35 @@ namespace SepCore.CustomComponent
         }
 
         /// <summary>
+        /// 退出登录时重置本地缓存：删除全部存档文件并回到新开局默认数据。
+        /// 服务器是唯一真源，本地仅为缓存，重登后由服务器快照覆盖；
+        /// 删除缓存保证随后注册的新账号迁移上传的是全新开局，而非上一账号的残留状态。
+        /// </summary>
+        public void ResetLocalCache()
+        {
+            foreach (string path in new[]
+                     {
+                         WarehouseDataFilePath, WarehouseLayoutFilePath, CharacterDataFilePath,
+                         MetaDataFilePath, LegacySaveFilePath,
+                     })
+            {
+                try
+                {
+                    if (File.Exists(path))
+                    {
+                        File.Delete(path);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("Delete save cache failure: {0}", ex);
+                }
+            }
+
+            CreateNewGame();
+        }
+
+        /// <summary>
         /// 按需落盘：仅将标记为 dirty 的文件写入磁盘，未变动的文件不执行任何 I/O。
         /// </summary>
         public bool SaveDirty()
