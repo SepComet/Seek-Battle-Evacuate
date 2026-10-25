@@ -53,8 +53,8 @@ namespace SepCore.Procedure
                 }
             }
 
-            procedureOwner.SetData<VarInt32>("NextSceneId", (int)SceneType.Menu);
-            ChangeState<ProcedureChangeScene>(procedureOwner);
+            // 预载完成后先登录（强制在线），登录成功再切场景进大厅
+            ChangeState<ProcedureLogin>(procedureOwner);
         }
 
         private void PreloadResources()
@@ -68,14 +68,7 @@ namespace SepCore.Procedure
                 () =>
                 {
                     _loadedFlag[LubanTablesFlag] = true;
-
-                    // Load save data; create a new game if no save exists
-                    GameEntry.Save.Load();
-                    if (!GameEntry.Save.HasSave && !GameEntry.Save.IsReady)
-                    {
-                        GameEntry.Save.CreateNewGame();
-                    }
-
+                    // 存档读取与初始化移至 ProcedureLogin（联网后由服务器为准）
                     Log.Info("Load Luban data tables OK.");
                 },
                 errorMessage =>

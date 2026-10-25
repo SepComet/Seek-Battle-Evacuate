@@ -424,6 +424,9 @@ namespace SepCore.UI
                 GameEntry.Save.MarkWarehouseDataDirty();
                 GameEntry.Save.MarkWarehouseLayoutDirty();
             }
+
+            // 穿卸装备属于服务器记账的经济操作，差分上报
+            GameEntry.Net?.NotifyEconomyChanged();
         }
 
         private static void AddToWarehouse(List<GridItemStack> warehouse, int itemId, int count)

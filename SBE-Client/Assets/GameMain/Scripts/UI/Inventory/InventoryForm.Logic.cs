@@ -574,6 +574,9 @@ namespace SepCore.UI
             {
                 GameEntry.Save.SaveDirty();
             }
+
+            // 关闭仓库界面时批量上报布局调整
+            GameEntry.Net?.NotifyEconomyChanged();
         }
 
         private void OnDestroy()

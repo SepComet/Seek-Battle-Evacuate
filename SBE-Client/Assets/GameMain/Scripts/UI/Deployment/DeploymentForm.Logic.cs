@@ -113,6 +113,13 @@ namespace SepCore.UI
 
         private void OnBeginRunButtonClick()
         {
+            // 强制在线：未完成登录同步时禁止开局（结算需要服务器记账）
+            if (GameEntry.Net != null && !GameEntry.Net.OnlineReady)
+            {
+                Log.Error("Cannot begin run while offline.");
+                return;
+            }
+
             SaveData save = GameEntry.Save.Data;
             if (save == null)
             {

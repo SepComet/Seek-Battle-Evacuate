@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using GameFramework.Event;
 using GameFramework.Fsm;
 using SepCore.Base;
@@ -170,10 +171,21 @@ namespace SepCore.Procedure
 
                 save.runHistory.Add(new RoundRecord(outcome, difficulty, seed, startedAt, endedAt));
 
-                // 4. 写入磁盘
-                GameEntry.Save.Save();
-                Log.Info("[ProcedureMain] Run record saved to disk. Outcome: {0}, Difficulty: {1}, Seed: {2}.",
-                    outcome, difficulty, seed);
+                // 4. 上报结算并以服务器 ack 为准落盘（runId 幂等 + 断线重试）；
+                //    无网络组件（无头测试）时保留纯本地落盘路径
+                if (GameEntry.Net != null)
+                {
+                    string runId = Guid.NewGuid().ToString("N");
+                    GameEntry.Net.SettleAsync(runId, (int)outcome).Forget();
+                    Log.Info("[ProcedureMain] Settlement reported. Outcome: {0}, Difficulty: {1}, Seed: {2}, RunId: {3}.",
+                        outcome, difficulty, seed, runId);
+                }
+                else
+                {
+                    GameEntry.Save.Save();
+                    Log.Info("[ProcedureMain] Run record saved to disk. Outcome: {0}, Difficulty: {1}, Seed: {2}.",
+                        outcome, difficulty, seed);
+                }
             }
 
             // 5. 清理单局数据层

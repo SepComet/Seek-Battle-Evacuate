@@ -43,6 +43,8 @@ namespace SepCore.UI
                 GameEntry.Save.SaveDirty();
             }
 
+            GameEntry.Net?.NotifyEconomyChanged();
+
             View.selectionMarkerObject.DOKill();
             View.selectionMarkerObject.SetParent(View.homeToggle.transform, false);
             View.selectionMarkerObject.anchoredPosition = _markerInitialAnchoredPosition;
@@ -84,6 +86,8 @@ namespace SepCore.UI
             {
                 GameEntry.Save.SaveDirty();
             }
+
+            GameEntry.Net?.NotifyEconomyChanged();
 
             _currentPageType = pageType;
             bool showHome = pageType == LobbyPageType.Home;

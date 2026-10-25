@@ -1,5 +1,6 @@
 using SepCore.Battle;
 using SepCore.CustomComponent;
+using SepCore.Net;
 using UnityEngine;
 
 /// <summary>
@@ -19,6 +20,8 @@ public partial class GameEntry : MonoBehaviour
 
     public static RoundComponent Round { get; private set; }
 
+    public static NetComponent Net { get; private set; }
+
     private static void InitCustomComponents()
     {
         BuiltinData = UnityGameFramework.Runtime.GameEntry.GetComponent<BuiltinDataComponent>();
@@ -35,6 +38,17 @@ public partial class GameEntry : MonoBehaviour
                 runGo.transform.SetParent(TurnBattle.transform.parent);
             }
             Round = runGo.AddComponent<RoundComponent>();
+        }
+
+        Net = UnityGameFramework.Runtime.GameEntry.GetComponent<NetComponent>();
+        if (Net == null)
+        {
+            GameObject netGo = new GameObject("Net");
+            if (Round != null)
+            {
+                netGo.transform.SetParent(Round.transform.parent);
+            }
+            Net = netGo.AddComponent<NetComponent>();
         }
     }
 }
