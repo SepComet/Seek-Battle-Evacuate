@@ -212,5 +212,192 @@ namespace SepCore.Tests
             Assert.That(ops[2].itemId, Is.EqualTo(5301));
             Assert.That(ops[3].itemId, Is.EqualTo(5102));
         }
+
+        [Test]
+        public void PartyChange_ProducesPartyOp()
+        {
+            WarehouseLedger ledger = LedgerOf();
+            SaveData save = SaveWith(new List<GridItemStack>());
+            save.loadout = new LoadoutSave { partyCharacterIds = new[] { 1001 } };
+
+            List<NetOp> ops = Diff(ledger, save);
+            Assert.That(ops, Has.Count.EqualTo(1));
+            Assert.That(ops[0].k, Is.EqualTo(NetOpKind.Party));
+            Assert.That(ops[0].party, Is.EqualTo(new[] { 1001 }));
+        }
+
+        [Test]
+        public void PartyOrderMatters_ProducesPartyOp()
+        {
+            // 顺序即出战序：内容相同但顺序不同也必须整发
+            WarehouseLedger ledger = LedgerOf();
+            NetSnapshot snapshot = new NetSnapshot { initialized = true, party = new[] { 1001, 1002 } };
+            snapshot.characters.Add(new NetSnapChar { cid = 1001 });
+            snapshot.characters.Add(new NetSnapChar { cid = 1002 });
+            ledger.Rebuild(snapshot);
+
+            SaveData save = SaveWith(new List<GridItemStack>());
+            save.loadout = new LoadoutSave { partyCharacterIds = new[] { 1002, 1001 } };
+
+            List<NetOp> ops = Diff(ledger, save);
+            Assert.That(ops, Has.Count.EqualTo(1));
+            Assert.That(ops[0].k, Is.EqualTo(NetOpKind.Party));
+            Assert.That(ops[0].party, Is.EqualTo(new[] { 1002, 1001 }));
+        }
+
+        [Test]
+        public void PartyNullLocal_ProducesNoPartyOp()
+        {
+            // 本地从未配置（null）时不得整发空队误清服务器状态
+            WarehouseLedger ledger = LedgerOf();
+            NetSnapshot snapshot = new NetSnapshot { initialized = true, party = new[] { 1001 } };
+            snapshot.characters.Add(new NetSnapChar { cid = 1001 });
+            ledger.Rebuild(snapshot);
+
+            SaveData save = SaveWith(new List<GridItemStack>());
+            save.loadout = new LoadoutSave { partyCharacterIds = null };
+
+            Assert.That(Diff(ledger, save), Is.Empty);
+        }
+
+        [Test]
+        public void DifficultyChange_ProducesDifficultyOp()
+        {
+            WarehouseLedger ledger = LedgerOf();
+            SaveData save = SaveWith(new List<GridItemStack>());
+            save.loadout = new LoadoutSave { difficultyId = DifficultyTier.Tier2 };
+
+            List<NetOp> ops = Diff(ledger, save);
+            Assert.That(ops, Has.Count.EqualTo(1));
+            Assert.That(ops[0].k, Is.EqualTo(NetOpKind.Difficulty));
+            Assert.That(ops[0].difficulty, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void CarryChange_ProducesCarryOp()
+        {
+            WarehouseLedger ledger = LedgerOf();
+            SaveData save = SaveWith(new List<GridItemStack>());
+            save.loadout = new LoadoutSave
+            {
+                carriedItems = new List<ItemStack> { new ItemStack(5001, 3), new ItemStack(5301, 1) },
+            };
+
+            List<NetOp> ops = Diff(ledger, save);
+            Assert.That(ops, Has.Count.EqualTo(1));
+            Assert.That(ops[0].k, Is.EqualTo(NetOpKind.Carry));
+            Assert.That(ops[0].carry, Has.Count.EqualTo(2));
+            Assert.That(ops[0].carry[1].itemId, Is.EqualTo(5301));
+        }
+
+        [Test]
+        public void LoadoutInSync_ProducesNoOps()
+        {
+            NetSnapshot snapshot = new NetSnapshot
+            {
+                initialized = true,
+                difficulty = 3,
+                party = new[] { 1001 },
+                carried = new List<NetStack> { new NetStack(5001, 2) },
+            };
+            snapshot.characters.Add(new NetSnapChar { cid = 1001 });
+            snapshot.items.Add(Row(1, 5001, 5, 1, 1));
+            WarehouseLedger ledger = new WarehouseLedger();
+            ledger.Rebuild(snapshot);
+
+            SaveData save = SaveWith(new List<GridItemStack> { new GridItemStack(5001, 5, 1, 1) });
+            save.loadout = new LoadoutSave
+            {
+                partyCharacterIds = new[] { 1001 },
+                difficultyId = DifficultyTier.Tier3,
+                carriedItems = new List<ItemStack> { new ItemStack(5001, 2) },
+            };
+
+            Assert.That(Diff(ledger, save), Is.Empty);
+        }
+
+        [Test]
+        public void ClearConfiguredLoadout_ProducesExplicitZeroReplacements()
+        {
+            NetSnapshot snapshot = new NetSnapshot
+            {
+                initialized = true,
+                party = new[] { 1001 },
+                difficulty = 3,
+                carried = new List<NetStack> { new NetStack(5001, 2) },
+            };
+            snapshot.characters.Add(new NetSnapChar { cid = 1001 });
+            WarehouseLedger ledger = new WarehouseLedger();
+            ledger.Rebuild(snapshot);
+            SaveData save = SaveWith(new List<GridItemStack>());
+            save.loadout = new LoadoutSave
+            {
+                partyCharacterIds = Array.Empty<int>(),
+                difficultyId = DifficultyTier.None,
+                carriedItems = new List<ItemStack>(),
+            };
+
+            List<NetOp> ops = Diff(ledger, save);
+            Assert.That(ops.Select(o => o.k), Is.EqualTo(new[]
+                { NetOpKind.Party, NetOpKind.Difficulty, NetOpKind.Carry }));
+            Assert.That(ops[0].party, Is.Empty);
+            Assert.That(ops[1].difficulty, Is.Zero);
+            Assert.That(ops[2].carry, Is.Empty);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void CarrySequenceOrCountChange_ReplacesWholePlan(bool reorder)
+        {
+            NetSnapshot snapshot = new NetSnapshot
+            {
+                initialized = true,
+                carried = new List<NetStack> { new NetStack(5001, 2), new NetStack(5301, 1) },
+            };
+            snapshot.characters.Add(new NetSnapChar { cid = 1001 });
+            WarehouseLedger ledger = new WarehouseLedger();
+            ledger.Rebuild(snapshot);
+            SaveData save = SaveWith(new List<GridItemStack>());
+            save.loadout = new LoadoutSave
+            {
+                carriedItems = reorder
+                    ? new List<ItemStack> { new ItemStack(5301, 1), new ItemStack(5001, 2) }
+                    : new List<ItemStack> { new ItemStack(5001, 3), new ItemStack(5301, 1) },
+            };
+
+            List<NetOp> ops = Diff(ledger, save);
+            Assert.That(ops, Has.Count.EqualTo(1));
+            Assert.That(ops[0].k, Is.EqualTo(NetOpKind.Carry));
+            Assert.That(ops[0].carry.Select(s => s.itemId),
+                Is.EqualTo(save.loadout.carriedItems.Select(s => s.itemId)));
+            Assert.That(ops[0].carry.Select(s => s.count),
+                Is.EqualTo(save.loadout.carriedItems.Select(s => s.count)));
+        }
+
+        [Test]
+        public void CombinedAssetAndLoadoutChanges_AppendLoadoutAfterAssetOps()
+        {
+            WarehouseLedger ledger = LedgerOf(
+                Row(1, 5101, 1, 0, 0, wearer: 1001),
+                Row(2, 5001, 10, 0, 0));
+            SaveData save = SaveWith(new List<GridItemStack>
+            {
+                new GridItemStack(5001, 10, 0, 0),
+                new GridItemStack(5301, 4, 1, 0),
+            }, weaponItemId: 5102);
+            save.characters.Add(new CharacterSave(1002, 0, 0));
+            save.loadout = new LoadoutSave
+            {
+                partyCharacterIds = new[] { 1002, 1001 },
+                difficultyId = DifficultyTier.Tier2,
+                carriedItems = new List<ItemStack> { new ItemStack(5001, 3) },
+            };
+
+            Assert.That(Diff(ledger, save).Select(o => o.k), Is.EqualTo(new[]
+            {
+                NetOpKind.Recruit, NetOpKind.Del, NetOpKind.Add, NetOpKind.Wear,
+                NetOpKind.Party, NetOpKind.Difficulty, NetOpKind.Carry,
+            }));
+        }
     }
 }

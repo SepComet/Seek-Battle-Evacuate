@@ -24,7 +24,7 @@ namespace SepCore.UI
         /// 按传入的角色列表重建角色槽列表 UI，每名角色一个槽位。
         /// 出战角色槽位默认展示装备加成后的属性。
         /// </summary>
-        public void RefreshCharacterList(IReadOnlyList<CharacterSave> characters, bool applyEquipmentBonus = true)
+        public void RefreshCharacterList(IReadOnlyList<CharacterSave> characters, bool applyEquipmentBonus = true, bool initializeParty = true)
         {
             _applyEquipmentBonus = applyEquipmentBonus;
             _allCharacters.Clear();
@@ -33,11 +33,11 @@ namespace SepCore.UI
                 _allCharacters.AddRange(characters);
             }
 
-            InitPartyCharacterIds();
+            InitPartyCharacterIds(initializeParty);
             RebuildSlots();
         }
 
-        private void InitPartyCharacterIds()
+        private void InitPartyCharacterIds(bool initializeParty)
         {
             _partyCharacterIds.Clear();
 
@@ -66,7 +66,7 @@ namespace SepCore.UI
                     }
                 }
             }
-            else if (_allCharacters.Count > 0)
+            else if (initializeParty && _allCharacters.Count > 0)
             {
                 // 仅当存档从未初始化过 partyCharacterIds (为 null) 时，才默认选取前 1~maxParty 人
                 for (int i = 0; i < Math.Min(_allCharacters.Count, maxParty); i++)
@@ -75,7 +75,22 @@ namespace SepCore.UI
                 }
             }
 
-            save.loadout.partyCharacterIds = _partyCharacterIds.ToArray();
+            if (GameEntry.Net == null || GameEntry.Net.OnlineReady)
+            {
+                bool changed = savedParty == null
+                    ? _partyCharacterIds.Count > 0
+                    : savedParty.Length != _partyCharacterIds.Count;
+                for (int i = 0; savedParty != null && !changed && i < savedParty.Length; i++)
+                {
+                    changed = savedParty[i] != _partyCharacterIds[i];
+                }
+
+                save.loadout.partyCharacterIds = _partyCharacterIds.ToArray();
+                if (changed)
+                {
+                    GameEntry.Net?.NotifyEconomyChanged();
+                }
+            }
         }
 
         private bool HasCharacter(int characterId)
@@ -163,6 +178,13 @@ namespace SepCore.UI
 
         private void OnCharacterSlotClicked(int characterId)
         {
+            // 强制在线：出战队伍由服务器记账，未完成登录同步时禁止编辑
+            if (GameEntry.Net != null && !GameEntry.Net.OnlineReady)
+            {
+                Log.Error("Cannot edit squad while offline.");
+                return;
+            }
+
             int maxParty = GameEntry.Luban.Global?.Data != null ? GameEntry.Luban.Global.Data.MaxPlayerPartySize : 4;
 
             if (_partyCharacterIds.Contains(characterId))
@@ -191,6 +213,9 @@ namespace SepCore.UI
 
                 save.loadout.partyCharacterIds = _partyCharacterIds.ToArray();
             }
+
+            // 出战队伍属于服务器记账的战备配置，差分上报
+            GameEntry.Net?.NotifyEconomyChanged();
 
             RebuildSlots();
             OnPartyChanged?.Invoke();

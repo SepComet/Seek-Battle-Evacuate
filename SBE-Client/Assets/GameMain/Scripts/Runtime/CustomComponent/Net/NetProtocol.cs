@@ -7,7 +7,8 @@ namespace SepCore.Net
     /// </summary>
     public static class NetMsg
     {
-        public const int Version = 1;
+        // v2：新增 party/difficulty/carry 操作、快照战备字段、settle 战绩元数据与 history 消息。
+        public const int Version = 2;
 
         public const string Register = "register";
         public const string Auth = "auth";
@@ -15,6 +16,8 @@ namespace SepCore.Net
         public const string Migrate = "migrate";
         public const string Settle = "settle";
         public const string Ops = "ops";
+        public const string History = "history";
+        public const string Ping = "ping";
 
         public const string OK = "ok";
         public const string Err = "err";
@@ -42,6 +45,9 @@ namespace SepCore.Net
         public const string Rel = "rel";
         public const string Wear = "wear";
         public const string Recruit = "recruit";
+        public const string Party = "party";
+        public const string Difficulty = "difficulty";
+        public const string Carry = "carry";
     }
 
     /// <summary>
@@ -69,6 +75,9 @@ namespace SepCore.Net
         public bool r;
         public int cid;
         public int slot;
+        public int[] party;
+        public int difficulty;
+        public List<NetStack> carry;
 
         public static NetOp Add(int tid, int itemId, int count, int x, int y, bool rotated)
         {
@@ -104,6 +113,41 @@ namespace SepCore.Net
         {
             return new NetOp { k = NetOpKind.Recruit, cid = cid };
         }
+
+        public static NetOp Party(int[] party)
+        {
+            return new NetOp { k = NetOpKind.Party, party = party };
+        }
+
+        public static NetOp Difficulty(int difficulty)
+        {
+            return new NetOp { k = NetOpKind.Difficulty, difficulty = difficulty };
+        }
+
+        public static NetOp Carry(List<NetStack> carry)
+        {
+            return new NetOp { k = NetOpKind.Carry, carry = carry };
+        }
+    }
+
+    /// <summary>
+    /// 无实例身份的物品堆（携带计划条目），与服务端 protocol.Stack 一致。
+    /// </summary>
+    [System.Serializable]
+    public class NetStack
+    {
+        public int itemId;
+        public int count;
+
+        public NetStack()
+        {
+        }
+
+        public NetStack(int itemId, int count)
+        {
+            this.itemId = itemId;
+            this.count = count;
+        }
     }
 
     /// <summary>
@@ -138,6 +182,11 @@ namespace SepCore.Net
     {
         public List<NetMigrateItem> items = new List<NetMigrateItem>();
         public List<NetMigrateChar> characters = new List<NetMigrateChar>();
+
+        // 战备配置（缺省 = 未配置）
+        public int[] party;
+        public int difficulty;
+        public List<NetStack> carried = new List<NetStack>();
     }
 
     /// <summary>
@@ -165,7 +214,7 @@ namespace SepCore.Net
     }
 
     /// <summary>
-    /// 服务器权威经济快照。
+    /// 服务器权威快照。
     /// </summary>
     [System.Serializable]
     public class NetSnapshot
@@ -173,6 +222,25 @@ namespace SepCore.Net
         public List<NetSnapRow> items = new List<NetSnapRow>();
         public List<NetSnapChar> characters = new List<NetSnapChar>();
         public bool initialized;
+
+        // 战备配置：空队列/0 难度/空携带 = 未配置
+        public int[] party;
+        public int difficulty;
+        public List<NetStack> carried;
+    }
+
+    /// <summary>
+    /// 战绩记录（history 响应条目），与服务端 protocol.SnapRun 一致。
+    /// </summary>
+    [System.Serializable]
+    public class NetRunRecord
+    {
+        public string runId;
+        public int outcome;
+        public int difficulty;
+        public long seed;
+        public long startedAt;
+        public long endedAt;
     }
 
     /// <summary>
@@ -186,10 +254,21 @@ namespace SepCore.Net
         public long rid;
         public string device;
         public string token;
+        public long userId;
         public string runId;
         public int outcome;
         public List<NetOp> ops;
         public NetMigratePayload migrate;
+
+        // settle 携带的战绩元数据
+        public int difficulty;
+        public long seed;
+        public long startedAt;
+        public long endedAt;
+
+        // history 响应携带的战绩列表
+        public List<NetRunRecord> history;
+
         public NetSnapshot snapshot;
         public string code;
         public string msg;

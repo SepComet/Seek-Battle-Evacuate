@@ -169,14 +169,15 @@ namespace SepCore.Procedure
                     save.runHistory = new List<RoundRecord>();
                 }
 
-                save.runHistory.Add(new RoundRecord(outcome, difficulty, seed, startedAt, endedAt));
+                RoundRecord record = new RoundRecord(outcome, difficulty, seed, startedAt, endedAt);
+                save.runHistory.Add(record);
 
-                // 4. 上报结算并以服务器 ack 为准落盘（runId 幂等 + 断线重试）；
+                // 4. 上报结算（含战绩元数据）并以服务器 ack 为准落盘（runId 幂等 + 断线重试）；
                 //    无网络组件（无头测试）时保留纯本地落盘路径
                 if (GameEntry.Net != null)
                 {
                     string runId = Guid.NewGuid().ToString("N");
-                    GameEntry.Net.Sync.SettleAsync(runId, (int)outcome).Forget();
+                    GameEntry.Net.Sync.SettleAsync(runId, record).Forget();
                     Log.Info("[ProcedureMain] Settlement reported. Outcome: {0}, Difficulty: {1}, Seed: {2}, RunId: {3}.",
                         outcome, difficulty, seed, runId);
                 }

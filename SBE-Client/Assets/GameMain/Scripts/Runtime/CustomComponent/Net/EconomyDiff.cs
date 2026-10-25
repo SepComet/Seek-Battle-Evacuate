@@ -146,13 +146,91 @@ namespace SepCore.Net
                 }
             }
 
-            // 4. 固定输出顺序：rel 需先于 wear（先腾出槽位），add 需先于对它的引用
+            // 4. 固定输出顺序：rel 需先于 wear（先腾出槽位），add 需先于对它的引用，战备配置垫底
             ops.AddRange(rels);
             ops.AddRange(dels);
             ops.AddRange(adds);
             ops.AddRange(movs);
             ops.AddRange(wears);
+            AppendLoadoutDiff(ledger, save, ops);
             return ops;
+        }
+
+        /// <summary>
+        /// 战备配置差分：出战队列、难度、携带计划与账本不一致时整体上报。
+        /// save.loadout 为 null 时跳过（避免把服务器已配置的队伍误清空）。
+        /// </summary>
+        private static void AppendLoadoutDiff(WarehouseLedger ledger, SaveData save, List<NetOp> ops)
+        {
+            if (save.loadout == null)
+            {
+                return;
+            }
+
+            // partyCharacterIds 为 null 表示本地从未配置过（ApplySnapshot 保证与服务器空队同步），
+            // 此时跳过 party 差分，绝不整发空队误清服务器状态。
+            int[] localParty = save.loadout.partyCharacterIds;
+            if (localParty != null && !PartyEquals(ledger.Party, localParty))
+            {
+                ops.Add(NetOp.Party(localParty));
+            }
+
+            int localDifficulty = (int)save.loadout.difficultyId;
+            if (ledger.Difficulty != localDifficulty)
+            {
+                ops.Add(NetOp.Difficulty(localDifficulty));
+            }
+
+            List<ItemStack> localCarried = save.loadout.carriedItems;
+            int localCarriedCount = localCarried != null ? localCarried.Count : 0;
+            bool carriedChanged = ledger.Carried.Count != localCarriedCount;
+            if (!carriedChanged)
+            {
+                for (int i = 0; i < localCarriedCount; i++)
+                {
+                    NetStack serverStack = ledger.Carried[i];
+                    if (serverStack.itemId != localCarried[i].itemId || serverStack.count != localCarried[i].count)
+                    {
+                        carriedChanged = true;
+                        break;
+                    }
+                }
+            }
+
+            if (carriedChanged)
+            {
+                List<NetStack> carry = new List<NetStack>();
+                if (localCarried != null)
+                {
+                    foreach (ItemStack stack in localCarried)
+                    {
+                        carry.Add(new NetStack(stack.itemId, stack.count));
+                    }
+                }
+
+                ops.Add(NetOp.Carry(carry));
+            }
+        }
+
+        /// <summary>
+        /// 序列比较：长度与逐位一致才算相等（顺序即出战序，不能容忍重排）。
+        /// </summary>
+        private static bool PartyEquals(IReadOnlyList<int> server, int[] local)
+        {
+            if (server.Count != local.Length)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < local.Length; i++)
+            {
+                if (server[i] != local[i])
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private static void AnalyzeSlot(

@@ -26,6 +26,7 @@ namespace SepCore.Net
 
         private readonly WarehouseLedger _ledger = new WarehouseLedger();
         private readonly Func<int, UniTask> _delay;
+        private readonly Func<double> _clock;
         private long _nextRid;
         private string _token;
 
@@ -35,7 +36,8 @@ namespace SepCore.Net
             Func<int, ItemConfig> itemGetter,
             Func<GlobalConfig> globalGetter,
             Action persist,
-            Func<int, UniTask> delay = null)
+            Func<int, UniTask> delay = null,
+            Func<double> clock = null)
         {
             _connection = connection;
             _getSave = getSave;
@@ -43,6 +45,7 @@ namespace SepCore.Net
             _globalGetter = globalGetter;
             _persist = persist;
             _delay = delay ?? (ms => UniTask.Delay(ms));
+            _clock = clock ?? (() => (double)System.Diagnostics.Stopwatch.GetTimestamp() / System.Diagnostics.Stopwatch.Frequency);
             _connection.MessageReceived += OnMessageReceived;
             _connection.Disconnected += OnDisconnected;
         }
@@ -51,6 +54,31 @@ namespace SepCore.Net
         /// 当前登录令牌（登录成功后由宿主持久化）。
         /// </summary>
         public string Token => _token;
+
+        /// <summary>服务端账号主键；未完成登录或已断线时为 0，不暴露认证令牌。</summary>
+        public long UserId { get; private set; }
+
+        public NetworkLatencyMonitor Latency { get; } = new NetworkLatencyMonitor();
+
+        /// <summary>主线程定时探测，不进入经济操作互斥，也不向 pending 请求表添加等待项。</summary>
+        public void UpdateLatency(bool onlineReady)
+        {
+            double now = _clock();
+            if (!onlineReady || UserId <= 0 || !_connection.IsConnected)
+            {
+                Latency.Reset(now);
+                return;
+            }
+
+            if (!Latency.ShouldProbe(now)) return;
+            NetEnvelope ping = NetEnvelope.Create(NetMsg.Ping);
+            ping.rid = ++_nextRid;
+            Latency.BeginProbe(ping.rid, now);
+            if (!_connection.TrySend(GameFramework.Utility.Json.ToJson(ping)))
+            {
+                Latency.TryComplete(ping.rid, false, _clock());
+            }
+        }
 
         /// <summary>
         /// 账本是否已与服务器同步过（决定差分是否可用）。
@@ -68,6 +96,8 @@ namespace SepCore.Net
         /// </summary>
         public async UniTask<bool> LoginAsync(string serverUri, string deviceUuid, string savedToken)
         {
+            UserId = 0;
+            Latency.Reset(_clock());
             if (!_connection.IsConnected)
             {
                 bool connected = await _connection.ConnectAsync(serverUri);
@@ -101,6 +131,13 @@ namespace SepCore.Net
                 _token = savedToken;
             }
 
+            if (resp.userId <= 0)
+            {
+                Log.Error("Login response missing userId.");
+                return false;
+            }
+            long userId = resp.userId;
+
             NetSnapshot snapshot = resp.snapshot;
             if (snapshot == null)
             {
@@ -125,7 +162,50 @@ namespace SepCore.Net
             ApplySnapshot(snapshot);
             _persist();
             Log.Info("Warehouse sync login OK. Rows: {0}, Characters: {1}.", snapshot.items.Count, snapshot.characters.Count);
+
+            // 拉取战绩并覆盖本地缓存（settlements 审计数据即战绩存储）。
+            // 拉取失败由登录流程重试，避免断线后仍把 OnlineReady 标记为 true。
+            NetEnvelope historyResp = await SendAsync(NetEnvelope.Create(NetMsg.History));
+            if (historyResp != null && historyResp.IsOk)
+            {
+                ApplyHistory(historyResp.history);
+                _persist();
+            }
+            else
+            {
+                Log.Error("History fetch failure: {0}", Describe(historyResp));
+                return false;
+            }
+
+            UserId = userId;
             return true;
+        }
+
+        /// <summary>
+        /// 用服务器战绩整体覆盖本地 runHistory 缓存。
+        /// </summary>
+        public void ApplyHistory(List<NetRunRecord> history)
+        {
+            SaveData save = _getSave();
+            if (save == null)
+            {
+                Log.Error("ApplyHistory with no SaveData.");
+                return;
+            }
+
+            save.runHistory = new List<RoundRecord>();
+            if (history != null)
+            {
+                foreach (NetRunRecord run in history)
+                {
+                    save.runHistory.Add(new RoundRecord(
+                        (RoundResultType)run.outcome,
+                        (DifficultyTier)run.difficulty,
+                        run.seed,
+                        run.startedAt,
+                        run.endedAt));
+                }
+            }
         }
 
         /// <summary>
@@ -165,10 +245,13 @@ namespace SepCore.Net
         /// <summary>
         /// 结算上报：操作集在入口一次捕获，之后按 runId 幂等重试直至服务器确认；
         /// 确认后以权威快照落地并写本地缓存。强制在线语义：断线期间一直等待。
+        /// record 为本局战绩（结局/难度/种子/起止时间），随结算落服务器审计列。
         /// </summary>
-        public async UniTask SettleAsync(string runId, int outcome)
+        public async UniTask SettleAsync(string runId, RoundRecord record)
         {
             List<NetOp> ops = EconomyDiff.Compute(_ledger, _getSave(), _itemGetter);
+            // 结算仅提交资产变化，战备配置由大厅 ops 独立同步。
+            ops.RemoveAll(op => op.k == NetOpKind.Party || op.k == NetOpKind.Difficulty || op.k == NetOpKind.Carry);
             await RunSerialized(async () =>
             {
                 while (true)
@@ -187,7 +270,11 @@ namespace SepCore.Net
 
                     NetEnvelope env = NetEnvelope.Create(NetMsg.Settle);
                     env.runId = runId;
-                    env.outcome = outcome;
+                    env.outcome = (int)record.outcome;
+                    env.difficulty = (int)record.difficultyId;
+                    env.seed = record.seed;
+                    env.startedAt = record.startedAt;
+                    env.endedAt = record.endedAt;
                     env.ops = ops;
                     NetEnvelope resp = await SendAsync(env);
                     if (resp == null)
@@ -208,7 +295,7 @@ namespace SepCore.Net
                     }
 
                     _persist();
-                    Log.Info("Settle acked. RunId: {0}, Outcome: {1}.", runId, outcome);
+                    Log.Info("Settle acked. RunId: {0}, Outcome: {1}.", runId, record.outcome);
                     return;
                 }
             });
@@ -217,7 +304,8 @@ namespace SepCore.Net
         /// <summary>
         /// 把权威快照写入内存存档并重建账本。
         /// 仓库网格经容器往返规范化（重叠/越界自愈）；角色穿戴按穿戴行反推；
-        /// 花名册顺序以服务器为准；loadout 仅做与花名册的交集修补。
+        /// 花名册顺序以服务器为准；战备配置（出战队列/难度/携带计划）以服务器为准，
+        /// 快照空队列写回 null 保留"从未配置则默认组队"的既有流程。
         /// </summary>
         public void ApplySnapshot(NetSnapshot snapshot)
         {
@@ -304,25 +392,43 @@ namespace SepCore.Net
 
             save.characters = characters;
 
-            // 3. 战备列表与花名册求交（服务器为准增删，保留本地顺序）
-            if (save.loadout?.partyCharacterIds != null)
+            // 3. 战备配置以服务器为准（快照空队列 = 未配置，写回 null 保留默认组队流程）
+            if (save.loadout == null)
             {
-                HashSet<int> roster = new HashSet<int>();
-                foreach (NetSnapChar snapChar in snapshot.characters)
-                {
-                    roster.Add(snapChar.cid);
-                }
+                save.loadout = new LoadoutSave();
+            }
 
-                List<int> party = new List<int>();
-                foreach (int cid in save.loadout.partyCharacterIds)
+            HashSet<int> roster = new HashSet<int>();
+            foreach (NetSnapChar snapChar in snapshot.characters)
+            {
+                roster.Add(snapChar.cid);
+            }
+
+            List<int> party = new List<int>();
+            if (snapshot.party != null)
+            {
+                foreach (int cid in snapshot.party)
                 {
                     if (roster.Contains(cid) && !party.Contains(cid))
                     {
                         party.Add(cid);
                     }
                 }
+            }
 
-                save.loadout.partyCharacterIds = party.ToArray();
+            save.loadout.partyCharacterIds = party.Count > 0 ? party.ToArray() : null;
+            save.loadout.difficultyId = (DifficultyTier)snapshot.difficulty;
+
+            save.loadout.carriedItems = new List<ItemStack>();
+            if (snapshot.carried != null)
+            {
+                foreach (NetStack stack in snapshot.carried)
+                {
+                    if (stack.itemId > 0 && stack.count > 0)
+                    {
+                        save.loadout.carriedItems.Add(new ItemStack(stack.itemId, stack.count));
+                    }
+                }
             }
 
             _ledger.Rebuild(snapshot);
@@ -368,6 +474,27 @@ namespace SepCore.Net
                 }
             }
 
+            if (save.loadout != null)
+            {
+                if (save.loadout.partyCharacterIds != null && save.loadout.partyCharacterIds.Length > 0)
+                {
+                    payload.party = (int[])save.loadout.partyCharacterIds.Clone();
+                }
+
+                payload.difficulty = (int)save.loadout.difficultyId;
+
+                if (save.loadout.carriedItems != null)
+                {
+                    foreach (ItemStack stack in save.loadout.carriedItems)
+                    {
+                        if (stack.itemId > 0 && stack.count > 0)
+                        {
+                            payload.carried.Add(new NetStack(stack.itemId, stack.count));
+                        }
+                    }
+                }
+            }
+
             return payload;
         }
 
@@ -409,6 +536,12 @@ namespace SepCore.Net
                 return;
             }
 
+            if (Latency.TryComplete(resp.rid, resp.IsOk, _clock()))
+            {
+                if (!resp.IsOk && resp.code == NetErrCode.Unauthorized) UserId = 0;
+                return;
+            }
+
             if (resp.rid != 0 && _pending.TryGetValue(resp.rid, out UniTaskCompletionSource<NetEnvelope> tcs))
             {
                 _pending.Remove(resp.rid);
@@ -418,12 +551,15 @@ namespace SepCore.Net
 
         private void OnDisconnected()
         {
-            foreach (KeyValuePair<long, UniTaskCompletionSource<NetEnvelope>> pair in _pending)
-            {
-                pair.Value.TrySetResult(null);
-            }
-
+            UserId = 0;
+            Latency.Reset(_clock());
+            // 完成等待可能同步恢复协程并发出重试；先移出旧表，避免枚举期间被修改。
+            List<UniTaskCompletionSource<NetEnvelope>> pending = new List<UniTaskCompletionSource<NetEnvelope>>(_pending.Values);
             _pending.Clear();
+            foreach (UniTaskCompletionSource<NetEnvelope> request in pending)
+            {
+                request.TrySetResult(null);
+            }
         }
 
         private static string Describe(NetEnvelope resp)

@@ -58,6 +58,12 @@ namespace SepCore.UI
 
             SaveData save = GameEntry.Save.Data;
             DifficultyTier difficulty = save?.loadout?.difficultyId ?? DifficultyTier.Tier1;
+            if (save != null && difficulty == DifficultyTier.None &&
+                (GameEntry.Net == null || GameEntry.Net.OnlineReady))
+            {
+                OnDifficultyToggleChanged(DifficultyTier.Tier1);
+                difficulty = DifficultyTier.Tier1;
+            }
             SetDifficultyToggle(difficulty);
 
             if (string.IsNullOrEmpty(View.seedInput.text))
@@ -77,22 +83,19 @@ namespace SepCore.UI
 
         private void SetDifficultyToggle(DifficultyTier difficulty)
         {
-            switch (difficulty)
-            {
-                case DifficultyTier.Tier2:
-                    View.tier2Toggle.isOn = true;
-                    break;
-                case DifficultyTier.Tier3:
-                    View.tier3Toggle.isOn = true;
-                    break;
-                default:
-                    View.tier1Toggle.isOn = true;
-                    break;
-            }
+            View.tier1Toggle.SetIsOnWithoutNotify(difficulty != DifficultyTier.Tier2 && difficulty != DifficultyTier.Tier3);
+            View.tier2Toggle.SetIsOnWithoutNotify(difficulty == DifficultyTier.Tier2);
+            View.tier3Toggle.SetIsOnWithoutNotify(difficulty == DifficultyTier.Tier3);
         }
 
         private void OnDifficultyToggleChanged(DifficultyTier difficulty)
         {
+            if (GameEntry.Net != null && !GameEntry.Net.OnlineReady)
+            {
+                SetDifficultyToggle(GameEntry.Save.Data.loadout.difficultyId);
+                return;
+            }
+
             SaveData save = GameEntry.Save.Data;
             if (save != null)
             {
@@ -101,7 +104,12 @@ namespace SepCore.UI
                     save.loadout = new LoadoutSave();
                 }
 
-                save.loadout.difficultyId = difficulty;
+                if (save.loadout.difficultyId != difficulty)
+                {
+                    save.loadout.difficultyId = difficulty;
+                    GameEntry.Net?.NotifyEconomyChanged();
+                    GameEntry.Save.Save();
+                }
             }
         }
 
@@ -188,7 +196,8 @@ namespace SepCore.UI
 
             GameEntry.Random.BeginRun(seed);
 
-            // 4. 写盘保存战备配置
+            // 4. 写盘保存战备配置；出战队伍与难度由服务器记账，差分上报
+            GameEntry.Net?.NotifyEconomyChanged();
             GameEntry.Save.Save();
 
             Log.Info("[DeploymentForm] Starting run with {0} characters, difficulty: {1}, seed: {2}.",

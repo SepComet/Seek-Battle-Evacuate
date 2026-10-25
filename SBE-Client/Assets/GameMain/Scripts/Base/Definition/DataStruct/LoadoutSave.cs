@@ -28,11 +28,7 @@ namespace SepCore.Definition
         /// </summary>
         public void Normalize()
         {
-            if (partyCharacterIds == null)
-            {
-                partyCharacterIds = System.Array.Empty<int>();
-            }
-
+            // null 表示尚未配置，保留给战备界面默认组队；空数组表示编辑后的空队。
             if (carriedItems == null)
             {
                 carriedItems = new List<ItemStack>();

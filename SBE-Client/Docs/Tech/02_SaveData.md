@@ -11,6 +11,15 @@
 - 数值上限（堆叠上限、背包格数等）来自 Luban 配表（`ItemConfig.StackLimit`、`GlobalConfig.BackpackSlotCount` 等），不写死在存档中。
 - 存档使用 JSON 序列化，便于调试与手动修改；并采用**模块化拆分存储与脏标记按需落盘**机制。
 
+### 数据所有权（局外状态上云 v2）
+
+- 服务端是主仓库、花名册与穿戴装备、出战队列及顺序、难度、携带计划和战绩的权威来源；本地四份 JSON 仅作缓存，SaveData 形状与存档版本保持不变。网络协议版本独立升级为 2。
+- 登录先应用完整快照（含 `party / difficulty / carried`），再请求 `history` 覆盖本地最近 100 条战绩缓存，按开局时间倒序；拉取失败视为登录未完成，交由现有登录流程重试。
+- 首登迁移携带仓库、角色与战备配置；本地旧战绩不导入。已有账户的旧结算记录通过 history 恢复，新增元数据列保留默认 0。
+- 空服务端队列写回 `partyCharacterIds = null`，表示未配置，战备界面沿用默认组队流程并上报；本地 Normalize 保留 null。难度 0 与空携带计划同样为合法未配置状态。
+- 大厅战备修改经差分 ops 同步；结算仅提交资产变化及当局元数据，不修改三项战备配置。结算被拒时，本地预先追加的战绩暂时与云端不一致，下次登录 history 会覆盖纠正。
+- 进行中的单局状态及当局种子仍只存在内存；本次不实现携带计划消耗与仓库扣减，也不增加战绩 UI。实现契约见根目录 `.scratch/meta-online-v2/spec.md`。
+
 ## 模块化拆分与按需落盘架构
 
 为了杜绝频繁拖拽物品时的磁盘 I/O 过载，存档持久化拆分为位于 `Application.persistentDataPath/Save/` 目录下的独立文件：
@@ -75,7 +84,7 @@
 | `version` | int | 存档结构版本，当前为 1；结构变更时递增并处理迁移 |
 | `updatedAt` | long | 最后写入时间，Unix 毫秒 |
 | `mainWarehouse` | `GridItemStack[]` | 主仓库内容（带网格坐标与旋转状态），容量由 `GlobalConfig.WarehouseSlotCount` 配置，可空 |
-| `characters` | `CharacterSave[]` | 拥有的角色，数组顺序即角色入队顺序（速度并列时按此顺序行动） |
+| `characters` | `CharacterSave[]` | 角色花名册，数组顺序为招募次序；出战顺序由 loadout.partyCharacterIds 决定 |
 | `loadout` | `LoadoutSave` | 当前战备配置 |
 | `runHistory` | `RunRecord[]` | 已结束单局的结算记录，可空 |
 
@@ -105,7 +114,7 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `partyCharacterIds` | int[] | 出战角色 ID 及顺序，1~4 人，顺序决定同速时的行动次序 |
+| `partyCharacterIds` | int[] | 出战角色 ID 及顺序，上限来自 MaxPlayerPartySize；编辑中可空，开局至少 1 人，顺序决定同速时的行动次序 |
 | `carriedItems` | `ItemStack[]` | 携带进入地图的物品，开局时填充共享背包；首版无局内效果 |
 | `difficultyId` | `DifficultyTier` | 本局难度，对应 `DifficultyConfig` 主键 |
 

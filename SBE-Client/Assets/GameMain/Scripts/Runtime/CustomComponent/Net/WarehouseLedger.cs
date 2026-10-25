@@ -26,6 +26,8 @@ namespace SepCore.Net
 
         private readonly List<LedgerRow> _rows = new List<LedgerRow>();
         private readonly List<int> _characterIds = new List<int>();
+        private readonly List<int> _party = new List<int>();
+        private readonly List<NetStack> _carried = new List<NetStack>();
 
         /// <summary>
         /// 全部行（含穿戴行）。
@@ -37,6 +39,21 @@ namespace SepCore.Net
         /// </summary>
         public IReadOnlyList<int> CharacterIds => _characterIds;
 
+        /// <summary>
+        /// 出战队列（保持服务器顺序；空 = 未配置）。
+        /// </summary>
+        public IReadOnlyList<int> Party => _party;
+
+        /// <summary>
+        /// 难度（0 = 未配置）。
+        /// </summary>
+        public int Difficulty { get; private set; }
+
+        /// <summary>
+        /// 携带计划（保持服务器顺序；空 = 未配置）。
+        /// </summary>
+        public IReadOnlyList<NetStack> Carried => _carried;
+
         public bool HasSynced { get; private set; }
 
         /// <summary>
@@ -46,6 +63,9 @@ namespace SepCore.Net
         {
             _rows.Clear();
             _characterIds.Clear();
+            _party.Clear();
+            _carried.Clear();
+            Difficulty = 0;
             if (snapshot != null)
             {
                 if (snapshot.items != null)
@@ -71,6 +91,18 @@ namespace SepCore.Net
                     {
                         _characterIds.Add(c.cid);
                     }
+                }
+
+                if (snapshot.party != null)
+                {
+                    _party.AddRange(snapshot.party);
+                }
+
+                Difficulty = snapshot.difficulty;
+
+                if (snapshot.carried != null)
+                {
+                    _carried.AddRange(snapshot.carried);
                 }
             }
 
