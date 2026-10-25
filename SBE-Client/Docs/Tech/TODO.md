@@ -77,6 +77,14 @@ graph TD
   - 统一顶级 Form 打开/关闭生命周期与返回机制（ESC / 返回按钮回到大厅）。
   - 右上角常驻资产栏显示（金币与存档状态）。
 
+**实现记录（2026-10-25，待人工 Play Mode 验收）**：
+- `LobbyForm` 已移除功能页嵌套，保留 Expedition / Roster / Supply / Warehouse 四个入口；Supply 在 P1-M3 前禁用。
+- 复用现有名称注册独立顶级页：`HomeForm=111`（完整战备页，内含 SquadForm 与 DeploymentForm）、`LoadoutForm=112`（局外整备）、`WarehouseForm=113`、`ShopForm=114`（占位页）。现有 `CharacterForm` 仍为局内背包组件。
+- 功能页暂停大厅，返回按钮 / ESC 关闭当前功能页并恢复大厅；输入框编辑期间 ESC 不返回。打开中锁定大厅入口，加载失败后恢复。
+- 页面在打开、恢复及服务器快照落地后刷新；关闭时保存脏数据并通知经济同步。公共页头显示实际连接状态；金币显示 `CREDITS: —`，余额来源与数值显示随 P1-M2 接入服务端，当前不创建本地货币。
+- prefab 拆分与引用绑定经 mcp-for-unity 在已开启的 Editor 内完成，生成 View/Form 由 UIAssetsTools 产出；未进入 Play Mode，不将实现记录视为人工验收通过。
+- 验收清单与静态检查记录：根目录 `.scratch/p1-m1/spec.md`。
+
 ### [ ] P1-M2 经济系统与数据结构扩展
 - **目标**：完善局外货币持久化与配表买卖价格。
 - **范围**：

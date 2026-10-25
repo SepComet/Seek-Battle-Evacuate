@@ -61,7 +61,7 @@ namespace SepCore.UI
                 UGuiForm backpackForm = GameEntry.UI.GetUIForm(UIFormType.RoundBackpackForm);
                 if (backpackForm != null)
                 {
-                    GameEntry.UI.CloseUIForm(backpackForm);
+                    backpackForm.Close();
                 }
             }
             else

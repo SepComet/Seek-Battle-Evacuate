@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using GameFramework.Event;
 using SepCore.Base;
 using SepCore.Definition;
+using SepCore.Net;
 using SepCore.Run;
 using UnityEngine;
 using UnityGameFramework.Runtime;
@@ -25,6 +26,46 @@ namespace SepCore.UI
 
         private bool _eventBound = false;
         private bool _previewBound = false;
+
+        protected override void OnOpen(object userData)
+        {
+            base.OnOpen(userData);
+            View.backText.Set();
+            View.pageHeader.Open(UIForm.SerialId);
+            GameEntry.Event.Subscribe(LobbyPageBackRequestedEventArgs.EventId, OnBackRequested);
+            GameEntry.Net.Sync.SnapshotApplied += OnSnapshotApplied;
+            Refresh();
+        }
+
+        protected override void OnClose(bool isShutdown, object userData)
+        {
+            GameEntry.Net.Sync.SnapshotApplied -= OnSnapshotApplied;
+            GameEntry.Event.Unsubscribe(LobbyPageBackRequestedEventArgs.EventId, OnBackRequested);
+            View.pageHeader.Close();
+            UnbindEvent();
+            if (!isShutdown)
+            {
+                GameEntry.Save.SaveDirty();
+                GameEntry.Net.NotifyEconomyChanged();
+            }
+            base.OnClose(isShutdown, userData);
+        }
+
+        private void OnSnapshotApplied(NetSnapshot snapshot)
+        {
+            if (Visible) Refresh();
+        }
+
+        private void OnBackRequested(object sender, GameEventArgs e)
+        {
+            if (((LobbyPageBackRequestedEventArgs)e).SerialId == UIForm.SerialId) Close();
+        }
+
+        protected override void OnResume()
+        {
+            base.OnResume();
+            Refresh();
+        }
 
         /// <summary>
         /// 刷新备战界面，重建角色列表、武器列表、防具列表并更新预览。

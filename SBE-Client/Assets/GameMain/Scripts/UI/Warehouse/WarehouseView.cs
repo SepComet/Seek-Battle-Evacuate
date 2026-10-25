@@ -6,6 +6,8 @@ namespace SepCore.UI
     [DisallowMultipleComponent]
     public partial class WarehouseView : MonoBehaviour
     {
+        [SerializeField] public global::SepCore.UI.LobbyPageHeader pageHeader;
+        [SerializeField] public global::SepCore.UI.FormatTextUI backText;
         [SerializeField] public global::SepCore.UI.InventoryForm inventoryPanelForm;
         [SerializeField] public global::SepCore.UI.ItemDetailsForm itemDetailsPanelForm;
     }

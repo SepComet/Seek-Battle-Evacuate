@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System;
 using SepCore.Sound;
 using TMPro;
 using UnityEngine;
@@ -17,11 +18,18 @@ namespace SepCore.UI
         private static TMP_FontAsset _mainTMPFont = null;
         private Canvas _cachedCanvas = null;
         private CanvasGroup _canvasGroup = null;
+        private UIFormTransition _transition;
+        private bool _isExiting;
+        private bool _exitPending;
+        private Action _pendingExit;
+        private Coroutine _transitionRoutine;
         private List<Canvas> _cachedCanvasContainer = new List<Canvas>();
 
         public int OriginalDepth { get; private set; }
 
         public int Depth => _cachedCanvas.sortingOrder;
+
+        public bool IsTransitioning => _isExiting || (_transition != null && _transition.IsPlaying);
 
         public void Close()
         {
@@ -30,16 +38,89 @@ namespace SepCore.UI
 
         public void Close(bool ignoreFade)
         {
-            StopAllCoroutines();
-
             if (ignoreFade)
             {
+                ResetTransition();
                 GameEntry.UI.CloseUIForm(this);
             }
             else
             {
-                StartCoroutine(CloseCo(FadeTime));
+                PlayExitTransition(() => GameEntry.UI.CloseUIForm(this));
             }
+        }
+
+        public void Close(Action onClosed)
+        {
+            PlayExitTransition(() =>
+            {
+                GameEntry.UI.CloseUIForm(this);
+                onClosed?.Invoke();
+            });
+        }
+
+        /// <summary>流程切换先等待视觉退场，再执行关闭或换场景。</summary>
+        public void PlayExitTransition(Action onComplete)
+        {
+            if (_isExiting) return;
+            _isExiting = true;
+            _exitPending = true;
+            _pendingExit = onComplete;
+            BeginExitVisuals();
+        }
+
+        private void BeginExitVisuals()
+        {
+            StopTransitionRoutine();
+            if (_transition != null)
+            {
+                _transition.PlayOut(CompleteExit);
+            }
+            else
+            {
+                _transitionRoutine = StartCoroutine(ExitCo(CompleteExit));
+            }
+        }
+
+        private void CompleteExit()
+        {
+            Action callback = _pendingExit;
+            _pendingExit = null;
+            _exitPending = false;
+            callback?.Invoke();
+        }
+
+        protected void PlayEnterTransition()
+        {
+            StopTransitionRoutine();
+            _isExiting = false;
+            _exitPending = false;
+            _pendingExit = null;
+            if (_transition != null)
+            {
+                _canvasGroup.alpha = 1f;
+                _transition.PlayIn();
+            }
+            else
+            {
+                _canvasGroup.alpha = 0f;
+                _transitionRoutine = StartCoroutine(EnterCo());
+            }
+        }
+
+        private void ResetTransition()
+        {
+            StopTransitionRoutine();
+            _isExiting = false;
+            _exitPending = false;
+            _pendingExit = null;
+            if (_transition != null) _transition.ResetState();
+        }
+
+        private void StopTransitionRoutine()
+        {
+            if (_transitionRoutine == null) return;
+            StopCoroutine(_transitionRoutine);
+            _transitionRoutine = null;
         }
 
         public void PlayUISound(int uiSoundId)
@@ -82,12 +163,15 @@ namespace SepCore.UI
             OriginalDepth = _cachedCanvas.sortingOrder;
 
             _canvasGroup = gameObject.GetOrAddComponent<CanvasGroup>();
+            _transition = GetComponent<UIFormTransition>();
 
             RectTransform rect = GetComponent<RectTransform>();
             rect.anchorMin = Vector2.zero;
             rect.anchorMax = Vector2.one;
             rect.anchoredPosition = Vector2.zero;
             rect.sizeDelta = Vector2.zero;
+
+            if (_transition != null) _transition.Initialize();
 
             gameObject.GetOrAddComponent<GraphicRaycaster>();
 
@@ -128,6 +212,7 @@ namespace SepCore.UI
         protected internal override void OnRecycle()
 #endif
         {
+            ResetTransition();
             base.OnRecycle();
         }
 
@@ -139,9 +224,7 @@ namespace SepCore.UI
         {
             base.OnOpen(userData);
 
-            _canvasGroup.alpha = 0f;
-            StopAllCoroutines();
-            StartCoroutine(_canvasGroup.FadeToAlpha(1f, FadeTime));
+            PlayEnterTransition();
         }
 
 #if UNITY_2017_3_OR_NEWER
@@ -150,6 +233,7 @@ namespace SepCore.UI
         protected internal override void OnClose(bool isShutdown, object userData)
 #endif
         {
+            ResetTransition();
             base.OnClose(isShutdown, userData);
         }
 
@@ -159,6 +243,9 @@ namespace SepCore.UI
         protected internal override void OnPause()
 #endif
         {
+            StopTransitionRoutine();
+            if (_transition != null) _transition.ResetState();
+            if (!_exitPending) _isExiting = false;
             base.OnPause();
         }
 
@@ -169,10 +256,8 @@ namespace SepCore.UI
 #endif
         {
             base.OnResume();
-
-            _canvasGroup.alpha = 0f;
-            StopAllCoroutines();
-            StartCoroutine(_canvasGroup.FadeToAlpha(1f, FadeTime));
+            if (_exitPending) BeginExitVisuals();
+            else PlayEnterTransition();
         }
 
 #if UNITY_2017_3_OR_NEWER
@@ -230,10 +315,30 @@ namespace SepCore.UI
             _cachedCanvasContainer.Clear();
         }
 
-        private IEnumerator CloseCo(float duration)
+        private IEnumerator ExitCo(Action onComplete)
         {
-            yield return _canvasGroup.FadeToAlpha(0f, duration);
-            GameEntry.UI.CloseUIForm(this);
+            float startAlpha = _canvasGroup.alpha;
+            float elapsed = 0f;
+            while (elapsed < FadeTime)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                _canvasGroup.alpha = Mathf.Lerp(startAlpha, 0f, elapsed / FadeTime);
+                yield return null;
+            }
+            _transitionRoutine = null;
+            onComplete?.Invoke();
+        }
+
+        private IEnumerator EnterCo()
+        {
+            float elapsed = 0f;
+            while (elapsed < FadeTime)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                _canvasGroup.alpha = Mathf.Clamp01(elapsed / FadeTime);
+                yield return null;
+            }
+            _transitionRoutine = null;
         }
     }
 }

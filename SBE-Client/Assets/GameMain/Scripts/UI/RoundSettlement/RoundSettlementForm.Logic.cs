@@ -244,10 +244,12 @@ namespace SepCore.UI
 
             _isReturnTriggered = true;
 
-            GameEntry.Event.Fire(this, RoundSettlementReturnEventArgs.Create());
-            _onReturnCallback?.Invoke();
-
-            Close();
+            Action callback = _onReturnCallback;
+            Close(() =>
+            {
+                GameEntry.Event.Fire(this, RoundSettlementReturnEventArgs.Create());
+                callback?.Invoke();
+            });
         }
     }
 }

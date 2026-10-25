@@ -573,19 +573,17 @@ namespace SepCore.UI
             // 5. 保持展示并短暂停留，给玩家战果反馈（淡出约 0.4s + 停留 0.35s = 0.75s）
             _victorySequence.AppendInterval(0.75f);
 
-            // 6. 整个 BattleForm 渐隐后正式关闭战斗
-            CanvasGroup formGroup = GetComponent<CanvasGroup>();
-            if (formGroup != null)
-            {
-                _victorySequence.Append(formGroup.DOFade(0f, 0.3f));
-            }
-
+            // 6. 战果展示结束后，等待统一退场动画再正式关闭战斗。
             _victorySequence.OnComplete(() =>
             {
                 _victorySequence = null;
                 if (_result == result && GameEntry.TurnBattle != null && GameEntry.TurnBattle.IsBattleActive)
                 {
-                    GameEntry.TurnBattle.CloseBattle();
+                    PlayExitTransition(() =>
+                    {
+                        if (_result == result && GameEntry.TurnBattle != null && GameEntry.TurnBattle.IsBattleActive)
+                            GameEntry.TurnBattle.CloseBattle();
+                    });
                 }
             });
         }
@@ -598,12 +596,12 @@ namespace SepCore.UI
             float delaySeconds = GameEntry.Luban.Global.Data.BattleResultDisplayDelayMs / 1000f;
             yield return new WaitForSecondsRealtime(delaySeconds);
 
-            if (_result == result && GameEntry.TurnBattle != null && GameEntry.TurnBattle.IsBattleActive)
+            PlayExitTransition(() =>
             {
-                GameEntry.TurnBattle.CloseBattle();
-            }
-
-            GameEntry.Event.Fire(this, BattleTotalDefeatEventArgs.Create());
+                if (_result == result && GameEntry.TurnBattle != null && GameEntry.TurnBattle.IsBattleActive)
+                    GameEntry.TurnBattle.CloseBattle();
+                GameEntry.Event.Fire(this, BattleTotalDefeatEventArgs.Create());
+            });
         }
 
         /// <summary>
@@ -616,7 +614,11 @@ namespace SepCore.UI
 
             if (_result == result && GameEntry.TurnBattle != null && GameEntry.TurnBattle.IsBattleActive)
             {
-                GameEntry.TurnBattle.CloseBattle();
+                PlayExitTransition(() =>
+                {
+                    if (_result == result && GameEntry.TurnBattle != null && GameEntry.TurnBattle.IsBattleActive)
+                        GameEntry.TurnBattle.CloseBattle();
+                });
             }
         }
 

@@ -6,13 +6,17 @@ namespace SepCore.UI
     [DisallowMultipleComponent]
     public partial class LobbyView : MonoBehaviour
     {
-        [SerializeField] public global::UnityEngine.UI.Toggle homeToggle;
-        [SerializeField] public global::UnityEngine.RectTransform selectionMarkerObject;
-        [SerializeField] public global::UnityEngine.UI.Toggle warehouseToggle;
-        [SerializeField] public global::UnityEngine.UI.Toggle loadoutToggle;
-        [SerializeField] public global::SepCore.UI.FormatTextUI storageFormatText;
-        [SerializeField] public global::SepCore.UI.HomeForm homeForm;
-        [SerializeField] public global::SepCore.UI.WarehouseForm warehouseForm;
-        [SerializeField] public global::SepCore.UI.LoadoutForm loadoutForm;
+        [SerializeField] public global::SepCore.UI.FormatTextUI titleText;
+        [SerializeField] public global::SepCore.UI.FormatTextUI subtitleText;
+        [SerializeField] public global::UnityEngine.UI.Button expeditionButton;
+        [SerializeField] public global::SepCore.UI.FormatTextUI expeditionButtonText;
+        [SerializeField] public global::UnityEngine.UI.Button rosterButton;
+        [SerializeField] public global::SepCore.UI.FormatTextUI rosterButtonText;
+        [SerializeField] public global::UnityEngine.UI.Button supplyButton;
+        [SerializeField] public global::SepCore.UI.FormatTextUI supplyButtonText;
+        [SerializeField] public global::UnityEngine.UI.Button warehouseButton;
+        [SerializeField] public global::SepCore.UI.FormatTextUI warehouseButtonText;
+        [SerializeField] public global::SepCore.UI.LobbyPageHeader pageHeader;
+        [SerializeField] public global::SepCore.UI.FormatTextUI backText;
     }
 }

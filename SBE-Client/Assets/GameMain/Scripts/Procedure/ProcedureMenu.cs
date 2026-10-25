@@ -13,6 +13,7 @@ namespace SepCore.Procedure
     public class ProcedureMenu : ProcedureBase
     {
         private bool _startGameRequested = false;
+        private bool _leavingMenu;
 
         protected override void OnInit(IFsm<IProcedureManager> procedureOwner)
         {
@@ -26,6 +27,7 @@ namespace SepCore.Procedure
             CharacterInputBridge.Reset();
 
             _startGameRequested = false;
+            _leavingMenu = false;
             GameEntry.Event.Subscribe(StartRunEventArgs.EventId, OnStartRun);
 
             GameEntry.UI.OpenUIForm(UIFormType.LobbyForm);
@@ -48,7 +50,7 @@ namespace SepCore.Procedure
         protected override void OnLeave(IFsm<IProcedureManager> procedureOwner, bool isShutdown)
         {
             GameEntry.Event.Unsubscribe(StartRunEventArgs.EventId, OnStartRun);
-            GameEntry.UI.CloseAllLoadedUIForms();
+            GameEntry.UI.CloseSceneUIForms();
 
             base.OnLeave(procedureOwner, isShutdown);
         }
@@ -60,7 +62,16 @@ namespace SepCore.Procedure
 
         private void OnStartRun(object sender, GameEventArgs e)
         {
-            _startGameRequested = true;
+            if (_leavingMenu) return;
+            _leavingMenu = true;
+            UGuiForm deployment = GameEntry.UI.GetUIForm(UIFormType.HomeForm);
+            if (deployment == null)
+            {
+                Log.Error("Cannot leave menu without the deployment form.");
+                _leavingMenu = false;
+                return;
+            }
+            deployment.PlayExitTransition(() => _startGameRequested = true);
         }
     }
 }

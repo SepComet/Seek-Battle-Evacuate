@@ -115,7 +115,7 @@ namespace SepCore.Procedure
 
             if (GameEntry.UI != null)
             {
-                GameEntry.UI.CloseAllLoadedUIForms();
+                GameEntry.UI.CloseSceneUIForms();
             }
 
             CharacterInputBridge.Reset();

@@ -1,187 +1,98 @@
-using DG.Tweening;
+using GameFramework.Event;
 using SepCore.Definition;
-using UnityEngine;
-using UnityEngine.UI;
 using UnityGameFramework.Runtime;
 
 namespace SepCore.UI
 {
-    /// <summary>
-    /// 大厅界面逻辑（手写 partial，与自动生成的 LobbyForm.cs 合并）。
-    /// 导航使用 Toggle + ToggleGroup 管理选中状态；本类只负责页面切换与标记动画。
-    /// </summary>
+    /// <summary>大厅只负责打开独立功能页；功能页关闭后恢复大厅。</summary>
     public partial class LobbyForm : UGuiForm
     {
-        private LobbyPageType _currentPageType = LobbyPageType.Home;
-        private Vector2 _markerInitialAnchoredPosition;
-
-        protected override void OnInit(object userData)
-        {
-            base.OnInit(userData);
-            _markerInitialAnchoredPosition = View.selectionMarkerObject.anchoredPosition;
-        }
+        private int? _openingSerialId;
+        private bool _navigationPending;
 
         protected override void OnOpen(object userData)
         {
             base.OnOpen(userData);
+            _openingSerialId = null;
+            _navigationPending = false;
+            View.pageHeader.Open(UIForm.SerialId);
+            View.titleText.Set();
+            View.subtitleText.Set();
+            View.expeditionButtonText.Set();
+            View.rosterButtonText.Set();
+            View.supplyButtonText.Set();
+            View.warehouseButtonText.Set();
+            View.expeditionButton.onClick.AddListener(OpenExpedition);
+            View.rosterButton.onClick.AddListener(OpenRoster);
+            View.warehouseButton.onClick.AddListener(OpenWarehouse);
+            GameEntry.Event.Subscribe(OpenUIFormFailureEventArgs.EventId, OnOpenPageFailure);
+            SetNavigationEnabled(true);
+        }
 
-            _currentPageType = LobbyPageType.Home;
-            View.homeToggle.isOn = true;
-            
-            View.homeToggle.onValueChanged.AddListener(OnHomeToggleValueChanged);
-            View.warehouseToggle.onValueChanged.AddListener(OnWarehouseToggleValueChanged);
-            View.loadoutToggle.onValueChanged.AddListener(OnLoadoutToggleValueChanged);
-
-            RefreshStorageStatus();
-            SwitchPage(LobbyPageType.Home, View.homeToggle);
+        protected override void OnResume()
+        {
+            base.OnResume();
+            if (_openingSerialId.HasValue && GameEntry.UI.IsLoadingUIForm(_openingSerialId.Value))
+            {
+                SetNavigationEnabled(false);
+                return;
+            }
+            _openingSerialId = null;
+            _navigationPending = false;
+            SetNavigationEnabled(true);
+            View.pageHeader.RefreshStatus();
         }
 
         protected override void OnClose(bool isShutdown, object userData)
         {
-            if (GameEntry.Save != null && GameEntry.Save.IsReady)
-            {
-                GameEntry.Save.SaveDirty();
-            }
-
-            GameEntry.Net?.NotifyEconomyChanged();
-
-            View.selectionMarkerObject.DOKill();
-            View.selectionMarkerObject.SetParent(View.homeToggle.transform, false);
-            View.selectionMarkerObject.anchoredPosition = _markerInitialAnchoredPosition;
-
-            View.homeToggle.onValueChanged.RemoveListener(OnHomeToggleValueChanged);
-            View.warehouseToggle.onValueChanged.RemoveListener(OnWarehouseToggleValueChanged);
-            View.loadoutToggle.onValueChanged.RemoveListener(OnLoadoutToggleValueChanged);
-
+            View.pageHeader.Close();
+            View.expeditionButton.onClick.RemoveListener(OpenExpedition);
+            View.rosterButton.onClick.RemoveListener(OpenRoster);
+            View.warehouseButton.onClick.RemoveListener(OpenWarehouse);
+            GameEntry.Event.Unsubscribe(OpenUIFormFailureEventArgs.EventId, OnOpenPageFailure);
+            _openingSerialId = null;
+            _navigationPending = false;
             base.OnClose(isShutdown, userData);
         }
 
-        private void OnHomeToggleValueChanged(bool isOn)
+        private void OpenExpedition() => OpenPage(UIFormType.HomeForm);
+        private void OpenRoster() => OpenPage(UIFormType.LoadoutForm);
+        private void OpenWarehouse() => OpenPage(UIFormType.WarehouseForm);
+
+        private void OpenPage(UIFormType page)
         {
-            if (isOn)
+            if (_navigationPending || IsTransitioning) return;
+            _navigationPending = true;
+            SetNavigationEnabled(false);
+            PlayExitTransition(() =>
             {
-                SwitchPage(LobbyPageType.Home, View.homeToggle);
-            }
+                _openingSerialId = GameEntry.UI.OpenUIForm(page);
+                if (!_openingSerialId.HasValue) RestoreNavigation();
+            });
         }
 
-        private void OnWarehouseToggleValueChanged(bool isOn)
+        private void SetNavigationEnabled(bool enabled)
         {
-            if (isOn)
-            {
-                SwitchPage(LobbyPageType.Warehouse, View.warehouseToggle);
-            }
+            View.expeditionButton.interactable = enabled;
+            View.rosterButton.interactable = enabled;
+            View.warehouseButton.interactable = enabled;
+            // P1-M1 只注册入口，交易能力在 P1-M3 开放。
+            View.supplyButton.interactable = false;
         }
 
-        private void OnLoadoutToggleValueChanged(bool isOn)
+        private void OnOpenPageFailure(object sender, GameEventArgs e)
         {
-            if (isOn)
-            {
-                SwitchPage(LobbyPageType.Loadout, View.loadoutToggle);
-            }
+            var failure = (OpenUIFormFailureEventArgs)e;
+            if (_openingSerialId != failure.SerialId) return;
+            RestoreNavigation();
         }
 
-        private void SwitchPage(LobbyPageType pageType, Toggle activeToggle)
+        private void RestoreNavigation()
         {
-            if (GameEntry.Save != null && GameEntry.Save.IsReady)
-            {
-                GameEntry.Save.SaveDirty();
-            }
-
-            GameEntry.Net?.NotifyEconomyChanged();
-
-            _currentPageType = pageType;
-            bool showHome = pageType == LobbyPageType.Home;
-            bool showWarehouse = pageType == LobbyPageType.Warehouse;
-            bool showLoadout = pageType == LobbyPageType.Loadout;
-
-            View.homeForm.gameObject.SetActive(showHome);
-            View.warehouseForm.gameObject.SetActive(showWarehouse);
-            View.loadoutForm.gameObject.SetActive(showLoadout);
-
-            MoveSelectionMarker(activeToggle.transform as RectTransform);
-
-            if (showHome)
-            {
-                RefreshHome();
-            }
-
-            if (showWarehouse)
-            {
-                RefreshWarehouse();
-            }
-
-            if (showLoadout)
-            {
-                RefreshLoadout();
-            }
-        }
-
-        private void MoveSelectionMarker(RectTransform targetToggle)
-        {
-            RectTransform marker = View.selectionMarkerObject;
-            if (targetToggle == null || marker.parent == targetToggle)
-            {
-                return;
-            }
-
-            // 把标记相对目标 Toggle 锚点(anchorMin)的偏移，换算到 Toggle pivot 的局部坐标空间：
-            // 锚点相对 pivot 的偏移 = (anchor - pivot) * rect 尺寸。
-            Vector3 targetLocalPosition = new Vector3(
-                _markerInitialAnchoredPosition.x + (marker.anchorMin.x - targetToggle.pivot.x) * targetToggle.rect.width,
-                _markerInitialAnchoredPosition.y + (marker.anchorMin.y - targetToggle.pivot.y) * targetToggle.rect.height,
-                0f);
-            Vector3 targetWorldPosition = targetToggle.TransformPoint(targetLocalPosition);
-            marker.DOKill();
-            float duration = GameEntry.Luban.Global.Data.LobbySelectionMarkerMoveDurationMs / 1000f;
-            marker.DOMove(targetWorldPosition, duration)
-                .SetEase(Ease.OutCubic)
-                .OnComplete(() =>
-                {
-                    marker.SetParent(targetToggle, true);
-                    marker.anchoredPosition = _markerInitialAnchoredPosition;
-                });
-        }
-
-        private void RefreshHome()
-        {
-            SaveData save = GameEntry.Save.Data;
-            if (save == null)
-            {
-                Log.Error("Save data is null, cannot refresh home.");
-                return;
-            }
-
-            View.homeForm.Refresh(save);
-        }
-
-        private void RefreshWarehouse()
-        {
-            SaveData save = GameEntry.Save.Data;
-            if (save == null)
-            {
-                Log.Error("Save data is null, cannot refresh warehouse.");
-                return;
-            }
-
-            View.warehouseForm.Refresh(save.mainWarehouse);
-            RefreshStorageStatus();
-        }
-
-        private void RefreshStorageStatus()
-        {
-            SaveData save = GameEntry.Save.Data;
-            if (save == null)
-            {
-                Log.Error("Save data is null, cannot refresh storage status.");
-                return;
-            }
-
-            View.storageFormatText.Set(save.mainWarehouse.Count);
-        }
-
-        private void RefreshLoadout()
-        {
-            View.loadoutForm.Refresh();
+            _openingSerialId = null;
+            _navigationPending = false;
+            SetNavigationEnabled(true);
+            PlayEnterTransition();
         }
     }
 }

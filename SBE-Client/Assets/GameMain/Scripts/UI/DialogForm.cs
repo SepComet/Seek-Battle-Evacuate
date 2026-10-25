@@ -36,32 +36,23 @@ namespace SepCore.UI
 
         public void OnConfirmButtonClick()
         {
-            Close();
-
-            if (_onClickConfirmGFAction != null)
-            {
-                _onClickConfirmGFAction(_userData);
-            }
+            GameFrameworkAction<object> callback = _onClickConfirmGFAction;
+            object data = _userData;
+            Close(() => callback?.Invoke(data));
         }
 
         public void OnCancelButtonClick()
         {
-            Close();
-
-            if (_onClickCancelGFAction != null)
-            {
-                _onClickCancelGFAction(_userData);
-            }
+            GameFrameworkAction<object> callback = _onClickCancelGFAction;
+            object data = _userData;
+            Close(() => callback?.Invoke(data));
         }
 
         public void OnOtherButtonClick()
         {
-            Close();
-
-            if (_onClickOtherGFAction != null)
-            {
-                _onClickOtherGFAction(_userData);
-            }
+            GameFrameworkAction<object> callback = _onClickOtherGFAction;
+            object data = _userData;
+            Close(() => callback?.Invoke(data));
         }
 
 #if UNITY_2017_3_OR_NEWER

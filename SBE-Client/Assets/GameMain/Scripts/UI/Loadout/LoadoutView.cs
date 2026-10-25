@@ -12,6 +12,8 @@ namespace SepCore.UI
         [SerializeField] public global::SepCore.UI.WarehouseSlotItem weaponSlotTemplate;
         [SerializeField] public global::UnityEngine.RectTransform armorListRoot;
         [SerializeField] public global::SepCore.UI.WarehouseSlotItem armorSlotTemplate;
+        [SerializeField] public global::SepCore.UI.LobbyPageHeader pageHeader;
+        [SerializeField] public global::SepCore.UI.FormatTextUI backText;
         [SerializeField] public global::SepCore.UI.CharacterPreviewForm characterPreviewForm;
     }
 }

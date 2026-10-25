@@ -6,6 +6,8 @@ namespace SepCore.UI
     [DisallowMultipleComponent]
     public partial class HomeView : MonoBehaviour
     {
+        [SerializeField] public global::SepCore.UI.LobbyPageHeader pageHeader;
+        [SerializeField] public global::SepCore.UI.FormatTextUI backText;
         [SerializeField] public global::SepCore.UI.SquadForm squadForm;
         [SerializeField] public global::SepCore.UI.DeploymentForm deploymentForm;
     }

@@ -12,9 +12,28 @@
 
 ## 二、嵌套 Form 的能力模型
 
-- 一个 Form 可以嵌套子 Form（prefab 实例层级：`LobbyForm → WarehouseForm → InventoryForm / ItemDetailsForm`）。
+### P1-M1 顶级页面（2026-10-25）
+
+- 大厅 `LobbyForm` 只保留导航，不再包含 Home/Warehouse/Loadout 实例。三个功能页分别通过 `UIFormType.HomeForm`（战备）、`LoadoutForm`（局外整备）、`WarehouseForm` 打开；`ShopForm` 已注册但大厅入口暂时禁用。
+- 顶级页使用 `Default` UI 组，`pauseCoveredUIForm=true`，关闭后由 UGF 恢复大厅。`HomeForm` 内的 `SquadForm` / `DeploymentForm` 仍为子组件；现有 `CharacterForm` 属于局内背包，不是局外整备页。
+- `LobbyPageHeader` 提供统一连接状态与返回入口，返回通过 `LobbyPageBackRequestedEventArgs.SerialId` 路由，由对应顶级 Form 自行关闭。页头不持有父 Form。
+- 顶级页在 `OnOpen/OnClose` 管理快照和返回事件订阅；`OnResume` 必须刷新子组件，恢复暂停时因 `OnDisable` 被解绑的点击、排序与旋转事件。
+- 右上角金币目前为待接入占位；连接状态来自 `NetComponent.OnlineReady`，不代表每笔经济操作均已收到确认。
+
+以下为仍保留的子组件协作规则；原 `LobbyForm → WarehouseForm` 切页示例已被上述顶级入口替代。
+
+### 常驻网络状态层（2026-10-25）
+
+- `NetworkStatusForm=115` 在 `ProcedureLogin` 打开，独立 `NetworkStatus` 组，单实例且不暂停业务页；右下角显示连接/登录状态、服务端账号 ID、当前 RTT 和最近 30 秒平均 RTT。
+- 该组 depth=3，Form 原始 Canvas 排序偏移 2000，最终约 32000，高于现有 Overlay 的基础 30000。不可直接设 depth=4：当前组深度系数为 10000，会超过 Canvas 有效排序范围。
+- `CanvasGroup.blocksRaycasts=false`，全部 Graphic 禁用 raycastTarget；该层只显示状态，点击穿透到业务 UI。
+- 场景流程离开时使用 `GameEntry.UI.CloseSceneUIForms()`，保留该常驻组；`CloseAllLoadedUIForms()` 仍是关闭所有组的框架能力，不用于普通场景切换。
+- UI 每 0.25 秒读取 NetComponent 状态，不发请求、不管理登录。应用层 ping 每 2 秒采样、5 秒超时，使用 Stopwatch 单调时钟；断线/重登/超时清除旧延迟。RTT 包含客户端消息泵和服务端处理时间，不是 ICMP 单向网络耗时。
+- 账号显示服务端 `userId`，未完成登录或断线显示空值；身份凭证 token 与设备 UUID 不展示。客户端与服务端需一起更新，登录回包缺少 userId 会明确失败。
+
+- 一个 Form 可以嵌套子 Form（当前实例层级：`WarehouseForm → InventoryForm / ItemDetailsForm`）。
 - **子 Form 只提供能力**（public 方法），**不直接读取全局数据源、不主动触发刷新**；数据由调用方传入。例：`InventoryForm.RefreshList(stacks)`、`ItemDetailsForm.Refresh(itemId)`、`WarehouseForm.Refresh(stacks)`。
-- **只有顶级 Form（通过 `GameEntry.UI.OpenUIForm` 打开的）才有编排权**，负责读数据并向下分发。例：`LobbyForm.OnOpen → SwitchPage → warehouseForm.Refresh(save.mainWarehouse)`。
+- **只有顶级 Form（通过 `GameEntry.UI.OpenUIForm` 打开的）才有编排权**，负责读数据并向下分发。例：`WarehouseForm.OnOpen → Refresh(save.mainWarehouse) → inventoryPanelForm.RefreshList(stacks)`。
 - 子 Form 的能力入口保持幂等、可反复调用；父 Form 切换页面时重新调用即可。
 
 ## 三、嵌套 Form 与 UGF 生命周期
@@ -60,5 +79,8 @@
 - **格式化文本**：界面文案用 `FormatTextUI`（Inspector 填 key，文本从 `FormatText_格式化文本.xlsx` 读取，`Set(params object[])` 传参），不要硬编码在代码里。
 - **导航切换**：导航用 `Toggle + ToggleGroup` 管理选中态，代码只订阅 `onValueChanged`（仅在 `isOn == true` 时处理），不再手动维护按钮状态。
 - **动画**：DOTween 移动 UI 元素时，`TransformPoint` 的入参是目标 rect **pivot 局部空间**坐标；元素锚点偏移需要换算：`(anchor - pivot) * rect.size + anchoredPosition`。
-- **打开流程**：Form 由 `UIFormType` 枚举 + `UIFormConfig` 表（`tbuiformconfig`）数据驱动，`GameEntry.UI.OpenUIForm(UIFormType.Xxx)`；Procedure 的 `OnLeave` 记得 `GameEntry.UI.CloseAllLoadedUIForms()`。
+- **顶级页进出场**：普通顶级 prefab 配置 `UIFormTransition`，UGuiForm 在打开/恢复时播放入场，`Close()` 播放退场，`Close(Action)` 在退场并关闭后执行业务回调。流程需换场景时可用 `PlayExitTransition(Action)` 等待表现完成；`Close(true)` 和场景强制清理仍立即关闭。
+- **动画目标与参数**：根组件 Inspector 的 Enter/Exit Duration、Targets 的 Rect/Group/Offset/Delay 控制时长、部件、位移和错峰。每个目标的原位只缓存一次，禁用/关闭/回收时恢复；被对话框暂停的待退场操作在恢复后继续。使用非缩放时间，暂停游戏的弹窗也能完成动画。
+- **大厅模型保持静止**：Lobby 的 Fade Root 关闭、Root Offset 为零；只有两侧按钮与 PageHeader 是动画目标，ModelDisplayRoot、底座与环境不属于目标层级。新增展示模型时仍放在 ModelDisplayRoot 下。
+- **打开流程**：Form 由 `UIFormType` 枚举 + `UIFormConfig` 表（`tbuiformconfig`）数据驱动，`GameEntry.UI.OpenUIForm(UIFormType.Xxx)`；Procedure 的 `OnLeave` 使用 `GameEntry.UI.CloseSceneUIForms()` 清理业务页并保留常驻状态层。
 - **布局组件注意**：生成 prefab 的 `Content` 上挂 `GridLayoutGroup` + `ContentSizeFitter`，运行时实例化子物体即可自动排布，不要手动改尺寸。

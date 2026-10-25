@@ -41,10 +41,20 @@ namespace SepCore.UI
         private Sequence _bannerSequence;
         private Action _onCompleteCallback;
         private bool _isCompleted;
+        private RectTransform _bannerRect;
+        private Vector2 _bannerPosition;
+
+        protected override void OnInit(object userData)
+        {
+            base.OnInit(userData);
+            _bannerRect = View.bannerCanvasGroup.GetComponent<RectTransform>();
+            _bannerPosition = _bannerRect.anchoredPosition;
+        }
 
         protected override void OnOpen(object userData)
         {
             base.OnOpen(userData);
+            StopAllCoroutines();
 
             _isCompleted = false;
 
@@ -75,6 +85,7 @@ namespace SepCore.UI
         protected override void OnClose(bool isShutdown, object userData)
         {
             KillSequence();
+            _bannerRect.anchoredPosition = _bannerPosition;
             _onCompleteCallback = null;
             base.OnClose(isShutdown, userData);
         }
@@ -120,14 +131,17 @@ namespace SepCore.UI
             }
 
             View.bannerCanvasGroup.alpha = 0f;
+            _bannerRect.anchoredPosition = _bannerPosition + new Vector2(0f, -24f);
 
-            _bannerSequence = DOTween.Sequence();
+            _bannerSequence = DOTween.Sequence().SetUpdate(true);
             // 0.25 秒淡入横幅
             _bannerSequence.Append(View.bannerCanvasGroup.DOFade(1f, 0.25f).SetEase(Ease.OutCubic));
+            _bannerSequence.Join(_bannerRect.DOAnchorPos(_bannerPosition, 0.25f).SetEase(Ease.OutCubic));
             // 停留片刻展示关键信息
             _bannerSequence.AppendInterval(holdDuration);
             // 0.35 秒平滑淡出
             _bannerSequence.Append(View.bannerCanvasGroup.DOFade(0f, 0.35f).SetEase(Ease.InCubic));
+            _bannerSequence.Join(_bannerRect.DOAnchorPos(_bannerPosition + new Vector2(0f, -24f), 0.35f).SetEase(Ease.InCubic));
             _bannerSequence.OnComplete(CompleteSequence);
         }
 
@@ -145,7 +159,10 @@ namespace SepCore.UI
 
             if (View.bannerCanvasGroup != null && View.bannerCanvasGroup.alpha > 0f)
             {
-                View.bannerCanvasGroup.DOFade(0f, 0.15f).OnComplete(CompleteSequence);
+                _bannerSequence = DOTween.Sequence().SetUpdate(true);
+                _bannerSequence.Append(View.bannerCanvasGroup.DOFade(0f, 0.15f));
+                _bannerSequence.Join(_bannerRect.DOAnchorPos(_bannerPosition + new Vector2(0f, -24f), 0.15f));
+                _bannerSequence.OnComplete(CompleteSequence);
             }
             else
             {
