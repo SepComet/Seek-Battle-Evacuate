@@ -8,6 +8,7 @@ using SepCore.Battle;
 using SepCore.Definition;
 using SepCore.Entity;
 using SepCore.Exploration;
+using SepCore.Net;
 using SepCore.Utility;
 using UnityEngine;
 using UnityGameFramework.Runtime;
@@ -16,7 +17,9 @@ namespace SepCore.Procedure
 {
     /// <summary>
     /// 主流程状态：地图构建。
-    /// 负责启动单局探索计时、初始化出战角色状态、加载地图定义、确定性生成物资点/敌人分布、实例化场景实体，并准备单局探索环境。
+    /// 负责启动单局探索计时、初始化出战角色状态、加载地图定义、生成/预测物资点与敌人分布、实例化场景实体，并准备单局探索环境。
+    /// 联网在线时先 start_run 取服务器分配的种子与显式出生/撤离点，敌人与物资点摆位走本地预测；
+    /// 离线（场景调试）时用本地时间戳种子跑完整本地生成。开局失败不进入半成品局：提示后回大厅。
     /// </summary>
     public sealed class MainMapBuildingState : FsmState<ProcedureMain>
     {
@@ -27,6 +30,7 @@ namespace SepCore.Procedure
             base.OnEnter(fsm);
             Log.Info("[ProcedureMain] Entering MainMapBuildingState...");
 
+            NetworkNotice.ResetThrottle();
             _cts = new CancellationTokenSource();
             BuildMapAsync(fsm, _cts.Token).Forget();
         }
@@ -50,7 +54,7 @@ namespace SepCore.Procedure
                 // 1. 开始单局探索计时与状态管理（重置单局探索时间）
                 GameEntry.TurnBattle.BeginRun();
 
-                // 2. 获取单局难度与随机源
+                // 2. 获取单局难度
                 DifficultyTier difficulty = DifficultyTier.Tier1;
                 if (GameEntry.Save.Data?.loadout != null)
                 {
@@ -58,28 +62,34 @@ namespace SepCore.Procedure
                 }
                 fsm.Owner.Difficulty = difficulty;
 
-                if (GameEntry.Random.Random == null)
+                // 3. 取本局主种子（联网取服务器种子，离线取本地时间戳种子）
+                RunSeedSource seedSource = await ResolveRunSeedAsync(difficulty, cancellationToken);
+                if (cancellationToken.IsCancellationRequested)
                 {
-                    // 若未经过大厅战备输入种子直接进入场景调试，使用当前时间戳兜底初始化本局随机源
-                    int fallbackSeed = (int)(DateTime.UtcNow.Ticks & 0x7FFFFFFF);
-                    Log.Warning("RandomComponent is not initialized. Using fallback seed '{0}'.", fallbackSeed);
-                    GameEntry.Random.BeginRun(fallbackSeed);
+                    return;
                 }
 
-                // 3. 初始化单局数据层（共享背包、保险箱、出战队伍状态）
+                if (seedSource == null)
+                {
+                    // 已在 ResolveRunSeedAsync 内记录原因并提示；不进入半成品局。
+                    AbortToMenu(fsm);
+                    return;
+                }
+
+                // 4. 初始化单局数据层（共享背包、保险箱、出战队伍状态），种子与内容生成同一来源
                 if (GameEntry.Round != null)
                 {
-                    GameEntry.Round.BeginRun(difficulty, GameEntry.Random.Seed);
+                    GameEntry.Round.BeginRun(difficulty, seedSource.MasterSeed);
                 }
 
-                // 4. 构建并装配本局出战角色状态（优先使用 RunSession 导出）
+                // 5. 构建并装配本局出战角色状态（优先使用 RunSession 导出）
                 List<PlayerUnitState> partyPlayers = GameEntry.Round?.Session != null
                     ? GameEntry.Round.Session.ToPlayerUnitStates()
                     : PlayerPartyBuilder.Build(GameEntry.Save.Data, GameEntry.Luban.Tables);
                 GameEntry.TurnBattle.ReplacePlayers(partyPlayers);
                 Log.Info("[ProcedureMain] Initialized {0} party players for exploration.", partyPlayers.Count);
 
-                // 4. 确保实体组存在
+                // 6. 确保实体组存在
                 EnsureEntityGroup("Map");
                 EnsureEntityGroup("ResourcePoint");
                 EnsureEntityGroup("Enemy");
@@ -87,23 +97,28 @@ namespace SepCore.Procedure
                 EnsureEntityGroup("Camera");
                 EnsureEntityGroup("Item");
 
-                // 5. 执行地图构建（内容生成的 masterSeed 与本局战斗随机源种子同一来源）
-                MapBuilder builder = new MapBuilder(difficulty, GameEntry.Random.Seed);
-                MapBuildResult buildResult = await builder.BuildAsync();
-
+                // 7. 生成/预测地图内容（联网只取摆位，离线走完整生成）
+                MapSpawnPlan plan = await BuildSpawnPlanAsync(difficulty, seedSource, cancellationToken);
                 if (cancellationToken.IsCancellationRequested)
                 {
                     return;
                 }
 
-                fsm.Owner.ExtractionPoint = TileToWorldPosition2D(buildResult.ExtractionPoint);
-                fsm.Owner.PlayerSpawnPoint = TileToWorldPosition2D(buildResult.PlayerSpawnPoint);
+                if (plan == null)
+                {
+                    // 生成/预测失败（配置缺失等已在内部报错）：不生成半成品实体，回大厅。
+                    AbortToMenu(fsm);
+                    return;
+                }
 
-                // 预先构建所有房间与走廊的迷雾淡出遮罩（避免运行时进入房间临时动态创建）
+                fsm.Owner.ExtractionPoint = TileToWorldPosition2D(plan.ExtractionTile);
+                fsm.Owner.PlayerSpawnPoint = TileToWorldPosition2D(plan.PlayerSpawnTile);
+
+                // 预先构建所有房间与走廊的迷雾淡出遮罩（避免运行时进入房间临时动态创建）；雾纯演出，不等网络
                 FogTilemapController fogController = FogTilemapController.Instance ?? UnityEngine.Object.FindObjectOfType<FogTilemapController>();
                 if (fogController != null)
                 {
-                    fogController.InitializeRoomOverlays(buildResult.Rooms);
+                    fogController.InitializeRoomOverlays(plan.Rooms);
                 }
                 else
                 {
@@ -117,7 +132,7 @@ namespace SepCore.Procedure
                     return;
                 }
 
-                // 6. 实例化撤离点实体（预制体资产名取自 GlobalConfig.EvacuatePointEntity）
+                // 8. 实例化撤离点实体（预制体资产名取自 GlobalConfig.EvacuatePointEntity）
                 string evacAssetName = global.EvacuatePointEntity;
                 if (string.IsNullOrEmpty(evacAssetName))
                 {
@@ -126,13 +141,13 @@ namespace SepCore.Procedure
                 else
                 {
                     int evacEntityId = GameEntry.Entity.SerialId();
-                    Vector3 evacPos = TileToWorldPosition(buildResult.ExtractionPoint);
+                    Vector3 evacPos = TileToWorldPosition(plan.ExtractionTile);
                     EvacuatePointData evacData = new EvacuatePointData(evacEntityId, evacAssetName, evacPos);
                     GameEntry.Entity.ShowEntity<EvacuatePointLogic>(evacData, "Map", Constant.AssetPriority.SceneAsset);
                 }
 
-                // 7. 实例化资源点实体（预制体资产名取自 ResourcePointConfig.Prefab）
-                foreach (ResourcePointBuildData resPoint in buildResult.ResourcePoints)
+                // 9. 实例化资源点实体（预制体资产名取自 ResourcePointConfig.Prefab）
+                foreach (ResourcePointSpawnSpec resPoint in plan.ResourcePoints)
                 {
                     ResourcePointConfig resConfig = GameEntry.Luban.Get<ResourcePointConfig>(resPoint.ResourcePointId);
                     if (resConfig == null || string.IsNullOrEmpty(resConfig.Prefab))
@@ -144,19 +159,19 @@ namespace SepCore.Procedure
                     int resEntityId = GameEntry.Entity.SerialId();
                     string assetName = resConfig.Prefab;
                     Vector3 resPos = TileToWorldPosition(resPoint.Position);
-                    ResourcePointData resData = new ResourcePointData(
-                        resEntityId, assetName, resPos, resPoint.ResourcePointId, resPoint.ItemIds);
+
+                    // 联网流程开局无清单：内容待 loot 响应灌入；离线路径清单随方案带上。
+                    ResourcePointData resData = resPoint.ContentsKnown
+                        ? new ResourcePointData(resEntityId, assetName, resPos, resPoint.ResourcePointId,
+                            resPoint.ItemIds, pointId: resPoint.PointId)
+                        : ResourcePointData.CreatePendingContents(resEntityId, assetName, resPos,
+                            resPoint.ResourcePointId, resPoint.PointId);
                     GameEntry.Entity.ShowEntity<ResourcePointLogic>(resData, "ResourcePoint", Constant.AssetPriority.SceneAsset);
                 }
 
-                // 8. 实例化敌人队伍实体（预制体资产名根据威胁等级取自 GlobalConfig）
-                foreach (EnemyPointBuildData enemyPoint in buildResult.EnemyPoints)
+                // 10. 实例化敌人队伍实体（预制体资产名根据威胁等级取自 GlobalConfig）
+                foreach (EnemySpawnSpec enemyPoint in plan.EnemyPoints)
                 {
-                    if (enemyPoint.ThreatLevel == EnemyPartyThreatLevel.None)
-                    {
-                        continue;
-                    }
-
                     string assetName = GetEnemyPartyAssetName(global, enemyPoint.ThreatLevel);
                     if (string.IsNullOrEmpty(assetName))
                     {
@@ -171,34 +186,35 @@ namespace SepCore.Procedure
                     int roomIndex = -1;
                     Vector2 roomMin = Vector2.zero;
                     Vector2 roomMax = Vector2.zero;
-                    if (buildResult.Rooms != null)
+                    if (plan.Rooms != null)
                     {
-                        for (int r = 0; r < buildResult.Rooms.Count; r++)
+                        for (int r = 0; r < plan.Rooms.Count; r++)
                         {
-                            if (buildResult.Rooms[r].Contains(enemyPos))
+                            if (plan.Rooms[r].Contains(enemyPos))
                             {
                                 roomIndex = r;
-                                roomMin = buildResult.Rooms[r].Min;
-                                roomMax = buildResult.Rooms[r].Max;
+                                roomMin = plan.Rooms[r].Min;
+                                roomMax = plan.Rooms[r].Max;
                                 break;
                             }
                         }
                     }
 
+                    // 联网流程的队伍构成等 encounter 响应下发，EnemyPartyId 传 0 只作占位。
                     EnemyPartyData enemyData = new EnemyPartyData(
                         enemyEntityId, assetName, enemyPos, enemyPoint.EnemyPartyId, enemyPoint.ThreatLevel,
-                        roomIndex, roomMin, roomMax);
+                        roomIndex, roomMin, roomMax, pointId: enemyPoint.PointId);
                     GameEntry.Entity.ShowEntity<EnemyPartyLogic>(enemyData, "Enemy", Constant.AssetPriority.EnemyAsset);
                 }
 
-                // 9. 生成玩家角色实体（出战第 1 位为领队，其余为蛇形跟随者）并绑定编队
-                PlayerCharacterLogic leader = await SpawnPlayerPartyAsync(partyPlayers, global, buildResult, cancellationToken);
+                // 11. 生成玩家角色实体（出战第 1 位为领队，其余为蛇形跟随者）并绑定编队
+                PlayerCharacterLogic leader = await SpawnPlayerPartyAsync(partyPlayers, global, plan, cancellationToken);
                 if (cancellationToken.IsCancellationRequested)
                 {
                     return;
                 }
 
-                // 10. 生成主摄像机实体并设置跟随领队目标
+                // 12. 生成主摄像机实体并设置跟随领队目标
                 if (leader != null)
                 {
                     fsm.Owner.MainCamera = await SpawnMainCameraAsync(leader, cancellationToken);
@@ -208,14 +224,133 @@ namespace SepCore.Procedure
                     }
                 }
 
-                Log.Info("[ProcedureMain] Map build completed. Resource points: {0}, Enemies: {1}. Switching to ExplorationBattleState.",
-                    buildResult.ResourcePoints.Count, buildResult.EnemyPoints.Count);
+                Log.Info("[ProcedureMain] Map build completed (online: {0}). Resource points: {1}, Enemies: {2}. Switching to ExplorationBattleState.",
+                    seedSource.Online, plan.ResourcePoints.Count, plan.EnemyPoints.Count);
 
                 ChangeState<MainExplorationBattleState>(fsm);
             }
             catch (Exception ex) when (!(ex is OperationCanceledException))
             {
                 Log.Error("[ProcedureMain] Failed to build map with error: {0}", ex);
+            }
+        }
+
+        /// <summary>
+        /// 本局种子来源：在线时来自 start_run（服务器分配），离线时为本地时间戳。
+        /// <see cref="MasterSeed"/> 同时用于内容生成与战斗随机源，保证结算上报的 seed 与生成种子同值。
+        /// </summary>
+        private sealed class RunSeedSource
+        {
+            public bool Online;
+            public long MasterSeed;
+            public StartRunResult StartRun;
+        }
+
+        /// <summary>
+        /// 决定本局主种子：在线走 start_run（服务器是唯一权威，超时/失败即中止进局）；
+        /// 离线（场景调试）用本地时间戳种子，只跑 C# 生成器。
+        /// </summary>
+        private async UniTask<RunSeedSource> ResolveRunSeedAsync(DifficultyTier difficulty,
+            CancellationToken cancellationToken)
+        {
+            bool online = GameEntry.Net != null && GameEntry.Net.OnlineReady;
+            if (online)
+            {
+                StartRunResult result = await GameEntry.Net.Run.StartRunAsync(difficulty, resume: false);
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return null;
+                }
+
+                if (!result.Success)
+                {
+                    Log.Error("[ProcedureMain] start_run failed ({0}/{1}); aborting run.", result.Outcome,
+                        result.ErrCode ?? result.ErrMsg ?? "no detail");
+                    NetworkNotice.ShowInteractionRejected();
+                    return null;
+                }
+
+                // 服务器种子同时用于内容生成与战斗随机源（契约 §5）。
+                GameEntry.Random.BeginRun((int)result.Seed);
+                Log.Info("[ProcedureMain] start_run ok. RunId: {0}, Seed: {1}, Consumed: {2}, Looted: {3}.",
+                    result.RunId, result.Seed, result.Consumed.Count, result.Looted.Count);
+
+                return new RunSeedSource
+                {
+                    Online = true,
+                    MasterSeed = result.Seed,
+                    StartRun = result,
+                };
+            }
+
+            // 场景调试路径：未经 start_run 直接进图，用本地时间戳种子跑完整本地生成。
+            int fallbackSeed = (int)(DateTime.UtcNow.Ticks & 0x7FFFFFFF);
+            Log.Warning("Offline (scene debug) path: using local seed '{0}' for full local generation.", fallbackSeed);
+            GameEntry.Random.BeginRun(fallbackSeed);
+
+            return new RunSeedSource
+            {
+                Online = false,
+                MasterSeed = fallbackSeed,
+                StartRun = null,
+            };
+        }
+
+        /// <summary>
+        /// 产出待实例化的地图实体方案：在线只用预测摆位 + 服务器显式出生/撤离点（物资清单与队伍留空），
+        /// 离线跑完整本地生成。
+        /// </summary>
+        private async UniTask<MapSpawnPlan> BuildSpawnPlanAsync(DifficultyTier difficulty, RunSeedSource seedSource,
+            CancellationToken cancellationToken)
+        {
+            MapBuilder builder = new MapBuilder(difficulty, seedSource.MasterSeed);
+
+            if (!seedSource.Online)
+            {
+                MapBuildResult buildResult = await builder.BuildAsync();
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return null;
+                }
+
+                return MapSpawnPlan.FromBuildResult(buildResult);
+            }
+
+            MapPlacement placement = await builder.BuildPlacementAsync();
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return null;
+            }
+
+            // 出生/撤离点用服务器显式值（瓦片坐标），不参与预测（契约 §9）。
+            Vector2 spawnTile = new Vector2(seedSource.StartRun.SpawnPoint.x, seedSource.StartRun.SpawnPoint.y);
+            Vector2 extractionTile = new Vector2(seedSource.StartRun.ExtractionPoint.x,
+                seedSource.StartRun.ExtractionPoint.y);
+            // 敌队伍用同威胁等级的本地占位配置：实体需要它选 prefab、取警惕参数与掉落档位，
+            // 真正参战队伍等 encounter 响应下发。
+            return MapSpawnPlan.FromPlacement(placement, spawnTile, extractionTile,
+                GameEntry.Luban.GetTable<EnemyPartyConfig>());
+        }
+
+        /// <summary>
+        /// 开局失败（start_run 超时/拒绝、服务器应答缺损）时中止进局：清理已启动的单局状态并回大厅，
+        /// 不留下半成品局（不生成任何实体、不进入探索流程）。
+        /// </summary>
+        private static void AbortToMenu(IFsm<ProcedureMain> fsm)
+        {
+            Log.Error("[ProcedureMain] Aborting run before any entity was spawned; returning to menu.");
+
+            if (GameEntry.Round != null && GameEntry.Round.HasActiveRun)
+            {
+                GameEntry.Round.EndRun();
+            }
+
+            GameEntry.TurnBattle.EndRun();
+            GameEntry.Random.EndRun();
+
+            if (fsm.Owner.AutoReturnToMenu)
+            {
+                fsm.Owner.ReturnToMenu();
             }
         }
 
@@ -250,7 +385,7 @@ namespace SepCore.Procedure
         private async UniTask<PlayerCharacterLogic> SpawnPlayerPartyAsync(
             List<PlayerUnitState> partyPlayers,
             GlobalConfig global,
-            MapBuildResult buildResult,
+            MapSpawnPlan plan,
             CancellationToken cancellationToken)
         {
             if (partyPlayers == null || partyPlayers.Count == 0)
@@ -274,7 +409,7 @@ namespace SepCore.Procedure
                 return null;
             }
 
-            Vector3 spawnPos = TileToWorldPosition(buildResult.PlayerSpawnPoint);
+            Vector3 spawnPos = TileToWorldPosition(plan.PlayerSpawnTile);
 
             // 领队实体（出战第 1 位），其后为随从实体（出战第 2 位起，序号跟随战备顺序）
             List<UniTask<PlayerCharacterLogic>> spawnTasks = new List<UniTask<PlayerCharacterLogic>>(partyPlayers.Count);
@@ -303,7 +438,7 @@ namespace SepCore.Procedure
             }
 
             partyLogics[0].BindParty(retinueLogics);
-            partyLogics[0].InitializeRoomTracker(buildResult.Rooms);
+            partyLogics[0].InitializeRoomTracker(plan.Rooms);
             Log.Info("[ProcedureMain] Spawned {0} player characters at spawn point '{1}'.",
                 partyPlayers.Count, spawnPos);
             return partyLogics[0];
