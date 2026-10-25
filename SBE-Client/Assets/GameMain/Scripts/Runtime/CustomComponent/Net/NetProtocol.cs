@@ -7,10 +7,11 @@ namespace SepCore.Net
     /// </summary>
     public static class NetMsg
     {
-        // v2：新增 party/difficulty/carry 操作、快照战备字段、settle 战绩元数据与 history 消息。
-        public const int Version = 2;
+        // v3：账号体系改为用户名+密码（register=注册账号、login=账密登录），用户主键为雪花 uid。
+        public const int Version = 3;
 
         public const string Register = "register";
+        public const string Login = "login";
         public const string Auth = "auth";
         public const string Pull = "pull";
         public const string Migrate = "migrate";
@@ -31,6 +32,7 @@ namespace SepCore.Net
         public const string BadMessage = "bad_message";
         public const string Unauthorized = "unauthorized";
         public const string Rejected = "rejected";
+        public const string Conflict = "conflict";
         public const string Internal = "internal";
     }
 
@@ -252,7 +254,10 @@ namespace SepCore.Net
         public string t;
         public int v;
         public long rid;
-        public string device;
+
+        // register/login 携带的账号凭据
+        public string username;
+        public string password;
         public string token;
         public long userId;
         public string runId;

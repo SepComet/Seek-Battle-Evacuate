@@ -222,5 +222,37 @@
   {
     "name": "NetworkStatusValue",
     "format": "{0}"
+  },
+  {
+    "name": "AccountErrorNetwork",
+    "format": "无法连接服务器，请检查网络后重试"
+  },
+  {
+    "name": "AccountErrorCredentials",
+    "format": "用户名或密码错误"
+  },
+  {
+    "name": "AccountErrorUsernameTaken",
+    "format": "该用户名已被占用"
+  },
+  {
+    "name": "AccountErrorInvalidUsername",
+    "format": "用户名需 2~32 个字符"
+  },
+  {
+    "name": "AccountErrorInvalidPassword",
+    "format": "密码需 6~64 个字符"
+  },
+  {
+    "name": "AccountErrorInternal",
+    "format": "操作失败，请重试"
+  },
+  {
+    "name": "AccountSubmitInProgress",
+    "format": "提交中…"
+  },
+  {
+    "name": "AccountErrorInvalid",
+    "format": "注册信息未通过校验，请检查用户名与密码"
   }
 ]

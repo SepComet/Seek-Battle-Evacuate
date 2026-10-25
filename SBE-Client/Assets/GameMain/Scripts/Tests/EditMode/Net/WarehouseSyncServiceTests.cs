@@ -97,7 +97,8 @@ namespace SepCore.Tests
         }
 
         /// <summary>
-        /// 迷你服务器：复刻 Go 服务端核心语义（应用操作集、铸 UID、迁移、runId 幂等、战备配置、战绩元数据）。
+        /// 迷你服务器：复刻 Go 服务端核心语义（账密注册/登录、token 认证、应用操作集、铸 UID、
+        /// 迁移、runId 幂等、战备配置、战绩元数据）。
         /// </summary>
         private sealed class FakeServer
         {
@@ -105,13 +106,24 @@ namespace SepCore.Tests
             public readonly List<int> Characters = new List<int>();
             public readonly HashSet<string> Settled = new HashSet<string>();
             public readonly List<NetRunRecord> History = new List<NetRunRecord>();
+            public readonly Dictionary<string, string> Users = new Dictionary<string, string>(); // username -> password（明文，仅复刻语义）
+            public readonly HashSet<string> Tokens = new HashSet<string>();
             public bool Initialized;
             public long NextUid = 1;
             public long UserId = 4294967301L;
+            private int tokenSeq;
 
             public int[] Party;
             public int Difficulty;
             public List<NetStack> Carried = new List<NetStack>();
+
+            public string IssueToken()
+            {
+                tokenSeq++;
+                string token = "tok-" + tokenSeq.ToString();
+                Tokens.Add(token);
+                return token;
+            }
 
             public string Handle(string json)
             {
@@ -119,8 +131,39 @@ namespace SepCore.Tests
                 switch (env.t)
                 {
                     case NetMsg.Register:
+                    {
+                        string newUsername = (env.username ?? string.Empty).Trim();
+                        if (newUsername.Length < 2 || newUsername.Length > 32)
+                        {
+                            return Err(env, NetErrCode.Rejected, "invalid username");
+                        }
+
+                        if (Users.ContainsKey(newUsername))
+                        {
+                            return Err(env, NetErrCode.Conflict, "username taken");
+                        }
+
+                        Users[newUsername] = env.password;
+                        return OK(env, token: IssueToken());
+                    }
+                    case NetMsg.Login:
+                    {
+                        string loginUsername = (env.username ?? string.Empty).Trim();
+                        if (!Users.TryGetValue(loginUsername, out string password) || password != env.password)
+                        {
+                            return Err(env, NetErrCode.Unauthorized, "invalid credentials");
+                        }
+
+                        return OK(env, token: IssueToken());
+                    }
                     case NetMsg.Auth:
-                        return OK(env, token: "tok-1");
+                        // 与服务端一致：auth 不下发新 token，token 无效返回 unauthorized
+                        if (!Tokens.Contains(env.token))
+                        {
+                            return Err(env, NetErrCode.Unauthorized, "invalid token");
+                        }
+
+                        return OK(env);
                     case NetMsg.Pull:
                         return OK(env);
                     case NetMsg.History:
@@ -256,8 +299,9 @@ namespace SepCore.Tests
 
             private string OK(NetEnvelope req, string token = null)
             {
+                bool identityMessage = req.t == NetMsg.Auth || req.t == NetMsg.Register || req.t == NetMsg.Login;
                 NetEnvelope resp = new NetEnvelope { t = NetMsg.OK, rid = req.rid, token = token,
-                    userId = req.t == NetMsg.Auth || req.t == NetMsg.Register ? UserId : 0 };
+                    userId = identityMessage ? UserId : 0 };
                 resp.snapshot = Snapshot();
                 return GameFramework.Utility.Json.ToJson(resp);
             }
@@ -304,6 +348,7 @@ namespace SepCore.Tests
             public SaveData Save;
             public FakeServer Server = new FakeServer();
             public FakeServerConnection Connection = new FakeServerConnection();
+            public NetRpc Rpc;
             public WarehouseSyncService Service;
             public int PersistCount;
             public double Now;
@@ -322,29 +367,37 @@ namespace SepCore.Tests
                 runHistory = new List<RoundRecord>(),
             };
             ctx.Connection.Responder = ctx.Server.Handle;
+            ctx.Rpc = new NetRpc(ctx.Connection, () => ctx.Now);
             ctx.Service = new WarehouseSyncService(
-                ctx.Connection,
+                ctx.Rpc,
                 () => ctx.Save,
                 id => _items.TryGetValue(id, out ItemConfig config) ? config : null,
                 Global,
                 () => ctx.PersistCount++,
-                ms => UniTask.CompletedTask,
-                () => ctx.Now);
+                ms => UniTask.CompletedTask);
             return ctx;
+        }
+
+        /// <summary>注册新账号并完成登录链路（注册 → 迁移 → 快照 → 战绩）。</summary>
+        private static UniTask<LoginResult> LoginNewAccount(WarehouseSyncService service)
+        {
+            return service.TryCredentialLoginAsync("ws://test", "tester", "secret-1", register: true);
         }
 
         [UnityTest]
         public IEnumerator LoginMigratesLocalSaveAndAppliesSnapshot()
         {
             Ctx ctx = CreateService();
-            bool ok = false;
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null)
-                .ContinueWith(result => ok = result).ToCoroutine();
+            LoginResult result = default;
+            yield return LoginNewAccount(ctx.Service)
+                .ContinueWith(r => result = r).ToCoroutine();
 
-            Assert.That(ok, Is.True);
+            Assert.That(result.Success, Is.True);
             Assert.That(ctx.Service.Token, Is.EqualTo("tok-1"));
             Assert.That(ctx.Service.UserId, Is.EqualTo(ctx.Server.UserId));
             Assert.That(ctx.CountSent(NetMsg.Register), Is.EqualTo(1));
+            Assert.That(ctx.Connection.Sent[0].username, Is.EqualTo("tester"));
+            Assert.That(ctx.Connection.Sent[0].password, Is.EqualTo("secret-1"));
             Assert.That(ctx.CountSent(NetMsg.Migrate), Is.EqualTo(1));
             Assert.That(ctx.Server.Initialized, Is.True);
             Assert.That(ctx.PersistCount, Is.GreaterThanOrEqualTo(1));
@@ -356,10 +409,121 @@ namespace SepCore.Tests
         }
 
         [UnityTest]
+        public IEnumerator RegisterRejectsDuplicateUsernameWithConflict()
+        {
+            Ctx ctx = CreateService();
+            ctx.Server.Users["tester"] = "other-pass";
+            LogAssert.Expect(UnityEngine.LogType.Error, "Login request failure: conflict: username taken");
+            LoginResult result = default;
+            yield return ctx.Service.TryCredentialLoginAsync("ws://test", "tester", "secret-1", register: true)
+                .ContinueWith(r => result = r).ToCoroutine();
+
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Outcome, Is.EqualTo(NetLoginOutcome.AuthRejected));
+            Assert.That(result.ErrCode, Is.EqualTo(NetErrCode.Conflict));
+            Assert.That(ctx.Service.UserId, Is.EqualTo(0));
+            Assert.That(ctx.CountSent(NetMsg.Migrate), Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        public IEnumerator LoginRejectsWrongPasswordWithUnauthorized()
+        {
+            Ctx ctx = CreateService();
+            ctx.Server.Users["tester"] = "secret-1";
+            LogAssert.Expect(UnityEngine.LogType.Error, "Login request failure: unauthorized: invalid credentials");
+            LoginResult result = default;
+            yield return ctx.Service.TryCredentialLoginAsync("ws://test", "tester", "wrong-pass", register: false)
+                .ContinueWith(r => result = r).ToCoroutine();
+
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Outcome, Is.EqualTo(NetLoginOutcome.AuthRejected));
+            Assert.That(result.ErrCode, Is.EqualTo(NetErrCode.Unauthorized));
+            Assert.That(ctx.Service.UserId, Is.EqualTo(0));
+            Assert.That(ctx.CountSent(NetMsg.Migrate), Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        public IEnumerator TokenLoginReusesCachedTokenWithoutCredentials()
+        {
+            AccountSession.Save(5550001L, "tok-cached", "tester");
+            try
+            {
+                Ctx ctx = CreateService();
+                ctx.Server.Tokens.Add("tok-cached");
+                LoginResult result = default;
+                yield return ctx.Service.TryTokenLoginAsync("ws://test")
+                    .ContinueWith(r => result = r).ToCoroutine();
+
+                Assert.That(result.Success, Is.True);
+                // auth 不下发新 token，服务沿用缓存令牌
+                Assert.That(ctx.Service.Token, Is.EqualTo("tok-cached"));
+                Assert.That(ctx.Service.UserId, Is.EqualTo(ctx.Server.UserId));
+                Assert.That(ctx.CountSent(NetMsg.Auth), Is.EqualTo(1));
+                Assert.That(ctx.CountSent(NetMsg.Register), Is.EqualTo(0));
+                Assert.That(ctx.CountSent(NetMsg.Login), Is.EqualTo(0));
+            }
+            finally
+            {
+                AccountSession.ClearToken();
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator TokenLoginRejectsUnknownToken()
+        {
+            AccountSession.Save(5550001L, "tok-stale", "tester");
+            try
+            {
+                Ctx ctx = CreateService(); // tok-stale 不在 fake 的 token 集合内 → unauthorized
+                LogAssert.Expect(UnityEngine.LogType.Error, "Login request failure: unauthorized: invalid token");
+                LoginResult result = default;
+                yield return ctx.Service.TryTokenLoginAsync("ws://test")
+                    .ContinueWith(r => result = r).ToCoroutine();
+
+                Assert.That(result.Success, Is.False);
+                Assert.That(result.Outcome, Is.EqualTo(NetLoginOutcome.AuthRejected));
+                Assert.That(result.ErrCode, Is.EqualTo(NetErrCode.Unauthorized));
+                Assert.That(ctx.Service.UserId, Is.EqualTo(0));
+            }
+            finally
+            {
+                AccountSession.ClearToken();
+            }
+        }
+
+        [Test]
+        public void AccountSessionPersistsUidTokenUsernameAndClearToken()
+        {
+            AccountSession.Save(4294967301L, "tok-x", "玩家甲");
+            try
+            {
+                AccountSession.Load(out long uid, out string token, out string username);
+                Assert.That(uid, Is.EqualTo(4294967301L));
+                Assert.That(token, Is.EqualTo("tok-x"));
+                Assert.That(username, Is.EqualTo("玩家甲"));
+
+                AccountSession.SaveToken("tok-y");
+                AccountSession.Load(out uid, out token, out username);
+                Assert.That(token, Is.EqualTo("tok-y"));
+                Assert.That(uid, Is.EqualTo(4294967301L));
+                Assert.That(username, Is.EqualTo("玩家甲"));
+
+                AccountSession.ClearToken();
+                AccountSession.Load(out uid, out token, out username);
+                Assert.That(token, Is.Null);
+                Assert.That(username, Is.EqualTo("玩家甲"));
+            }
+            finally
+            {
+                AccountSession.ClearToken();
+            }
+        }
+
+        [UnityTest]
         public IEnumerator FlushAfterLayoutChange_SendsMovAndAppliesAck()
         {
             Ctx ctx = CreateService();
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null).ToCoroutine();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
 
             ctx.Save.mainWarehouse[0] = new GridItemStack(5001, 20, 3, 0);
             yield return ctx.Service.FlushAsync().ToCoroutine();
@@ -379,7 +543,7 @@ namespace SepCore.Tests
         public IEnumerator SettleRetriesAfterDropUntilAcked()
         {
             Ctx ctx = CreateService();
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null).ToCoroutine();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
 
             // 局内结算结果：战利品入库 + 招募 + 换新武器（局内捡的）
             ctx.Save.mainWarehouse.Add(new GridItemStack(5301, 4, 1, 0));
@@ -413,7 +577,7 @@ namespace SepCore.Tests
         public IEnumerator SettleRejected_DoesNotHangAndKeepsLocalState()
         {
             Ctx ctx = CreateService();
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null).ToCoroutine();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
             ctx.Connection.Responder = json =>
             {
                 NetEnvelope env = GameFramework.Utility.Json.ToObject<NetEnvelope>(json);
@@ -442,7 +606,7 @@ namespace SepCore.Tests
                 return GameFramework.Utility.Json.ToJson(new NetEnvelope { t = NetMsg.OK, rid = env.rid, token = "tok-1", userId = ctx.Server.UserId, snapshot = snapshot });
             };
 
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null).ToCoroutine();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
 
             // 5001 堆叠上限 99：两堆重叠落位时合并为单堆，总量守恒
             Assert.That(ctx.Save.mainWarehouse, Has.Count.EqualTo(1));
@@ -456,7 +620,7 @@ namespace SepCore.Tests
             ctx.Save.loadout.difficultyId = DifficultyTier.Tier3;
             ctx.Save.loadout.carriedItems = new List<ItemStack> { new ItemStack(5001, 7) };
 
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null).ToCoroutine();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
 
             NetEnvelope migrate = ctx.Connection.Sent.FirstOrDefault(e => e.t == NetMsg.Migrate);
             Assert.That(migrate, Is.Not.Null);
@@ -476,7 +640,7 @@ namespace SepCore.Tests
         public IEnumerator SquadAndDifficultyEdits_FlushPartyAndDifficultyOps()
         {
             Ctx ctx = CreateService();
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null).ToCoroutine();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
 
             // 编队编辑：新增角色入队并调整顺序；难度改为 Tier3
             ctx.Save.characters.Add(new CharacterSave(1002, 0, 0));
@@ -504,7 +668,7 @@ namespace SepCore.Tests
         public IEnumerator CarryEdit_FlushesCarryOp()
         {
             Ctx ctx = CreateService();
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null).ToCoroutine();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
 
             ctx.Save.loadout.carriedItems = new List<ItemStack>
             {
@@ -537,7 +701,7 @@ namespace SepCore.Tests
                 return GameFramework.Utility.Json.ToJson(new NetEnvelope { t = NetMsg.OK, rid = env.rid, token = "tok-1", userId = ctx.Server.UserId, snapshot = snapshot });
             };
 
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null).ToCoroutine();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
 
             // 快照空队列写回 null（保留"从未配置则默认组队"流程），难度与携带以服务器为准
             Assert.That(ctx.Save.loadout.partyCharacterIds, Is.Null);
@@ -558,7 +722,7 @@ namespace SepCore.Tests
             ctx.Server.History.Add(new NetRunRecord { runId = "r1", outcome = 1, difficulty = 2, seed = 42, startedAt = 100, endedAt = 200 });
             ctx.Server.History.Add(new NetRunRecord { runId = "r2", outcome = 2, difficulty = 3, seed = 43, startedAt = 300, endedAt = 400 });
 
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null).ToCoroutine();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
 
             // 服务器战绩整体覆盖本地缓存
             Assert.That(ctx.Save.runHistory, Has.Count.EqualTo(2));
@@ -590,7 +754,7 @@ namespace SepCore.Tests
         public IEnumerator LoadoutEdits_ReconnectRestoresServerPartyOrderAndCarry()
         {
             Ctx ctx = CreateService();
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null).ToCoroutine();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
             ctx.Save.characters.Add(new CharacterSave(1002, 0, 0));
             ctx.Save.loadout.partyCharacterIds = new[] { 1002, 1001 };
             ctx.Save.loadout.difficultyId = DifficultyTier.Tier3;
@@ -602,11 +766,20 @@ namespace SepCore.Tests
             ctx.Save.loadout.partyCharacterIds = new[] { 1001 };
             ctx.Save.loadout.difficultyId = DifficultyTier.Tier1;
             ctx.Save.loadout.carriedItems.Clear();
-            bool loggedIn = false;
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", ctx.Service.Token)
-                .ContinueWith(result => loggedIn = result).ToCoroutine();
+            // 重连走缓存 token 续登
+            AccountSession.Save(ctx.Server.UserId, ctx.Service.Token, "tester");
+            LoginResult relogin = default;
+            try
+            {
+                yield return ctx.Service.TryTokenLoginAsync("ws://test")
+                    .ContinueWith(r => relogin = r).ToCoroutine();
+            }
+            finally
+            {
+                AccountSession.ClearToken();
+            }
 
-            Assert.That(loggedIn, Is.True);
+            Assert.That(relogin.Success, Is.True);
             Assert.That(ctx.CountSent(NetMsg.Auth), Is.EqualTo(1));
             Assert.That(ctx.CountSent(NetMsg.Migrate), Is.EqualTo(1));
             Assert.That(ctx.Save.loadout.partyCharacterIds, Is.EqualTo(new[] { 1002, 1001 }));
@@ -624,14 +797,14 @@ namespace SepCore.Tests
             Ctx ctx = CreateService();
             ctx.Save.loadout.difficultyId = DifficultyTier.Tier2;
             ctx.Save.loadout.carriedItems = new List<ItemStack> { new ItemStack(5001, 3) };
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null).ToCoroutine();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
             ctx.Save.loadout.partyCharacterIds = Array.Empty<int>();
             ctx.Save.loadout.difficultyId = DifficultyTier.None;
             ctx.Save.loadout.carriedItems.Clear();
             yield return ctx.Service.FlushAsync().ToCoroutine();
 
             NetEnvelope env = ctx.Connection.Sent.Last(e => e.t == NetMsg.Ops);
-            Assert.That(env.v, Is.EqualTo(2));
+            Assert.That(env.v, Is.EqualTo(NetMsg.Version));
             Assert.That(env.ops.Select(o => o.k), Is.EqualTo(new[]
                 { NetOpKind.Party, NetOpKind.Difficulty, NetOpKind.Carry }));
             Assert.That(env.ops[0].party, Is.Empty);
@@ -652,7 +825,7 @@ namespace SepCore.Tests
             Ctx ctx = CreateService();
             ctx.Save.loadout.difficultyId = DifficultyTier.Tier2;
             ctx.Save.loadout.carriedItems = new List<ItemStack> { new ItemStack(5001, 3) };
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null).ToCoroutine();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
             ctx.Save.loadout.partyCharacterIds = Array.Empty<int>();
             ctx.Save.loadout.difficultyId = DifficultyTier.None;
             ctx.Save.loadout.carriedItems.Clear();
@@ -680,7 +853,7 @@ namespace SepCore.Tests
         {
             Ctx ctx = CreateService();
             ctx.Save.runHistory.Add(new RoundRecord(RoundResultType.Extracted, DifficultyTier.Tier3, 999, 1, 2));
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null).ToCoroutine();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
 
             Assert.That(ctx.Save.runHistory, Is.Empty);
             Assert.That(ctx.CountSent(NetMsg.History), Is.EqualTo(1));
@@ -713,11 +886,11 @@ namespace SepCore.Tests
                     : ctx.Server.Handle(json);
             };
             LogAssert.Expect(UnityEngine.LogType.Error, "History fetch failure: rejected: history unavailable");
-            bool loggedIn = true;
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null)
-                .ContinueWith(result => loggedIn = result).ToCoroutine();
+            LoginResult result = default;
+            yield return LoginNewAccount(ctx.Service)
+                .ContinueWith(r => result = r).ToCoroutine();
 
-            Assert.That(loggedIn, Is.False);
+            Assert.That(result.Success, Is.False);
             Assert.That(ctx.Save.runHistory, Has.Count.EqualTo(1));
             Assert.That(ctx.Save.runHistory[0].seed, Is.EqualTo(999));
             Assert.That(ctx.CountSent(NetMsg.History), Is.EqualTo(1));
@@ -739,35 +912,49 @@ namespace SepCore.Tests
                 return ctx.Server.Handle(json);
             };
             LogAssert.Expect(UnityEngine.LogType.Error, "History fetch failure: connection lost");
-            bool loggedIn = true;
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null)
-                .ContinueWith(result => loggedIn = result).ToCoroutine();
+            LoginResult result = default;
+            yield return LoginNewAccount(ctx.Service)
+                .ContinueWith(r => result = r).ToCoroutine();
 
-            Assert.That(loggedIn, Is.False);
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Outcome, Is.EqualTo(NetLoginOutcome.Failed));
         }
 
         [UnityTest]
         public IEnumerator AccountIdentity_StableAfterReconnectAndClearedOnDisconnect()
         {
             Ctx ctx = CreateService();
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null).ToCoroutine();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
             long userId = ctx.Service.UserId;
-            ctx.Service.UpdateLatency(true);
-            Assert.That(ctx.Service.Latency.HasSamples, Is.True);
+            ctx.Rpc.UpdateLatency(true);
+            Assert.That(ctx.Rpc.Latency.HasSamples, Is.True);
             ctx.Connection.Close();
             Assert.That(ctx.Service.UserId, Is.Zero);
-            Assert.That(ctx.Service.Latency.HasSamples, Is.False);
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", ctx.Service.Token).ToCoroutine();
-            Assert.That(ctx.Service.UserId, Is.EqualTo(userId));
+            Assert.That(ctx.Rpc.Latency.HasSamples, Is.False);
+            // 重连走缓存 token 续登
+            AccountSession.Save(userId, ctx.Service.Token, "tester");
+            try
+            {
+                LoginResult result = default;
+                yield return ctx.Service.TryTokenLoginAsync("ws://test")
+                    .ContinueWith(r => result = r).ToCoroutine();
+                Assert.That(result.Success, Is.True);
+                Assert.That(ctx.Service.UserId, Is.EqualTo(userId));
+            }
+            finally
+            {
+                AccountSession.ClearToken();
+            }
+
             Assert.That(userId, Is.GreaterThan(int.MaxValue));
-            Assert.That(ctx.Service.Latency.HasSamples, Is.False);
+            Assert.That(ctx.Rpc.Latency.HasSamples, Is.False);
         }
 
         [UnityTest]
         public IEnumerator LatencyProbe_UsesMonotonicClockAndDoesNotApplySnapshot()
         {
             Ctx ctx = CreateService();
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null).ToCoroutine();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
             int snapshots = 0;
             ctx.Service.SnapshotApplied += _ => snapshots++;
             ctx.Connection.Responder = json =>
@@ -776,48 +963,48 @@ namespace SepCore.Tests
                 if (env.t == NetMsg.Ping) ctx.Now += 0.125;
                 return ctx.Server.Handle(json);
             };
-            ctx.Service.UpdateLatency(true);
+            ctx.Rpc.UpdateLatency(true);
             Assert.That(ctx.CountSent(NetMsg.Ping), Is.EqualTo(1));
-            Assert.That(ctx.Service.Latency.LatestMilliseconds, Is.EqualTo(125).Within(0.001));
+            Assert.That(ctx.Rpc.Latency.LatestMilliseconds, Is.EqualTo(125).Within(0.001));
             Assert.That(snapshots, Is.Zero);
-            ctx.Service.UpdateLatency(true);
+            ctx.Rpc.UpdateLatency(true);
             Assert.That(ctx.CountSent(NetMsg.Ping), Is.EqualTo(1));
             ctx.Now = 2;
-            ctx.Service.UpdateLatency(true);
+            ctx.Rpc.UpdateLatency(true);
             Assert.That(ctx.CountSent(NetMsg.Ping), Is.EqualTo(2));
-            Assert.That(ctx.Service.Latency.SampleCount, Is.EqualTo(2));
+            Assert.That(ctx.Rpc.Latency.SampleCount, Is.EqualTo(2));
         }
 
         [UnityTest]
         public IEnumerator PingTimeout_IgnoresLateReplyAndRecoversWithoutPendingLeak()
         {
             Ctx ctx = CreateService();
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null).ToCoroutine();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
             ctx.Connection.Responder = _ => null;
-            ctx.Service.UpdateLatency(true);
+            ctx.Rpc.UpdateLatency(true);
             NetEnvelope first = ctx.Connection.Sent.Last();
             ctx.Now = 4;
-            ctx.Service.UpdateLatency(true);
+            ctx.Rpc.UpdateLatency(true);
             Assert.That(ctx.CountSent(NetMsg.Ping), Is.EqualTo(1));
             ctx.Now = 5;
-            ctx.Service.UpdateLatency(true);
+            ctx.Rpc.UpdateLatency(true);
             NetEnvelope second = ctx.Connection.Sent.Last();
             Assert.That(ctx.CountSent(NetMsg.Ping), Is.EqualTo(2));
-            Assert.That(ctx.Service.Latency.IsTimedOut, Is.True);
+            Assert.That(ctx.Rpc.Latency.IsTimedOut, Is.True);
             ctx.Connection.OnMessage(GameFramework.Utility.Json.ToJson(new NetEnvelope { t = NetMsg.OK, rid = first.rid }));
-            Assert.That(ctx.Service.Latency.HasSamples, Is.False);
-            Assert.That(ctx.Service.Latency.HasPendingProbe, Is.True);
+            Assert.That(ctx.Rpc.Latency.HasSamples, Is.False);
+            Assert.That(ctx.Rpc.Latency.HasPendingProbe, Is.True);
             ctx.Now = 5.25;
             ctx.Connection.OnMessage(GameFramework.Utility.Json.ToJson(new NetEnvelope { t = NetMsg.OK, rid = second.rid }));
-            Assert.That(ctx.Service.Latency.LatestMilliseconds, Is.EqualTo(250).Within(0.001));
-            Assert.That(ctx.Service.Latency.HasPendingProbe, Is.False);
+            Assert.That(ctx.Rpc.Latency.LatestMilliseconds, Is.EqualTo(250).Within(0.001));
+            Assert.That(ctx.Rpc.Latency.HasPendingProbe, Is.False);
         }
 
         [UnityTest]
         public IEnumerator PendingEconomicFlush_DoesNotBlockLatencyProbe()
         {
             Ctx ctx = CreateService();
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null).ToCoroutine();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
             string heldResponse = null;
             ctx.Connection.Responder = json =>
             {
@@ -835,9 +1022,9 @@ namespace SepCore.Tests
                 yield return null;
             }
             Assert.That(heldResponse, Is.Not.Null);
-            ctx.Service.UpdateLatency(true);
+            ctx.Rpc.UpdateLatency(true);
             Assert.That(ctx.CountSent(NetMsg.Ping), Is.EqualTo(1));
-            Assert.That(ctx.Service.Latency.HasSamples, Is.True);
+            Assert.That(ctx.Rpc.Latency.HasSamples, Is.True);
             ctx.Connection.OnMessage(heldResponse);
             yield return flush.ToCoroutine();
         }
@@ -846,7 +1033,7 @@ namespace SepCore.Tests
         public IEnumerator UnauthorizedPing_ClearsCurrentAccountIdentity()
         {
             Ctx ctx = CreateService();
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null).ToCoroutine();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
             ctx.Connection.Responder = json =>
             {
                 NetEnvelope env = GameFramework.Utility.Json.ToObject<NetEnvelope>(json);
@@ -855,12 +1042,15 @@ namespace SepCore.Tests
                     t = NetMsg.Err, rid = env.rid, code = NetErrCode.Unauthorized,
                 });
             };
-            ctx.Service.UpdateLatency(true);
+            ctx.Rpc.UpdateLatency(true);
+            // unauthorized 应答触发事件：身份清空、延迟窗口重置
             Assert.That(ctx.Service.UserId, Is.Zero);
-            Assert.That(ctx.Service.Latency.HasSamples, Is.False);
-            ctx.Now = 2;
-            ctx.Service.UpdateLatency(true);
+            Assert.That(ctx.Rpc.Latency.HasSamples, Is.False);
             Assert.That(ctx.CountSent(NetMsg.Ping), Is.EqualTo(1));
+            ctx.Now = 2;
+            // rpc 层不感知登录态，按节奏继续探测；身份门禁由 NetComponent 的 OnlineReady 负责
+            ctx.Rpc.UpdateLatency(true);
+            Assert.That(ctx.CountSent(NetMsg.Ping), Is.EqualTo(2));
         }
 
         [UnityTest]
@@ -869,10 +1059,10 @@ namespace SepCore.Tests
             Ctx ctx = CreateService();
             ctx.Server.UserId = 0;
             LogAssert.Expect(UnityEngine.LogType.Error, "Login response missing userId.");
-            bool result = true;
-            yield return ctx.Service.LoginAsync("ws://test", "device-1", null)
-                .ContinueWith(ok => result = ok).ToCoroutine();
-            Assert.That(result, Is.False);
+            LoginResult result = default;
+            yield return LoginNewAccount(ctx.Service)
+                .ContinueWith(r => result = r).ToCoroutine();
+            Assert.That(result.Success, Is.False);
             Assert.That(ctx.Service.UserId, Is.Zero);
         }
     }

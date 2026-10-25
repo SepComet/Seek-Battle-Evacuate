@@ -88,6 +88,10 @@ namespace SepCore.Definition
         /// 网络状态常驻顶层面板
         /// </summary>
         NetworkStatusForm = 115,
+        /// <summary>
+        /// 登录注册
+        /// </summary>
+        LoginForm = 116,
     }
 
 } 

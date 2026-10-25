@@ -24,13 +24,13 @@ namespace SepCore.UI
             View.backText.Set();
             View.pageHeader.Open(UIForm.SerialId);
             GameEntry.Event.Subscribe(LobbyPageBackRequestedEventArgs.EventId, OnBackRequested);
-            GameEntry.Net.Sync.SnapshotApplied += OnSnapshotApplied;
+            GameEntry.Net.Warehouse.SnapshotApplied += OnSnapshotApplied;
             Refresh(GameEntry.Save.Data.mainWarehouse);
         }
 
         protected override void OnClose(bool isShutdown, object userData)
         {
-            GameEntry.Net.Sync.SnapshotApplied -= OnSnapshotApplied;
+            GameEntry.Net.Warehouse.SnapshotApplied -= OnSnapshotApplied;
             GameEntry.Event.Unsubscribe(LobbyPageBackRequestedEventArgs.EventId, OnBackRequested);
             View.pageHeader.Close();
             UnbindEvent();

@@ -15,7 +15,7 @@ namespace SepCore.Net
     }
 
     /// <summary>
-    /// 网络组件：持有连接与同步服务，主线程泵送消息，断线自动重连重登。
+    /// 网络组件：持有连接、通用 RPC 层与仓库同步服务，主线程泵送消息，断线自动重连重登。
     /// 大厅经济按钮的可用性以 <see cref="OnlineReady"/> 为准。
     /// </summary>
     public class NetComponent : GameFrameworkComponent
@@ -25,13 +25,14 @@ namespace SepCore.Net
         [SerializeField] private string _serverUri = "ws://127.0.0.1:7777/ws";
 
         private WebSocketConnection _connection;
+        private NetRpc _rpc;
         private float _nextAttemptTime;
         private bool _loginInFlight;
 
         /// <summary>
-        /// 同步服务（账本、登录、结算、快照落地）。
+        /// 仓库同步服务（账本、登录、结算、快照落地）。后续业务域按同样形状挂为独立服务。
         /// </summary>
-        public WarehouseSyncService Sync { get; private set; }
+        public WarehouseSyncService Warehouse { get; private set; }
 
         /// <summary>
         /// 是否已连接。
@@ -43,8 +44,8 @@ namespace SepCore.Net
         /// </summary>
         public bool OnlineReady { get; private set; }
 
-        public long UserId => OnlineReady ? Sync.UserId : 0;
-        public NetworkLatencyMonitor Latency => Sync.Latency;
+        public long UserId => OnlineReady ? Warehouse.UserId : 0;
+        public NetworkLatencyMonitor Latency => _rpc.Latency;
 
         public NetConnectionState ConnectionState => OnlineReady
             ? NetConnectionState.Online
@@ -60,8 +61,9 @@ namespace SepCore.Net
         private void Awake()
         {
             _connection = new WebSocketConnection();
-            Sync = new WarehouseSyncService(
-                _connection,
+            _rpc = new NetRpc(_connection);
+            Warehouse = new WarehouseSyncService(
+                _rpc,
                 () => GameEntry.Save?.Data,
                 id => GameEntry.Luban != null && GameEntry.Luban.IsReady ? GameEntry.Luban.Get<ItemConfig>(id) : null,
                 () => GameEntry.Luban != null && GameEntry.Luban.IsReady ? GameEntry.Luban.Global?.Data : null,
@@ -73,8 +75,8 @@ namespace SepCore.Net
         private void Update()
         {
             _connection.Pump();
-            if (OnlineReady && (!IsConnected || Sync.UserId <= 0)) OnDisconnected();
-            Sync.UpdateLatency(OnlineReady);
+            if (OnlineReady && (!IsConnected || Warehouse.UserId <= 0)) OnDisconnected();
+            _rpc.UpdateLatency(OnlineReady);
 
             if (OnlineReady || SuspendAutoLogin || _loginInFlight || !CanAttemptLogin() || Time.unscaledTime < _nextAttemptTime)
             {
@@ -90,29 +92,65 @@ namespace SepCore.Net
         }
 
         /// <summary>
-        /// 尝试一次完整登录（连接+认证/注册+首登迁移+拉取）。
+        /// 用缓存 token 尝试一次静默续登（连接+认证+首登迁移+拉取）。
+        /// token 被拒时自动清除缓存并返回 AuthRejected，由调用方转入账密登录。
         /// </summary>
-        public async UniTask<bool> TryLoginAsync()
+        public async UniTask<NetLoginOutcome> TryLoginAsync()
         {
-            if (_loginInFlight) return false;
+            if (_loginInFlight) return NetLoginOutcome.Failed;
             _loginInFlight = true;
             OnlineReady = false;
             try
             {
-                DeviceIdentity.Load(out string device, out string token);
-                bool ok = await Sync.LoginAsync(_serverUri, device, token);
-                if (ok)
+                LoginResult result = await Warehouse.TryTokenLoginAsync(_serverUri);
+                if (result.Success)
                 {
-                    DeviceIdentity.SaveToken(Sync.Token);
+                    AccountSession.SaveToken(Warehouse.Token);
                     OnlineReady = true;
-                    Log.Info("Net online ready. UserId: {0}.", Sync.UserId);
+                    Log.Info("Net online ready. UserId: {0}.", Warehouse.UserId);
+                }
+                else if (result.Outcome == NetLoginOutcome.AuthRejected)
+                {
+                    AccountSession.ClearToken();
+                    Log.Warning("Token login rejected; interactive login required.");
                 }
                 else
                 {
                     _nextAttemptTime = Time.unscaledTime + ReconnectIntervalSeconds;
                 }
 
-                return ok;
+                return result.Outcome;
+            }
+            finally
+            {
+                _loginInFlight = false;
+            }
+        }
+
+        /// <summary>
+        /// 用账号密码注册（register=true）或登录。成功后持久化会话（uid/token/username）。
+        /// 失败结果带服务器错误码，供登录界面映射提示文案。
+        /// </summary>
+        public async UniTask<LoginResult> TryCredentialLoginAsync(string username, string password, bool register)
+        {
+            if (_loginInFlight) return new LoginResult(NetLoginOutcome.Failed);
+            _loginInFlight = true;
+            OnlineReady = false;
+            try
+            {
+                LoginResult result = await Warehouse.TryCredentialLoginAsync(_serverUri, username, password, register);
+                if (result.Success)
+                {
+                    AccountSession.Save(Warehouse.UserId, Warehouse.Token, username);
+                    OnlineReady = true;
+                    Log.Info("Net online ready. UserId: {0}.", Warehouse.UserId);
+                }
+                else
+                {
+                    _nextAttemptTime = Time.unscaledTime + ReconnectIntervalSeconds;
+                }
+
+                return result;
             }
             finally
             {
@@ -130,7 +168,15 @@ namespace SepCore.Net
                 return;
             }
 
-            Sync.FlushAsync().Forget();
+            Warehouse.FlushAsync().Forget();
+        }
+
+        /// <summary>
+        /// 主动断开连接（退出登录用）：连接关闭事件会复位在线与登录状态。
+        /// </summary>
+        public void Disconnect()
+        {
+            _connection.Close();
         }
 
         private void OnDisconnected()

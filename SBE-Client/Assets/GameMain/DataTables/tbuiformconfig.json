@@ -117,5 +117,12 @@
     "UIGroupName": "NetworkStatus",
     "allowMultiInstance": false,
     "pauseCoveredUIForm": false
+  },
+  {
+    "id": 116,
+    "assetName": "LoginForm",
+    "UIGroupName": "Default",
+    "allowMultiInstance": false,
+    "pauseCoveredUIForm": true
   }
 ]

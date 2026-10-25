@@ -12,11 +12,15 @@ namespace SepCore.Procedure
 {
     /// <summary>
     /// 登录过程：在资源预载完成后、进入大厅前完成
-    /// 本地缓存读取 → 连接 → 匿名注册/认证 → 首登迁移/初始化 → 权威快照落地。
-    /// 强制在线：失败则周期重试，不进入大厅。
+    /// 本地缓存读取 → 缓存 token 静默续登 → 失效则打开登录表单走账密注册/登录 →
+    /// 首登迁移/初始化（网络层内完成）→ 权威快照落地。
+    /// 强制在线：静默续登网络故障周期重试；账密错误由登录表单提示，不进入大厅。
     /// </summary>
     public class ProcedureLogin : ProcedureBase
     {
+        private const int SilentRetryDelayMilliseconds = 2000;
+        private const int InteractivePollDelayMilliseconds = 500;
+
         private bool _leaving;
 
         protected override void OnEnter(ProcedureOwner procedureOwner)
@@ -35,7 +39,7 @@ namespace SepCore.Procedure
             }
 
             Log.Info("[ProcedureLogin] Waiting for server...");
-            RunAsync(procedureOwner);
+            RunAsync(procedureOwner).Forget();
         }
 
         private async UniTaskVoid RunAsync(ProcedureOwner procedureOwner)
@@ -47,23 +51,46 @@ namespace SepCore.Procedure
                 GameEntry.Save.CreateNewGame();
             }
 
-            // 2. 登录循环（强制在线；由本过程独占驱动，NetComponent 的自动重连已挂起）
+            // 2. 静默续登：有缓存 token 时由本过程独占驱动（NetComponent 的自动重连已挂起）
             while (!_leaving)
             {
                 if (GameEntry.Net != null)
                 {
-                    if (await GameEntry.Net.TryLoginAsync())
+                    NetLoginOutcome outcome = await GameEntry.Net.TryLoginAsync();
+                    if (outcome == NetLoginOutcome.Success)
                     {
-                        procedureOwner.SetData<VarInt32>("NextSceneId", (int)SceneType.Menu);
-                        ChangeState<ProcedureChangeScene>(procedureOwner);
+                        EnterMenu(procedureOwner);
                         return;
                     }
+                    if (outcome == NetLoginOutcome.AuthRejected)
+                    {
+                        // token 失效或无缓存会话 → 转入账密登录
+                        break;
+                    }
 
-                    Log.Warning("[ProcedureLogin] Login failed; retrying...");
+                    Log.Warning("[ProcedureLogin] Server unreachable; retrying token login...");
                 }
 
-                await UniTask.Delay(2000);
+                await UniTask.Delay(SilentRetryDelayMilliseconds);
             }
+
+            // 3. 交互登录：登录表单驱动账密注册/登录，本过程轮询 OnlineReady
+            GameEntry.UI.OpenUIForm(UIFormType.LoginForm);
+            Log.Info("[ProcedureLogin] Waiting for account login...");
+            while (!_leaving && !GameEntry.Net.OnlineReady)
+            {
+                await UniTask.Delay(InteractivePollDelayMilliseconds);
+            }
+            if (!_leaving)
+            {
+                EnterMenu(procedureOwner);
+            }
+        }
+
+        private void EnterMenu(ProcedureOwner procedureOwner)
+        {
+            procedureOwner.SetData<VarInt32>("NextSceneId", (int)SceneType.Menu);
+            ChangeState<ProcedureChangeScene>(procedureOwner);
         }
 
         protected override void OnLeave(ProcedureOwner procedureOwner, bool isShutdown)

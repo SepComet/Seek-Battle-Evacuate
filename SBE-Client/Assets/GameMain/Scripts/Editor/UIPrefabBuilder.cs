@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using SepCore.UI;
+using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -33,6 +34,7 @@ namespace SepCore.Editor
         private static readonly Color Gold = new Color32(214, 169, 61, 255);
 
         private static Font uiFont;
+        private static TMP_FontAsset tmpFont;
         private static Sprite panelBrown;
         private static Sprite panelBeige;
         private static Sprite panelBeigeLight;
@@ -77,6 +79,249 @@ namespace SepCore.Editor
             AssetDatabase.Refresh();
             Selection.activeObject = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath + "/LobbyForm.prefab");
             Debug.Log("UI prefabs rebuilt: LobbyForm, MainWarehouseForm, RunBackpackForm.");
+        }
+
+        // 登录表单直接复用仓库里已有的 kenney sprite（RawResources 源不在当前工作副本）。
+        private const string UiSpriteCommonPath = "Assets/GameMain/UI/UISprites/Common";
+
+        private static void PrepareSpritesFromCommon()
+        {
+            panelBrown = LoadCommonSprite("panel_brown.png");
+            panelInsetLight = LoadCommonSprite("panelInset_beigeLight.png");
+            buttonBlue = LoadCommonSprite("buttonLong_blue.png");
+            buttonBluePressed = LoadCommonSprite("buttonLong_blue_pressed.png");
+            buttonGrey = LoadCommonSprite("buttonLong_grey.png");
+            buttonGreyPressed = LoadCommonSprite("buttonLong_grey_pressed.png");
+        }
+
+        private static Sprite LoadCommonSprite(string fileName)
+        {
+            string path = UiSpriteCommonPath + "/" + fileName;
+            Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (sprite == null)
+            {
+                throw new InvalidOperationException("UI sprite missing at " + path + ".");
+            }
+
+            return sprite;
+        }
+
+        [MenuItem("Utility/UI/Build Login Form Prefab")]
+        public static void BuildLoginFormPrefab()
+        {
+            uiFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (uiFont == null)
+            {
+                throw new InvalidOperationException("Unity built-in UI font is unavailable.");
+            }
+
+            tmpFont = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/GameMain/Fonts/MainTMPFont.asset");
+            if (tmpFont == null)
+            {
+                throw new InvalidOperationException("MainTMPFont asset is missing at Assets/GameMain/Fonts.");
+            }
+
+            PrepareSpritesFromCommon();
+
+            Scene previousScene = SceneManager.GetActiveScene();
+            Scene temporaryScene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
+            GameObject root = null;
+            try
+            {
+                SceneManager.SetActiveScene(temporaryScene);
+                root = BuildLoginForm();
+                root.GetComponent<UISerializationRoot>().RefreshItems();
+                string path = PrefabPath + "/UIForms/LoginForm.prefab";
+                bool success;
+                PrefabUtility.SaveAsPrefabAsset(root, path, out success);
+                if (!success)
+                {
+                    throw new InvalidOperationException("Failed to save prefab at " + path + ".");
+                }
+            }
+            finally
+            {
+                if (root != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(root);
+                }
+
+                if (previousScene.IsValid())
+                {
+                    SceneManager.SetActiveScene(previousScene);
+                }
+
+                EditorSceneManager.CloseScene(temporaryScene, true);
+            }
+
+            // 在已保存的 prefab 资产上生成源码：Generate 的挂载队列按 prefabAssetPath 回填组件
+            string prefabPath = PrefabPath + "/UIForms/LoginForm.prefab";
+            GameObject prefabContents = PrefabUtility.LoadPrefabContents(prefabPath);
+            try
+            {
+                UIAssetsTools.Generate(prefabContents.GetComponent<UISerializationRoot>(), false);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(prefabContents);
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Selection.activeObject = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            Debug.Log("Login form prefab rebuilt.");
+        }
+
+        private static GameObject BuildLoginForm()
+        {
+            GameObject root = CreateCanvas("LoginForm", 0);
+            RectTransform rootRect = root.GetComponent<RectTransform>();
+            AddImage(Stretch("Backdrop", rootRect, 0f, 0f, 0f, 0f), Backdrop, null);
+
+            RectTransform card = Panel(
+                Fixed("Card", rootRect, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero,
+                    new Vector2(520f, 660f)), panelBrown, Color.white);
+            AddText(
+                Fixed("CardTitle", card, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(36f, -40f),
+                    new Vector2(448f, 48f)),
+                "EXPEDITION DESK", 27, Paper, TextAnchor.MiddleLeft, FontStyle.Bold);
+            AddTMPText(
+                Fixed("CardSubtitle", card, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(36f, -96f),
+                    new Vector2(448f, 30f)),
+                "登录以同步远征进度", 16, MutedWhite, TextAnchor.MiddleLeft, FontStyle.Normal);
+
+            AddTMPText(
+                Fixed("UsernameLabel", card, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(36f, -156f),
+                    new Vector2(448f, 28f)),
+                "用户名", 15, PaperMuted, TextAnchor.MiddleLeft, FontStyle.Bold);
+            TMP_InputField usernameInput = CreateTMPInput(
+                Fixed("UsernameInput", card, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(36f, -192f),
+                    new Vector2(448f, 64f)), "输入用户名", false);
+            RegisterReference(usernameInput, "usernameInput");
+
+            AddTMPText(
+                Fixed("PasswordLabel", card, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(36f, -286f),
+                    new Vector2(448f, 28f)),
+                "密码", 15, PaperMuted, TextAnchor.MiddleLeft, FontStyle.Bold);
+            TMP_InputField passwordInput = CreateTMPInput(
+                Fixed("PasswordInput", card, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(36f, -322f),
+                    new Vector2(448f, 64f)), "输入密码", true);
+            RegisterReference(passwordInput, "passwordInput");
+
+            Button loginButton = CreateTMPButton(
+                Fixed("LoginButton", card, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(36f, -424f),
+                    new Vector2(448f, 76f)),
+                "进入游戏", ButtonKind.Blue, 24);
+            RegisterReference(loginButton, "loginButton");
+            Button registerButton = CreateTMPButton(
+                Fixed("RegisterButton", card, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(36f, -516f),
+                    new Vector2(448f, 56f)),
+                "注册新账号", ButtonKind.Grey, 18);
+            RegisterReference(registerButton, "registerButton");
+
+            TextMeshProUGUI errorText = AddTMPText(
+                Fixed("ErrorText", card, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(36f, -586f),
+                    new Vector2(448f, 52f)),
+                string.Empty, 15, Red, TextAnchor.MiddleLeft, FontStyle.Normal);
+            errorText.enableWordWrapping = true;
+            RegisterReference(errorText, "errorText");
+            return root;
+        }
+
+        // 与 CreateButton 同构，但标签用 TMP（中文可渲染，LegacyRuntime.ttf 无 CJK 字形）。
+        private static Button CreateTMPButton(RectTransform rect, string label, ButtonKind kind, int fontSize)
+        {
+            Sprite normal;
+            Sprite pressed;
+            switch (kind)
+            {
+                case ButtonKind.Blue:
+                    normal = buttonBlue;
+                    pressed = buttonBluePressed;
+                    break;
+                case ButtonKind.Brown:
+                    normal = buttonBrown;
+                    pressed = buttonBrownPressed;
+                    break;
+                case ButtonKind.Beige:
+                    normal = buttonBeige;
+                    pressed = buttonBeigePressed;
+                    break;
+                default:
+                    normal = buttonGrey;
+                    pressed = buttonGreyPressed;
+                    break;
+            }
+
+            Image image = AddImage(rect, Color.white, normal);
+            image.type = Image.Type.Sliced;
+            image.raycastTarget = true;
+            Button button = rect.gameObject.AddComponent<Button>();
+            button.targetGraphic = image;
+            button.transition = Selectable.Transition.SpriteSwap;
+            SpriteState state = button.spriteState;
+            state.highlightedSprite = normal;
+            state.selectedSprite = normal;
+            state.pressedSprite = pressed;
+            state.disabledSprite = pressed;
+            button.spriteState = state;
+            AddTMPText(Stretch("Label", rect, 12f, 12f, 7f, 7f), label, fontSize,
+                kind == ButtonKind.Beige || kind == ButtonKind.Grey ? Ink : White,
+                TextAnchor.MiddleCenter, FontStyle.Bold);
+            return button;
+        }
+
+        private static TMP_InputField CreateTMPInput(RectTransform rect, string placeholderText, bool password)
+        {
+            Image background = AddImage(rect, Color.white, panelInsetLight);
+            background.type = Image.Type.Sliced;
+            background.raycastTarget = true;
+
+            RectTransform viewport = Stretch("Text Area", rect, 16f, 16f, 8f, 8f);
+            viewport.gameObject.AddComponent<RectMask2D>();
+            TextMeshProUGUI text = AddTMPText(Stretch("Text", viewport, 0f, 0f, 0f, 0f), string.Empty, 21, Ink,
+                TextAnchor.MiddleLeft, FontStyle.Bold);
+            text.enableWordWrapping = false;
+            TextMeshProUGUI placeholder = AddTMPText(Stretch("Placeholder", viewport, 0f, 0f, 0f, 0f), placeholderText,
+                17, new Color(MutedInk.r, MutedInk.g, MutedInk.b, 0.65f), TextAnchor.MiddleLeft, FontStyle.Bold);
+
+            TMP_InputField input = rect.gameObject.AddComponent<TMP_InputField>();
+            input.targetGraphic = background;
+            input.textViewport = viewport;
+            input.textComponent = text;
+            input.placeholder = placeholder;
+            input.text = string.Empty;
+            input.contentType = password ? TMP_InputField.ContentType.Password : TMP_InputField.ContentType.Standard;
+            input.lineType = TMP_InputField.LineType.SingleLine;
+            input.caretColor = Blue;
+            input.selectionColor = new Color(Blue.r, Blue.g, Blue.b, 0.35f);
+            return input;
+        }
+
+        private static TextMeshProUGUI AddTMPText(RectTransform rect, string value, int fontSize, Color color,
+            TextAnchor alignment, FontStyle style)
+        {
+            TextMeshProUGUI text = rect.gameObject.AddComponent<TextMeshProUGUI>();
+            text.font = tmpFont;
+            text.text = value;
+            text.fontSize = fontSize;
+            text.fontStyle = style == FontStyle.Bold ? FontStyles.Bold : FontStyles.Normal;
+            text.color = color;
+            switch (alignment)
+            {
+                case TextAnchor.UpperLeft: text.alignment = TextAlignmentOptions.TopLeft; break;
+                case TextAnchor.UpperCenter: text.alignment = TextAlignmentOptions.Top; break;
+                case TextAnchor.UpperRight: text.alignment = TextAlignmentOptions.TopRight; break;
+                case TextAnchor.MiddleLeft: text.alignment = TextAlignmentOptions.Left; break;
+                case TextAnchor.MiddleCenter: text.alignment = TextAlignmentOptions.Center; break;
+                case TextAnchor.MiddleRight: text.alignment = TextAlignmentOptions.Right; break;
+                case TextAnchor.LowerLeft: text.alignment = TextAlignmentOptions.BottomLeft; break;
+                case TextAnchor.LowerCenter: text.alignment = TextAlignmentOptions.Bottom; break;
+                case TextAnchor.LowerRight: text.alignment = TextAlignmentOptions.BottomRight; break;
+                default: throw new ArgumentOutOfRangeException(nameof(alignment), alignment, "Unknown anchor.");
+            }
+            text.raycastTarget = false;
+            return text;
         }
 
         private static void PrepareSprites()

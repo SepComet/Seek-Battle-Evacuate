@@ -177,7 +177,7 @@ namespace SepCore.Procedure
                 if (GameEntry.Net != null)
                 {
                     string runId = Guid.NewGuid().ToString("N");
-                    GameEntry.Net.Sync.SettleAsync(runId, record).Forget();
+                    GameEntry.Net.Warehouse.SettleAsync(runId, record).Forget();
                     Log.Info("[ProcedureMain] Settlement reported. Outcome: {0}, Difficulty: {1}, Seed: {2}, RunId: {3}.",
                         outcome, difficulty, seed, runId);
                 }

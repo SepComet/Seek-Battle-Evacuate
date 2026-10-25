@@ -8,46 +8,66 @@ using UnityGameFramework.Runtime;
 
 namespace SepCore.Net
 {
+    /// <summary>登录结果三态。</summary>
+    public enum NetLoginOutcome
+    {
+        /// <summary>登录成功，权威快照已落地。</summary>
+        Success,
+        /// <summary>服务器明确拒绝凭据（token 失效/账密错误/重名等），重试无意义，需交互登录。</summary>
+        AuthRejected,
+        /// <summary>网络或服务器故障，可原样重试。</summary>
+        Failed,
+    }
+
+    /// <summary>一次登录尝试的结果。AuthRejected 时 ErrCode 为服务器错误码，其余为 null。</summary>
+    public readonly struct LoginResult
+    {
+        public readonly NetLoginOutcome Outcome;
+        public readonly string ErrCode;
+
+        public LoginResult(NetLoginOutcome outcome, string errCode = null)
+        {
+            Outcome = outcome;
+            ErrCode = errCode;
+        }
+
+        public bool Success => Outcome == NetLoginOutcome.Success;
+    }
+
     /// <summary>
     /// 仓库同步服务：登录/迁移/拉取、结算上报（runId 幂等 + 断线重试）、大厅操作差分上报、
     /// 权威快照落地。所有出站工作经互斥串行化，保证结算先于其后的大厅操作。
-    /// 依赖全部由构造注入，可在 EditMode 用假连接完整测试。
+    /// 信封收发与请求关联委托给 <see cref="NetRpc"/>，依赖全部由构造注入，
+    /// 可在 EditMode 用假连接完整测试。
     /// </summary>
     public sealed class WarehouseSyncService
     {
-        private readonly IServerConnection _connection;
+        private readonly NetRpc _rpc;
         private readonly Func<SaveData> _getSave;
         private readonly Func<int, ItemConfig> _itemGetter;
         private readonly Func<GlobalConfig> _globalGetter;
         private readonly Action _persist;
         private readonly SemaphoreSlim _mutex = new SemaphoreSlim(1, 1);
-        private readonly Dictionary<long, UniTaskCompletionSource<NetEnvelope>> _pending =
-            new Dictionary<long, UniTaskCompletionSource<NetEnvelope>>();
-
         private readonly WarehouseLedger _ledger = new WarehouseLedger();
         private readonly Func<int, UniTask> _delay;
-        private readonly Func<double> _clock;
-        private long _nextRid;
         private string _token;
 
         public WarehouseSyncService(
-            IServerConnection connection,
+            NetRpc rpc,
             Func<SaveData> getSave,
             Func<int, ItemConfig> itemGetter,
             Func<GlobalConfig> globalGetter,
             Action persist,
-            Func<int, UniTask> delay = null,
-            Func<double> clock = null)
+            Func<int, UniTask> delay = null)
         {
-            _connection = connection;
+            _rpc = rpc;
             _getSave = getSave;
             _itemGetter = itemGetter;
             _globalGetter = globalGetter;
             _persist = persist;
             _delay = delay ?? (ms => UniTask.Delay(ms));
-            _clock = clock ?? (() => (double)System.Diagnostics.Stopwatch.GetTimestamp() / System.Diagnostics.Stopwatch.Frequency);
-            _connection.MessageReceived += OnMessageReceived;
-            _connection.Disconnected += OnDisconnected;
+            _rpc.Disconnected += OnDisconnected;
+            _rpc.Unauthorized += OnUnauthorized;
         }
 
         /// <summary>
@@ -57,28 +77,6 @@ namespace SepCore.Net
 
         /// <summary>服务端账号主键；未完成登录或已断线时为 0，不暴露认证令牌。</summary>
         public long UserId { get; private set; }
-
-        public NetworkLatencyMonitor Latency { get; } = new NetworkLatencyMonitor();
-
-        /// <summary>主线程定时探测，不进入经济操作互斥，也不向 pending 请求表添加等待项。</summary>
-        public void UpdateLatency(bool onlineReady)
-        {
-            double now = _clock();
-            if (!onlineReady || UserId <= 0 || !_connection.IsConnected)
-            {
-                Latency.Reset(now);
-                return;
-            }
-
-            if (!Latency.ShouldProbe(now)) return;
-            NetEnvelope ping = NetEnvelope.Create(NetMsg.Ping);
-            ping.rid = ++_nextRid;
-            Latency.BeginProbe(ping.rid, now);
-            if (!_connection.TrySend(GameFramework.Utility.Json.ToJson(ping)))
-            {
-                Latency.TryComplete(ping.rid, false, _clock());
-            }
-        }
 
         /// <summary>
         /// 账本是否已与服务器同步过（决定差分是否可用）。
@@ -91,50 +89,82 @@ namespace SepCore.Net
         public event Action<NetSnapshot> SnapshotApplied;
 
         /// <summary>
-        /// 完整登录流程：连接 → auth/register → （首登）迁移/初始化 → 拉取并落地。
-        /// 返回是否成功；失败由调用方重试。
+        /// 缓存 token 静默续登：连接 → auth → （首登）迁移 → 快照落地 → 拉取战绩。
+        /// 无缓存 token 时直接返回 AuthRejected（调用方应转入账密登录）。
         /// </summary>
-        public async UniTask<bool> LoginAsync(string serverUri, string deviceUuid, string savedToken)
+        public async UniTask<LoginResult> TryTokenLoginAsync(string serverUri)
+        {
+            AccountSession.Load(out _, out string token, out _);
+            if (string.IsNullOrEmpty(token))
+            {
+                return new LoginResult(NetLoginOutcome.AuthRejected);
+            }
+
+            return await SendLoginAsync(serverUri, token, () =>
+            {
+                NetEnvelope env = NetEnvelope.Create(NetMsg.Auth);
+                env.token = token;
+                return env;
+            });
+        }
+
+        /// <summary>
+        /// 账密注册（register=true）或登录（register=false）：连接 → register/login → 后置流程同上。
+        /// 成功后由宿主（NetComponent）持久化 uid/token/username。
+        /// </summary>
+        public async UniTask<LoginResult> TryCredentialLoginAsync(string serverUri, string username, string password, bool register)
+        {
+            return await SendLoginAsync(serverUri, null, () =>
+            {
+                NetEnvelope env = NetEnvelope.Create(register ? NetMsg.Register : NetMsg.Login);
+                env.username = username;
+                env.password = password;
+                return env;
+            });
+        }
+
+        /// <summary>
+        /// 登录公共流程：连接 → 发送登录请求 → 校验应答身份 → （首登）迁移 → 快照落地 → 拉取战绩。
+        /// 应答缺失（超时/断连）视为可重试故障；有应答但被拒为 AuthRejected（附错误码）。
+        /// </summary>
+        private async UniTask<LoginResult> SendLoginAsync(string serverUri, string fallbackToken, System.Func<NetEnvelope> buildRequest)
         {
             UserId = 0;
-            Latency.Reset(_clock());
-            if (!_connection.IsConnected)
+            _rpc.ResetLatency();
+            if (!_rpc.IsConnected)
             {
-                bool connected = await _connection.ConnectAsync(serverUri);
+                bool connected = await _rpc.ConnectAsync(serverUri);
                 if (!connected)
                 {
-                    return false;
+                    return new LoginResult(NetLoginOutcome.Failed);
                 }
             }
 
-            NetEnvelope resp = null;
-            if (!string.IsNullOrEmpty(savedToken))
-            {
-                resp = await SendAsync(NetEnvelope.Create(NetMsg.Auth), env => env.token = savedToken);
-            }
-
+            NetEnvelope resp = await _rpc.SendAsync(buildRequest());
             if (resp == null || !resp.IsOk)
             {
-                NetEnvelope register = NetEnvelope.Create(NetMsg.Register);
-                register.device = deviceUuid;
-                resp = await SendAsync(register);
-                if (resp == null || !resp.IsOk)
-                {
-                    Log.Error("Register failure: {0}", Describe(resp));
-                    return false;
-                }
+                Log.Error("Login request failure: {0}", Describe(resp));
+                return resp == null
+                    ? new LoginResult(NetLoginOutcome.Failed)
+                    : new LoginResult(NetLoginOutcome.AuthRejected, resp.code);
             }
 
             _token = resp.token;
             if (string.IsNullOrEmpty(_token))
             {
-                _token = savedToken;
+                // auth 应答不下发新 token，沿用缓存令牌
+                _token = fallbackToken;
+            }
+            if (string.IsNullOrEmpty(_token))
+            {
+                Log.Error("Login response missing token.");
+                return new LoginResult(NetLoginOutcome.Failed);
             }
 
             if (resp.userId <= 0)
             {
                 Log.Error("Login response missing userId.");
-                return false;
+                return new LoginResult(NetLoginOutcome.Failed);
             }
             long userId = resp.userId;
 
@@ -142,18 +172,18 @@ namespace SepCore.Net
             if (snapshot == null)
             {
                 Log.Error("Login response missing snapshot.");
-                return false;
+                return new LoginResult(NetLoginOutcome.Failed);
             }
 
             if (!snapshot.initialized)
             {
                 NetEnvelope migrate = NetEnvelope.Create(NetMsg.Migrate);
                 migrate.migrate = BuildMigratePayload(_getSave());
-                NetEnvelope migrateResp = await SendAsync(migrate);
+                NetEnvelope migrateResp = await _rpc.SendAsync(migrate);
                 if (migrateResp == null || !migrateResp.IsOk)
                 {
                     Log.Error("Migrate failure: {0}", Describe(migrateResp));
-                    return false;
+                    return new LoginResult(NetLoginOutcome.Failed);
                 }
 
                 snapshot = migrateResp.snapshot;
@@ -165,7 +195,7 @@ namespace SepCore.Net
 
             // 拉取战绩并覆盖本地缓存（settlements 审计数据即战绩存储）。
             // 拉取失败由登录流程重试，避免断线后仍把 OnlineReady 标记为 true。
-            NetEnvelope historyResp = await SendAsync(NetEnvelope.Create(NetMsg.History));
+            NetEnvelope historyResp = await _rpc.SendAsync(NetEnvelope.Create(NetMsg.History));
             if (historyResp != null && historyResp.IsOk)
             {
                 ApplyHistory(historyResp.history);
@@ -174,11 +204,11 @@ namespace SepCore.Net
             else
             {
                 Log.Error("History fetch failure: {0}", Describe(historyResp));
-                return false;
+                return new LoginResult(NetLoginOutcome.Failed);
             }
 
             UserId = userId;
-            return true;
+            return new LoginResult(NetLoginOutcome.Success);
         }
 
         /// <summary>
@@ -216,7 +246,7 @@ namespace SepCore.Net
         {
             await RunSerialized(async () =>
             {
-                if (_token == null || !_ledger.HasSynced || !_connection.IsConnected)
+                if (_token == null || !_ledger.HasSynced || !_rpc.IsConnected)
                 {
                     return;
                 }
@@ -229,7 +259,7 @@ namespace SepCore.Net
 
                 NetEnvelope env = NetEnvelope.Create(NetMsg.Ops);
                 env.ops = ops;
-                NetEnvelope resp = await SendAsync(env);
+                NetEnvelope resp = await _rpc.SendAsync(env);
                 if (resp != null && resp.IsOk && resp.snapshot != null)
                 {
                     ApplySnapshot(resp.snapshot);
@@ -262,7 +292,7 @@ namespace SepCore.Net
                         continue;
                     }
 
-                    if (!_connection.IsConnected)
+                    if (!_rpc.IsConnected)
                     {
                         await _delay(2000);
                         continue;
@@ -276,7 +306,7 @@ namespace SepCore.Net
                     env.startedAt = record.startedAt;
                     env.endedAt = record.endedAt;
                     env.ops = ops;
-                    NetEnvelope resp = await SendAsync(env);
+                    NetEnvelope resp = await _rpc.SendAsync(env);
                     if (resp == null)
                     {
                         // 断线：rid 变化无妨，服务器按 runId 幂等
@@ -511,55 +541,19 @@ namespace SepCore.Net
             }
         }
 
-        private async UniTask<NetEnvelope> SendAsync(NetEnvelope env, Action<NetEnvelope> mutate = null)
-        {
-            env.rid = ++_nextRid;
-            mutate?.Invoke(env);
-            UniTaskCompletionSource<NetEnvelope> tcs = new UniTaskCompletionSource<NetEnvelope>();
-            _pending[env.rid] = tcs;
-            string json = GameFramework.Utility.Json.ToJson(env);
-            if (!_connection.TrySend(json))
-            {
-                _pending.Remove(env.rid);
-                return null;
-            }
-
-            return await tcs.Task;
-        }
-
-        private void OnMessageReceived(string message)
-        {
-            NetEnvelope resp = GameFramework.Utility.Json.ToObject<NetEnvelope>(message);
-            if (resp == null)
-            {
-                Log.Error("Malformed server message.");
-                return;
-            }
-
-            if (Latency.TryComplete(resp.rid, resp.IsOk, _clock()))
-            {
-                if (!resp.IsOk && resp.code == NetErrCode.Unauthorized) UserId = 0;
-                return;
-            }
-
-            if (resp.rid != 0 && _pending.TryGetValue(resp.rid, out UniTaskCompletionSource<NetEnvelope> tcs))
-            {
-                _pending.Remove(resp.rid);
-                tcs.TrySetResult(resp);
-            }
-        }
-
         private void OnDisconnected()
         {
+            ResetLoginState();
+        }
+
+        private void OnUnauthorized()
+        {
+            ResetLoginState();
+        }
+
+        private void ResetLoginState()
+        {
             UserId = 0;
-            Latency.Reset(_clock());
-            // 完成等待可能同步恢复协程并发出重试；先移出旧表，避免枚举期间被修改。
-            List<UniTaskCompletionSource<NetEnvelope>> pending = new List<UniTaskCompletionSource<NetEnvelope>>(_pending.Values);
-            _pending.Clear();
-            foreach (UniTaskCompletionSource<NetEnvelope> request in pending)
-            {
-                request.TrySetResult(null);
-            }
         }
 
         private static string Describe(NetEnvelope resp)
