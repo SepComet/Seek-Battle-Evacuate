@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http/httptest"
 	"reflect"
 	"testing"
@@ -26,6 +27,14 @@ func items() testItems {
 		5102: {StackLimit: 1, EquipSlot: 1},
 		5201: {StackLimit: 1, EquipSlot: 2},
 		5301: {StackLimit: 5, EquipSlot: 0},
+	}
+}
+
+func limits() core.Limits {
+	return core.Limits{
+		MaxPlayerPartySize: 4,
+		BackpackSlotCount:  3,
+		Difficulties:       map[int]bool{1: true, 2: true, 3: true},
 	}
 }
 
@@ -111,7 +120,7 @@ func wornItemID(snap *protocol.Snapshot, cid int) int {
 }
 
 func TestFullFlowRegisterMigrateSettleIdempotentEquip(t *testing.T) {
-	srv := New(items())
+	srv := New(items(), limits())
 	ts := httptest.NewServer(srv.Handler("/ws"))
 	defer ts.Close()
 	addr := ts.Listener.Addr().String()
@@ -184,7 +193,7 @@ func TestFullFlowRegisterMigrateSettleIdempotentEquip(t *testing.T) {
 }
 
 func TestUnauthorizedPullRejected(t *testing.T) {
-	srv := New(items())
+	srv := New(items(), limits())
 	ts := httptest.NewServer(srv.Handler("/ws"))
 	defer ts.Close()
 
@@ -196,7 +205,7 @@ func TestUnauthorizedPullRejected(t *testing.T) {
 }
 
 func TestSettleRejectsUnknownItemAtomically(t *testing.T) {
-	srv := New(items())
+	srv := New(items(), limits())
 	ts := httptest.NewServer(srv.Handler("/ws"))
 	defer ts.Close()
 
@@ -226,7 +235,7 @@ func TestSettleRejectsUnknownItemAtomically(t *testing.T) {
 }
 
 func TestRidRetryReturnsCachedResponse(t *testing.T) {
-	srv := New(items())
+	srv := New(items(), limits())
 	ts := httptest.NewServer(srv.Handler("/ws"))
 	defer ts.Close()
 
@@ -244,5 +253,143 @@ func TestRidRetryReturnsCachedResponse(t *testing.T) {
 	after := mustOK(c, protocol.Envelope{T: protocol.MsgPull})
 	if len(after.Items) != 1 || after.Items[0].Count != 3 {
 		t.Fatalf("rid retry duplicated add: %+v", after.Items)
+	}
+}
+
+func TestLoadoutSyncSettleHistory(t *testing.T) {
+	srv := New(items(), limits())
+	ts := httptest.NewServer(srv.Handler("/ws"))
+	defer ts.Close()
+	addr := ts.Listener.Addr().String()
+
+	// 1. 注册 + 迁移：携带完整战备配置
+	c := dial(t, addr)
+	reg := c.call(protocol.Envelope{T: protocol.MsgRegister, Device: "loadout-device"})
+	if reg.T != protocol.MsgOK || reg.Token == "" {
+		t.Fatalf("register failed: %+v", reg)
+	}
+	mig := mustOK(c, protocol.Envelope{T: protocol.MsgMigrate, Migrate: &protocol.MigratePayload{
+		Characters: []protocol.MigrateChar{{CID: 1001}, {CID: 1002}},
+		Party:      []int{1001, 1002},
+		Difficulty: 2,
+		Carried:    []protocol.Stack{{ItemID: 5001, Count: 5}},
+	}})
+	if !reflect.DeepEqual(mig.Party, []int{1001, 1002}) || mig.Difficulty != 2 || len(mig.Carried) != 1 {
+		t.Fatalf("migrate loadout wrong: party=%+v diff=%d carried=%+v", mig.Party, mig.Difficulty, mig.Carried)
+	}
+
+	// 2. 大厅操作：调换出战顺序 + 改难度；携带计划不受影响
+	lobby := mustOK(c, protocol.Envelope{T: protocol.MsgOps, Ops: []protocol.Op{
+		{K: protocol.OpParty, Party: []int{1002, 1001}},
+		{K: protocol.OpDiff, Difficulty: 3},
+	}})
+	if !reflect.DeepEqual(lobby.Party, []int{1002, 1001}) || lobby.Difficulty != 3 {
+		t.Fatalf("ops loadout wrong: party=%+v diff=%d", lobby.Party, lobby.Difficulty)
+	}
+	if len(lobby.Carried) != 1 {
+		t.Fatalf("carry lost: %+v", lobby.Carried)
+	}
+
+	// 3. 非法战备操作整批拒绝，不落半截状态
+	bad := c.call(protocol.Envelope{T: protocol.MsgOps, Ops: []protocol.Op{
+		{K: protocol.OpParty, Party: []int{1002, 1001, 1001}}, // 重复 cid
+	}})
+	if bad.T != protocol.MsgErr || bad.Code != protocol.ErrCodeRejected {
+		t.Fatalf("want rejected, got %+v", bad)
+	}
+
+	// 4. 两局结算带战绩元数据
+	mustOK(c, protocol.Envelope{T: protocol.MsgSettle, RunID: "run-a", Outcome: 1, Difficulty: 3, Seed: 111, StartedAt: 1000, EndedAt: 2000, Ops: []protocol.Op{
+		{K: protocol.OpAdd, TID: 1, ItemID: 5001, Count: 1, X: 0, Y: 0},
+	}})
+	mustOK(c, protocol.Envelope{T: protocol.MsgSettle, RunID: "run-b", Outcome: 2, Difficulty: 3, Seed: 222, StartedAt: 3000, EndedAt: 4000})
+
+	// 5. 战绩按 startedAt 倒序返回，元数据完整
+	hist := c.call(protocol.Envelope{T: protocol.MsgHistory})
+	if hist.T != protocol.MsgOK || len(hist.History) != 2 {
+		t.Fatalf("history wrong: %+v", hist)
+	}
+	if hist.History[0].RunID != "run-b" || hist.History[1].RunID != "run-a" {
+		t.Fatalf("history order wrong: %+v", hist.History)
+	}
+	firstRun := hist.History[1]
+	if firstRun.Outcome != 1 || firstRun.Difficulty != 3 || firstRun.Seed != 111 || firstRun.StartedAt != 1000 || firstRun.EndedAt != 2000 {
+		t.Fatalf("history meta wrong: %+v", firstRun)
+	}
+
+	// 6. 幂等重放不产生重复战绩
+	mustOK(c, protocol.Envelope{T: protocol.MsgSettle, RunID: "run-a", Outcome: 4, Difficulty: 1, Seed: 999, StartedAt: 9000, EndedAt: 10000})
+	hist = c.call(protocol.Envelope{T: protocol.MsgHistory})
+	if len(hist.History) != 2 || hist.History[1] != firstRun {
+		t.Fatalf("idempotent settle changed history: %+v", hist.History)
+	}
+
+	// 7. 断线重连：auth 拉取的快照保持战备配置
+	_ = c.conn.Close()
+	c2 := dial(t, addr)
+	pulled := mustOK(c2, protocol.Envelope{T: protocol.MsgAuth, Token: reg.Token})
+	if !reflect.DeepEqual(pulled.Party, []int{1002, 1001}) || pulled.Difficulty != 3 || len(pulled.Carried) != 1 {
+		t.Fatalf("loadout not persisted across reconnect: party=%+v diff=%d carried=%+v", pulled.Party, pulled.Difficulty, pulled.Carried)
+	}
+	if after := mustOK(c2, protocol.Envelope{T: protocol.MsgPull}); !reflect.DeepEqual(after, pulled) {
+		t.Fatalf("pull differs from reconnect snapshot: %+v", after)
+	}
+}
+
+func TestHistoryReturnsLatest100ForCurrentUser(t *testing.T) {
+	srv := New(items(), limits())
+	sess := &session{}
+	reg := srv.dispatch(sess, protocol.Envelope{T: protocol.MsgRegister, Device: "history-limit"})
+	if reg.T != protocol.MsgOK {
+		t.Fatalf("register: %+v", reg)
+	}
+	for i := 0; i < 101; i++ {
+		resp := srv.dispatch(sess, protocol.Envelope{T: protocol.MsgSettle, RunID: fmt.Sprintf("history-%03d", i), StartedAt: int64(i), Outcome: 1})
+		if resp.T != protocol.MsgOK {
+			t.Fatalf("settle %d: %+v", i, resp)
+		}
+	}
+	hist := srv.dispatch(sess, protocol.Envelope{T: protocol.MsgHistory})
+	if hist.T != protocol.MsgOK || len(hist.History) != 100 || hist.History[0].RunID != "history-100" || hist.History[99].RunID != "history-001" {
+		t.Fatalf("history cap/order: %+v", hist)
+	}
+	other := &session{}
+	srv.dispatch(other, protocol.Envelope{T: protocol.MsgRegister, Device: "history-other"})
+	if hist := srv.dispatch(other, protocol.Envelope{T: protocol.MsgHistory}); hist.T != protocol.MsgOK || len(hist.History) != 0 {
+		t.Fatalf("other user received history: %+v", hist)
+	}
+}
+
+func TestVersionOneRejected(t *testing.T) {
+	srv := New(items(), limits())
+	ts := httptest.NewServer(srv.Handler("/ws"))
+	defer ts.Close()
+	c := dial(t, ts.Listener.Addr().String())
+	if err := c.conn.WriteMessage([]byte(`{"t":"register","v":1,"rid":1,"device":"legacy"}`)); err != nil {
+		t.Fatal(err)
+	}
+	_ = c.conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	_, raw, err := c.conn.ReadMessage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var resp protocol.Envelope
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.T != protocol.MsgErr || resp.Code != protocol.ErrCodeBadMessage || resp.V != protocol.Version {
+		t.Fatalf("legacy protocol accepted: %+v", resp)
+	}
+}
+
+func TestUnauthorizedHistoryRejected(t *testing.T) {
+	srv := New(items(), limits())
+	ts := httptest.NewServer(srv.Handler("/ws"))
+	defer ts.Close()
+
+	c := dial(t, ts.Listener.Addr().String())
+	resp := c.call(protocol.Envelope{T: protocol.MsgHistory})
+	if resp.T != protocol.MsgErr || resp.Code != protocol.ErrCodeUnauthorized {
+		t.Fatalf("want unauthorized err, got %+v", resp)
 	}
 }

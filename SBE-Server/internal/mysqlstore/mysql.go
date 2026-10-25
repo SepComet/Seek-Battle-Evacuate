@@ -140,7 +140,34 @@ func (s *Store) loadForUpdate(ctx context.Context, q queryer, userID int64) (cor
 		}
 		state.Characters = append(state.Characters, core.Character{CID: cid})
 	}
-	return state, chars.Err()
+	if err := chars.Err(); err != nil {
+		return core.State{}, err
+	}
+
+	// 战备配置（v2 起才有行；缺失 = 未配置）
+	var difficulty int
+	var partyJSON, carriedJSON sql.NullString
+	err = q.QueryRowContext(ctx,
+		`SELECT difficulty, party_json, carried_json FROM user_loadout WHERE user_id = ?`, userID).
+		Scan(&difficulty, &partyJSON, &carriedJSON)
+	if err == nil {
+		state.Difficulty = difficulty
+		if partyJSON.Valid && partyJSON.String != "" && partyJSON.String != "null" {
+			if err := json.Unmarshal([]byte(partyJSON.String), &state.Party); err != nil {
+				return core.State{}, fmt.Errorf("parse party_json: %w", err)
+			}
+		}
+		if carriedJSON.Valid && carriedJSON.String != "" && carriedJSON.String != "null" {
+			var carried []core.Stack
+			if err := json.Unmarshal([]byte(carriedJSON.String), &carried); err != nil {
+				return core.State{}, fmt.Errorf("parse carried_json: %w", err)
+			}
+			state.Carried = carried
+		}
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return core.State{}, err
+	}
+	return state, nil
 }
 
 // rewrite 全量重写用户经济行（在小规模数据量下简单可靠）。
@@ -171,11 +198,30 @@ func rewrite(ctx context.Context, tx *sql.Tx, userID int64, state core.State) er
 			return err
 		}
 	}
+
+	partyJSON, err := json.Marshal(state.Party)
+	if err != nil {
+		return err
+	}
+	carried := make([]protocol.Stack, len(state.Carried))
+	for i, st := range state.Carried {
+		carried[i] = protocol.Stack{ItemID: st.ItemID, Count: st.Count}
+	}
+	carriedJSON, err := json.Marshal(carried)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO user_loadout (user_id, difficulty, party_json, carried_json) VALUES (?,?,?,?)
+		 ON DUPLICATE KEY UPDATE difficulty = VALUES(difficulty), party_json = VALUES(party_json), carried_json = VALUES(carried_json)`,
+		userID, state.Difficulty, string(partyJSON), string(carriedJSON)); err != nil {
+		return err
+	}
 	return nil
 }
 
 // ApplySettle 实现 store.Store。
-func (s *Store) ApplySettle(ctx context.Context, userID int64, runID string, outcome int, ops []protocol.Op, items core.ItemTable) (core.State, bool, error) {
+func (s *Store) ApplySettle(ctx context.Context, userID int64, runID string, meta core.SettleMeta, ops []protocol.Op, items core.ItemTable, limits core.Limits) (core.State, bool, error) {
 	if runID == "" || len(runID) > 64 {
 		return core.State{}, false, fmt.Errorf("%w: invalid runId", core.ErrRejected)
 	}
@@ -204,7 +250,7 @@ func (s *Store) ApplySettle(ctx context.Context, userID int64, runID string, out
 	if err != nil {
 		return core.State{}, false, err
 	}
-	next, err := core.Apply(state, ops, items)
+	next, err := core.Apply(state, ops, items, limits)
 	if err != nil {
 		return core.State{}, false, err
 	}
@@ -216,8 +262,8 @@ func (s *Store) ApplySettle(ctx context.Context, userID int64, runID string, out
 		return core.State{}, false, err
 	}
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO settlements (run_id, user_id, outcome, snapshot_json) VALUES (?,?,?,?)`,
-		runID, userID, outcome, string(snapJSON)); err != nil {
+		`INSERT INTO settlements (run_id, user_id, outcome, difficulty, seed, started_at, ended_at, snapshot_json) VALUES (?,?,?,?,?,?,?,?)`,
+		runID, userID, meta.Outcome, meta.Difficulty, meta.Seed, meta.StartedAt, meta.EndedAt, string(snapJSON)); err != nil {
 		return core.State{}, false, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -227,7 +273,7 @@ func (s *Store) ApplySettle(ctx context.Context, userID int64, runID string, out
 }
 
 // ApplyOps 实现 store.Store。
-func (s *Store) ApplyOps(ctx context.Context, userID int64, ops []protocol.Op, items core.ItemTable) (core.State, error) {
+func (s *Store) ApplyOps(ctx context.Context, userID int64, ops []protocol.Op, items core.ItemTable, limits core.Limits) (core.State, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return core.State{}, err
@@ -238,7 +284,7 @@ func (s *Store) ApplyOps(ctx context.Context, userID int64, ops []protocol.Op, i
 	if err != nil {
 		return core.State{}, err
 	}
-	next, err := core.Apply(state, ops, items)
+	next, err := core.Apply(state, ops, items, limits)
 	if err != nil {
 		return core.State{}, err
 	}
@@ -252,7 +298,7 @@ func (s *Store) ApplyOps(ctx context.Context, userID int64, ops []protocol.Op, i
 }
 
 // Migrate 实现 store.Store。
-func (s *Store) Migrate(ctx context.Context, userID int64, payload protocol.MigratePayload, items core.ItemTable) (core.State, error) {
+func (s *Store) Migrate(ctx context.Context, userID int64, payload protocol.MigratePayload, items core.ItemTable, limits core.Limits) (core.State, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return core.State{}, err
@@ -272,7 +318,7 @@ func (s *Store) Migrate(ctx context.Context, userID int64, payload protocol.Migr
 	if err != nil {
 		return core.State{}, err
 	}
-	next, err := core.Migrate(state, payload, items)
+	next, err := core.Migrate(state, payload, items, limits)
 	if err != nil {
 		return core.State{}, err
 	}
@@ -286,6 +332,27 @@ func (s *Store) Migrate(ctx context.Context, userID int64, payload protocol.Migr
 		return core.State{}, err
 	}
 	return next, nil
+}
+
+// History 实现 store.Store。
+func (s *Store) History(ctx context.Context, userID int64, limit int) ([]protocol.SnapRun, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT run_id, outcome, difficulty, seed, started_at, ended_at
+		 FROM settlements WHERE user_id = ?
+		 ORDER BY started_at DESC, run_id DESC LIMIT ?`, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := make([]protocol.SnapRun, 0)
+	for rows.Next() {
+		var r protocol.SnapRun
+		if err := rows.Scan(&r.RunID, &r.Outcome, &r.Difficulty, &r.Seed, &r.StartedAt, &r.EndedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
 }
 
 type queryer interface {
@@ -303,6 +370,11 @@ func snapshotToState(snap protocol.Snapshot) core.State {
 	}
 	for _, c := range snap.Characters {
 		state.Characters = append(state.Characters, core.Character{CID: c.CID})
+	}
+	state.Party = snap.Party
+	state.Difficulty = snap.Difficulty
+	for _, st := range snap.Carried {
+		state.Carried = append(state.Carried, core.Stack{ItemID: st.ItemID, Count: st.Count})
 	}
 	state.NextUID = int64(len(state.Rows))
 	for _, r := range state.Rows {

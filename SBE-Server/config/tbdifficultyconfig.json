@@ -1,0 +1,68 @@
+[
+  {
+    "tier": 1,
+    "name": "难度1",
+    "enemyParties": [
+      {
+        "threat": 0,
+        "weight": 30
+      },
+      {
+        "threat": 1,
+        "weight": 50
+      },
+      {
+        "threat": 2,
+        "weight": 15
+      },
+      {
+        "threat": 3,
+        "weight": 5
+      }
+    ]
+  },
+  {
+    "tier": 2,
+    "name": "难度2",
+    "enemyParties": [
+      {
+        "threat": 0,
+        "weight": 10
+      },
+      {
+        "threat": 1,
+        "weight": 50
+      },
+      {
+        "threat": 2,
+        "weight": 25
+      },
+      {
+        "threat": 3,
+        "weight": 15
+      }
+    ]
+  },
+  {
+    "tier": 3,
+    "name": "难度3",
+    "enemyParties": [
+      {
+        "threat": 0,
+        "weight": 0
+      },
+      {
+        "threat": 1,
+        "weight": 40
+      },
+      {
+        "threat": 2,
+        "weight": 30
+      },
+      {
+        "threat": 3,
+        "weight": 30
+      }
+    ]
+  }
+]

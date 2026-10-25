@@ -18,7 +18,7 @@ func TestMigrateBuildsInitialState(t *testing.T) {
 			{CID: 1002, WeaponItemID: 0, ArmorItemID: 5201},
 		},
 	}
-	next, err := Migrate(s, payload, testItems())
+	next, err := Migrate(s, payload, testItems(), testLimits())
 	if err != nil {
 		t.Fatalf("Migrate returned error: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestMigrateRejectsUnknownItem(t *testing.T) {
 		Items:      []protocol.MigrateItem{{ItemID: 9999, Count: 1}},
 		Characters: []protocol.MigrateChar{{CID: 1001}},
 	}
-	if _, err := Migrate(State{}, payload, testItems()); err == nil {
+	if _, err := Migrate(State{}, payload, testItems(), testLimits()); err == nil {
 		t.Fatal("want error for unknown item")
 	}
 }
@@ -56,7 +56,7 @@ func TestMigrateRejectsGearSlotMismatch(t *testing.T) {
 	payload := protocol.MigratePayload{
 		Characters: []protocol.MigrateChar{{CID: 1001, WeaponItemID: 5201}}, // 防具塞进武器栏
 	}
-	if _, err := Migrate(State{}, payload, testItems()); err == nil {
+	if _, err := Migrate(State{}, payload, testItems(), testLimits()); err == nil {
 		t.Fatal("want error for slot mismatch")
 	}
 }
@@ -64,7 +64,7 @@ func TestMigrateRejectsGearSlotMismatch(t *testing.T) {
 func TestMigrateRejectsNonEmptyState(t *testing.T) {
 	s := State{Rows: []Row{{UID: 1, ItemID: 5001, Count: 1}}}
 	payload := protocol.MigratePayload{Characters: []protocol.MigrateChar{{CID: 1001}}}
-	if _, err := Migrate(s, payload, testItems()); err == nil {
+	if _, err := Migrate(s, payload, testItems(), testLimits()); err == nil {
 		t.Fatal("want error for non-empty state")
 	}
 }

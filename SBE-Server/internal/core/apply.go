@@ -6,10 +6,10 @@ import (
 	"sbe-server/internal/protocol"
 )
 
-// Apply 将一批经济操作按顺序应用到状态上。
+// Apply 将一批局外操作按顺序应用到状态上。
 // 任何一条操作校验失败即整体失败：返回原状态与错误，不产生部分应用（原子性）。
 // tid 解析仅限本批：先执行的 add 操作铸造的 UID 可被后续 wear 以 tid 引用。
-func Apply(s State, ops []protocol.Op, items ItemTable) (State, error) {
+func Apply(s State, ops []protocol.Op, items ItemTable, limits Limits) (State, error) {
 	next := s.Clone()
 	tidUID := make(map[int]int64)
 
@@ -28,6 +28,12 @@ func Apply(s State, ops []protocol.Op, items ItemTable) (State, error) {
 			err = applyWear(&next, op, items, tidUID)
 		case protocol.OpRecruit:
 			err = applyRecruit(&next, op)
+		case protocol.OpParty:
+			err = applyParty(&next, op, limits)
+		case protocol.OpDiff:
+			err = applyDifficulty(&next, op, limits)
+		case protocol.OpCarry:
+			err = applyCarry(&next, op, items, limits)
 		default:
 			err = fmt.Errorf("unknown op kind %q", op.K)
 		}
@@ -194,5 +200,68 @@ func applyRecruit(s *State, op protocol.Op) error {
 		return fmt.Errorf("%w: duplicate character %d", ErrRejected, op.CID)
 	}
 	s.Characters = append(s.Characters, Character{CID: op.CID})
+	return nil
+}
+
+// applyParty 整队替换出战队列：顺序即出战序。空队合法（未配置/编辑中间态）。
+func applyParty(s *State, op protocol.Op, limits Limits) error {
+	if limits.MaxPlayerPartySize <= 0 {
+		return fmt.Errorf("%w: MaxPlayerPartySize not configured", ErrRejected)
+	}
+	if len(op.Party) > limits.MaxPlayerPartySize {
+		return fmt.Errorf("%w: party size %d exceeds max %d", ErrRejected, len(op.Party), limits.MaxPlayerPartySize)
+	}
+	seen := make(map[int]bool, len(op.Party))
+	for _, cid := range op.Party {
+		if cid <= 0 {
+			return fmt.Errorf("%w: invalid cid %d", ErrRejected, cid)
+		}
+		if !s.hasCharacter(cid) {
+			return fmt.Errorf("%w: character %d not in roster", ErrRejected, cid)
+		}
+		if seen[cid] {
+			return fmt.Errorf("%w: duplicate character %d", ErrRejected, cid)
+		}
+		seen[cid] = true
+	}
+	party := make([]int, len(op.Party))
+	copy(party, op.Party)
+	s.Party = party
+	return nil
+}
+
+func applyDifficulty(s *State, op protocol.Op, limits Limits) error {
+	if op.Difficulty < 0 {
+		return fmt.Errorf("%w: negative difficulty %d", ErrRejected, op.Difficulty)
+	}
+	if op.Difficulty != 0 && !limits.Difficulties[op.Difficulty] {
+		return fmt.Errorf("%w: unknown difficulty %d", ErrRejected, op.Difficulty)
+	}
+	s.Difficulty = op.Difficulty
+	return nil
+}
+
+// applyCarry 携带计划整表替换：无格位无实例身份，逐条校验物品合法性。
+func applyCarry(s *State, op protocol.Op, items ItemTable, limits Limits) error {
+	if limits.BackpackSlotCount <= 0 {
+		return fmt.Errorf("%w: BackpackSlotCount not configured", ErrRejected)
+	}
+	if len(op.Carry) > limits.BackpackSlotCount {
+		return fmt.Errorf("%w: carry %d stacks exceeds backpack slots %d", ErrRejected, len(op.Carry), limits.BackpackSlotCount)
+	}
+	for _, st := range op.Carry {
+		def, ok := items.Get(st.ItemID)
+		if !ok {
+			return fmt.Errorf("%w: unknown itemId %d", ErrRejected, st.ItemID)
+		}
+		if st.Count <= 0 || st.Count > def.StackLimit {
+			return fmt.Errorf("%w: itemId %d count %d exceeds stackLimit %d", ErrRejected, st.ItemID, st.Count, def.StackLimit)
+		}
+	}
+	carried := make([]Stack, len(op.Carry))
+	for i, st := range op.Carry {
+		carried[i] = Stack{ItemID: st.ItemID, Count: st.Count}
+	}
+	s.Carried = carried
 	return nil
 }

@@ -4,6 +4,7 @@ package memorystore
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 
 	"sbe-server/internal/core"
@@ -22,7 +23,8 @@ type Store struct {
 	usersByDevice map[string]int64
 	usersByID     map[int64]*user
 	tokens        map[string]int64
-	settles       map[string]core.State // runId -> 首次结算后的状态（幂等命中时返回）
+	settles       map[string]core.State        // runId -> 首次结算后的状态（幂等命中时返回）
+	runs          map[int64][]protocol.SnapRun // userID -> 战绩审计记录（追加序，查询时排序）
 	nextUserID    int64
 }
 
@@ -33,6 +35,7 @@ func New() *Store {
 		usersByID:     make(map[int64]*user),
 		tokens:        make(map[string]int64),
 		settles:       make(map[string]core.State),
+		runs:          make(map[int64][]protocol.SnapRun),
 	}
 }
 
@@ -83,7 +86,7 @@ func (s *Store) Load(_ context.Context, userID int64) (core.State, error) {
 }
 
 // ApplySettle 实现 store.Store。
-func (s *Store) ApplySettle(_ context.Context, userID int64, runID string, outcome int, ops []protocol.Op, items core.ItemTable) (core.State, bool, error) {
+func (s *Store) ApplySettle(_ context.Context, userID int64, runID string, meta core.SettleMeta, ops []protocol.Op, items core.ItemTable, limits core.Limits) (core.State, bool, error) {
 	if runID == "" || len(runID) > 64 {
 		return core.State{}, false, fmt.Errorf("%w: invalid runId", core.ErrRejected)
 	}
@@ -99,18 +102,21 @@ func (s *Store) ApplySettle(_ context.Context, userID int64, runID string, outco
 		return prev.Clone(), true, nil
 	}
 
-	next, err := core.Apply(u.state, ops, items)
+	next, err := core.Apply(u.state, ops, items, limits)
 	if err != nil {
 		return core.State{}, false, err
 	}
 	u.state = next
 	s.settles[runID] = next
-	_ = outcome // 结局仅记录用途（审计），内存实现不落库
+	s.runs[userID] = append(s.runs[userID], protocol.SnapRun{
+		RunID: runID, Outcome: meta.Outcome, Difficulty: meta.Difficulty,
+		Seed: meta.Seed, StartedAt: meta.StartedAt, EndedAt: meta.EndedAt,
+	})
 	return next.Clone(), false, nil
 }
 
 // ApplyOps 实现 store.Store。
-func (s *Store) ApplyOps(_ context.Context, userID int64, ops []protocol.Op, items core.ItemTable) (core.State, error) {
+func (s *Store) ApplyOps(_ context.Context, userID int64, ops []protocol.Op, items core.ItemTable, limits core.Limits) (core.State, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -118,7 +124,7 @@ func (s *Store) ApplyOps(_ context.Context, userID int64, ops []protocol.Op, ite
 	if !ok {
 		return core.State{}, fmt.Errorf("store: unknown user %d", userID)
 	}
-	next, err := core.Apply(u.state, ops, items)
+	next, err := core.Apply(u.state, ops, items, limits)
 	if err != nil {
 		return core.State{}, err
 	}
@@ -127,7 +133,7 @@ func (s *Store) ApplyOps(_ context.Context, userID int64, ops []protocol.Op, ite
 }
 
 // Migrate 实现 store.Store。
-func (s *Store) Migrate(_ context.Context, userID int64, payload protocol.MigratePayload, items core.ItemTable) (core.State, error) {
+func (s *Store) Migrate(_ context.Context, userID int64, payload protocol.MigratePayload, items core.ItemTable, limits core.Limits) (core.State, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -138,10 +144,31 @@ func (s *Store) Migrate(_ context.Context, userID int64, payload protocol.Migrat
 	if u.state.Initialized {
 		return core.State{}, store.ErrAlreadyInitialized
 	}
-	next, err := core.Migrate(u.state, payload, items)
+	next, err := core.Migrate(u.state, payload, items, limits)
 	if err != nil {
 		return core.State{}, err
 	}
 	u.state = next
 	return next.Clone(), nil
+}
+
+// History 实现 store.Store。
+func (s *Store) History(_ context.Context, userID int64, limit int) ([]protocol.SnapRun, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	all := s.runs[userID]
+	out := make([]protocol.SnapRun, len(all))
+	copy(out, all)
+	// startedAt 倒序；同刻按 runId 倒序保证排序稳定
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].StartedAt != out[j].StartedAt {
+			return out[i].StartedAt > out[j].StartedAt
+		}
+		return out[i].RunID > out[j].RunID
+	})
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
 }

@@ -19,6 +19,29 @@ type ItemTable interface {
 	Get(itemID int) (ItemDef, bool)
 }
 
+// Limits 校验所需的全局约束与难度枚举，由配置加载层组装
+// （MaxPlayerPartySize/BackpackSlotCount 取自 tbglobalconfig，Difficulties 取自 tbdifficultyconfig）。
+type Limits struct {
+	MaxPlayerPartySize int
+	BackpackSlotCount  int
+	Difficulties       map[int]bool
+}
+
+// Stack 无实例身份的物品堆（携带计划条目）。
+type Stack struct {
+	ItemID int
+	Count  int
+}
+
+// SettleMeta 结算上报的战绩元数据，落 settlements 审计列。
+type SettleMeta struct {
+	Outcome    int
+	Difficulty int
+	Seed       int64
+	StartedAt  int64
+	EndedAt    int64
+}
+
 // Row 仓库物品行。装备行以 Wearer>0 表示穿在对应角色身上（此时网格坐标无意义）。
 type Row struct {
 	UID     int64
@@ -30,15 +53,19 @@ type Row struct {
 	Wearer  int
 }
 
-// Character 花名册角色，顺序即入队次序。
+// Character 花名册角色，顺序即招募次序（出战队列由 State.Party 单独表达）。
 type Character struct {
 	CID int
 }
 
-// State 一名玩家的完整局外经济状态。
+// State 一名玩家的完整局外状态。
+// Party/Difficulty/Carried 为战备配置：空队列、难度 0、空携带 = 未配置（合法编辑中间态）。
 type State struct {
 	Rows        []Row
 	Characters  []Character
+	Party       []int   // 出战角色 ID 及顺序
+	Difficulty  int     // 难度枚举，0=未配置
+	Carried     []Stack // 携带计划
 	NextUID     int64
 	Initialized bool
 }
@@ -62,6 +89,13 @@ func (s State) ToSnapshot() protocol.Snapshot {
 	for _, c := range s.Characters {
 		snap.Characters = append(snap.Characters, protocol.SnapChar{CID: c.CID})
 	}
+	snap.Party = make([]int, len(s.Party))
+	copy(snap.Party, s.Party)
+	snap.Difficulty = s.Difficulty
+	snap.Carried = make([]protocol.Stack, len(s.Carried))
+	for i, st := range s.Carried {
+		snap.Carried[i] = protocol.Stack{ItemID: st.ItemID, Count: st.Count}
+	}
 	return snap
 }
 
@@ -70,11 +104,16 @@ func (s State) Clone() State {
 	out := State{
 		Rows:        make([]Row, len(s.Rows)),
 		Characters:  make([]Character, len(s.Characters)),
+		Party:       make([]int, len(s.Party)),
+		Difficulty:  s.Difficulty,
+		Carried:     make([]Stack, len(s.Carried)),
 		NextUID:     s.NextUID,
 		Initialized: s.Initialized,
 	}
 	copy(out.Rows, s.Rows)
 	copy(out.Characters, s.Characters)
+	copy(out.Party, s.Party)
+	copy(out.Carried, s.Carried)
 	return out
 }
 

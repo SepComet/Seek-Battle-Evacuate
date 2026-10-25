@@ -20,15 +20,19 @@ import (
 // ridCacheSize 每连接保留的最近请求应答数，用于消息重试去重。
 const ridCacheSize = 64
 
+// historyLimit history 消息返回的最大战绩条数。
+const historyLimit = 100
+
 // Server 应用服务器。
 type Server struct {
-	Store store.Store
-	Items core.ItemTable
+	Store  store.Store
+	Items  core.ItemTable
+	Limits core.Limits
 }
 
 // New 创建应用服务器（内存存储；生产部署见 cmd/sbe-server 的 mysql 变体）。
-func New(items core.ItemTable) *Server {
-	return &Server{Store: memorystore.New(), Items: items}
+func New(items core.ItemTable, limits core.Limits) *Server {
+	return &Server{Store: memorystore.New(), Items: items, Limits: limits}
 }
 
 // Handler 返回挂载在指定路径的 WebSocket http.Handler。
@@ -119,16 +123,18 @@ func detailFor(env *protocol.Envelope, resp *protocol.Envelope) string {
 	switch env.T {
 	case protocol.MsgMigrate:
 		if env.Migrate != nil && resp.Snapshot != nil {
-			return fmt.Sprintf(" migrate: %d items, %d chars", len(env.Migrate.Items), len(env.Migrate.Characters))
+			return fmt.Sprintf(" migrate: %d items, %d chars, party=%d", len(env.Migrate.Items), len(env.Migrate.Characters), len(env.Migrate.Party))
 		}
 	case protocol.MsgSettle:
 		if resp.Snapshot != nil {
-			return fmt.Sprintf(" settle: run=%s outcome=%d rows=%d", env.RunID, env.Outcome, len(resp.Snapshot.Items))
+			return fmt.Sprintf(" settle: run=%s outcome=%d diff=%d rows=%d", env.RunID, env.Outcome, env.Difficulty, len(resp.Snapshot.Items))
 		}
 	case protocol.MsgPull:
 		if resp.Snapshot != nil {
-			return fmt.Sprintf(" pull: rows=%d chars=%d", len(resp.Snapshot.Items), len(resp.Snapshot.Characters))
+			return fmt.Sprintf(" pull: rows=%d chars=%d party=%d", len(resp.Snapshot.Items), len(resp.Snapshot.Characters), len(resp.Snapshot.Party))
 		}
+	case protocol.MsgHistory:
+		return fmt.Sprintf(" history: %d runs", len(resp.History))
 	}
 	return ""
 }
@@ -139,6 +145,10 @@ func (s *Server) dispatch(sess *session, env protocol.Envelope) protocol.Envelop
 		return s.doRegister(sess, env)
 	case protocol.MsgAuth:
 		return s.doAuth(sess, env)
+	case protocol.MsgPing:
+		return s.requireAuth(sess, env, func() (protocol.Envelope, error) {
+			return protocol.Envelope{T: protocol.MsgOK, V: protocol.Version, RID: env.RID}, nil
+		})
 	case protocol.MsgPull:
 		return s.requireAuth(sess, env, func() (protocol.Envelope, error) {
 			state, err := s.Store.Load(context.Background(), sess.userID)
@@ -152,7 +162,7 @@ func (s *Server) dispatch(sess *session, env protocol.Envelope) protocol.Envelop
 			if env.Migrate == nil {
 				return protocol.Envelope{}, fmt.Errorf("missing migrate payload")
 			}
-			state, err := s.Store.Migrate(context.Background(), sess.userID, *env.Migrate, s.Items)
+			state, err := s.Store.Migrate(context.Background(), sess.userID, *env.Migrate, s.Items, s.Limits)
 			if err != nil {
 				return protocol.Envelope{}, err
 			}
@@ -160,7 +170,14 @@ func (s *Server) dispatch(sess *session, env protocol.Envelope) protocol.Envelop
 		})
 	case protocol.MsgSettle:
 		return s.requireAuth(sess, env, func() (protocol.Envelope, error) {
-			state, already, err := s.Store.ApplySettle(context.Background(), sess.userID, env.RunID, env.Outcome, env.Ops, s.Items)
+			meta := core.SettleMeta{
+				Outcome:    env.Outcome,
+				Difficulty: env.Difficulty,
+				Seed:       env.Seed,
+				StartedAt:  env.StartedAt,
+				EndedAt:    env.EndedAt,
+			}
+			state, already, err := s.Store.ApplySettle(context.Background(), sess.userID, env.RunID, meta, env.Ops, s.Items, s.Limits)
 			if err != nil {
 				return protocol.Envelope{}, err
 			}
@@ -173,11 +190,24 @@ func (s *Server) dispatch(sess *session, env protocol.Envelope) protocol.Envelop
 		})
 	case protocol.MsgOps:
 		return s.requireAuth(sess, env, func() (protocol.Envelope, error) {
-			state, err := s.Store.ApplyOps(context.Background(), sess.userID, env.Ops, s.Items)
+			state, err := s.Store.ApplyOps(context.Background(), sess.userID, env.Ops, s.Items, s.Limits)
 			if err != nil {
 				return protocol.Envelope{}, err
 			}
 			return okEnv(env, state), nil
+		})
+	case protocol.MsgHistory:
+		return s.requireAuth(sess, env, func() (protocol.Envelope, error) {
+			runs, err := s.Store.History(context.Background(), sess.userID, historyLimit)
+			if err != nil {
+				return protocol.Envelope{}, err
+			}
+			return protocol.Envelope{
+				T:       protocol.MsgOK,
+				V:       protocol.Version,
+				RID:     env.RID,
+				History: runs,
+			}, nil
 		})
 	default:
 		return errEnv(env, protocol.ErrCodeBadMessage, "unknown message type "+env.T)
@@ -196,6 +226,7 @@ func (s *Server) doRegister(sess *session, env protocol.Envelope) protocol.Envel
 	}
 	resp := okEnv(env, state)
 	resp.Token = token
+	resp.UserID = userID
 	return resp
 }
 
@@ -209,7 +240,9 @@ func (s *Server) doAuth(sess *session, env protocol.Envelope) protocol.Envelope 
 	if err != nil {
 		return errEnv(env, protocol.ErrCodeInternal, err.Error())
 	}
-	return okEnv(env, state)
+	resp := okEnv(env, state)
+	resp.UserID = userID
+	return resp
 }
 
 func (s *Server) requireAuth(sess *session, env protocol.Envelope, fn func() (protocol.Envelope, error)) protocol.Envelope {

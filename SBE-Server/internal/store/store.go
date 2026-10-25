@@ -35,15 +35,19 @@ type Store interface {
 	// Auth 校验 token，返回所属用户。
 	Auth(ctx context.Context, token string) (userID int64, err error)
 
-	// Load 读取用户完整经济状态。
+	// Load 读取用户完整局外状态。
 	Load(ctx context.Context, userID int64) (core.State, error)
 
 	// ApplySettle 应用一次结算。runId 全局唯一：重复提交返回首次结果与 already=true。
-	ApplySettle(ctx context.Context, userID int64, runID string, outcome int, ops []protocol.Op, items core.ItemTable) (state core.State, already bool, err error)
+	// meta 落战绩审计列（幂等命中时不重复写）。
+	ApplySettle(ctx context.Context, userID int64, runID string, meta core.SettleMeta, ops []protocol.Op, items core.ItemTable, limits core.Limits) (state core.State, already bool, err error)
 
 	// ApplyOps 应用一批大厅操作（无 runId 幂等，幂等由会话层 rid 缓存负责）。
-	ApplyOps(ctx context.Context, userID int64, ops []protocol.Op, items core.ItemTable) (core.State, error)
+	ApplyOps(ctx context.Context, userID int64, ops []protocol.Op, items core.ItemTable, limits core.Limits) (core.State, error)
 
 	// Migrate 初始化用户状态；已初始化时返回 ErrAlreadyInitialized。
-	Migrate(ctx context.Context, userID int64, payload protocol.MigratePayload, items core.ItemTable) (core.State, error)
+	Migrate(ctx context.Context, userID int64, payload protocol.MigratePayload, items core.ItemTable, limits core.Limits) (core.State, error)
+
+	// History 返回用户最近战绩，按 startedAt 倒序，最多 limit 条。
+	History(ctx context.Context, userID int64, limit int) ([]protocol.SnapRun, error)
 }

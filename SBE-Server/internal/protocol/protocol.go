@@ -4,7 +4,8 @@
 package protocol
 
 // Version 协议版本号，随消息携带，为将来灰度升级预留。
-const Version = 1
+// v2：新增 party/difficulty/carry 操作、快照战备字段、settle 战绩元数据与 history 消息。
+const Version = 2
 
 // 消息类型。
 const (
@@ -13,7 +14,9 @@ const (
 	MsgPull     = "pull"     // 拉取全量经济快照
 	MsgMigrate  = "migrate"  // 首登迁移/初始化，body: migrate
 	MsgSettle   = "settle"   // 局结算对账（幂等），body: runId, outcome, ops
-	MsgOps      = "ops"      // 大厅零散操作批次（穿卸/布局/消耗），body: ops
+	MsgOps      = "ops"      // 大厅零散操作批次（穿卸/布局/消耗/战备配置），body: ops
+	MsgHistory  = "history"  // 拉取最近战绩（settlements 审计数据）
+	MsgPing     = "ping"     // 已登录会话的轻量往返探测，不携带经济快照
 
 	MsgOK  = "ok"
 	MsgErr = "err"
@@ -29,12 +32,15 @@ const (
 
 // OpKind 操作类型。
 const (
-	OpAdd     = "add"     // 新增物品行（战利品/新铸造），由服务器铸 UID；tid 为批内临时引用 ID
-	OpDel     = "del"     // 删除/扣减已有行：count=0 表示整行删除，否则按数量扣减
-	OpMov     = "mov"     // 仓库网格内已有行移动/旋转（含携带品归位）
-	OpRel     = "rel"     // 穿戴行卸下回仓库网格（wearer 清零并落位）
-	OpWear    = "wear"    // 穿上装备：引用 uid / tid / itemId 三选一
-	OpRecruit = "recruit" // 花名册新增角色
+	OpAdd     = "add"        // 新增物品行（战利品/新铸造），由服务器铸 UID；tid 为批内临时引用 ID
+	OpDel     = "del"        // 删除/扣减已有行：count=0 表示整行删除，否则按数量扣减
+	OpMov     = "mov"        // 仓库网格内已有行移动/旋转（含携带品归位）
+	OpRel     = "rel"        // 穿戴行卸下回仓库网格（wearer 清零并落位）
+	OpWear    = "wear"       // 穿上装备：引用 uid / tid / itemId 三选一
+	OpRecruit = "recruit"    // 花名册新增角色
+	OpParty   = "party"      // 出战队列整队替换（顺序即出战序，空队=未配置）
+	OpDiff    = "difficulty" // 设置难度枚举（0=未配置）
+	OpCarry   = "carry"      // 携带计划整表替换（无格位无实例身份）
 )
 
 // Op 经济操作。字段按操作类型取用，其余留零。
@@ -56,6 +62,18 @@ type Op struct {
 	CID int `json:"cid,omitempty"`
 	// Slot 装备槽：1=武器，2=防具，与客户端 EquipmentSlotType 一致。
 	Slot int `json:"slot,omitempty"`
+	// Party 出战角色 ID 及顺序（party 操作：整队替换，可为空）。
+	Party []int `json:"party,omitempty"`
+	// Difficulty 难度枚举值（difficulty 操作，0=未配置）。
+	Difficulty int `json:"difficulty,omitempty"`
+	// Carry 携带计划（carry 操作：整表替换，可为空）。
+	Carry []Stack `json:"carry,omitempty"`
+}
+
+// Stack 无实例身份的物品堆（携带计划条目）。
+type Stack struct {
+	ItemID int `json:"itemId"`
+	Count  int `json:"count"`
 }
 
 // MigrateItem 迁移上传的仓库物品（无 UID，服务器统一铸造）。
@@ -78,6 +96,10 @@ type MigrateChar struct {
 type MigratePayload struct {
 	Items      []MigrateItem `json:"items"`
 	Characters []MigrateChar `json:"characters"`
+	// 战备配置（缺省 = 未配置）：出战队列、难度、携带计划。
+	Party      []int   `json:"party,omitempty"`
+	Difficulty int     `json:"difficulty,omitempty"`
+	Carried    []Stack `json:"carried,omitempty"`
 }
 
 // SnapRow 快照中的物品行。
@@ -92,9 +114,19 @@ type SnapRow struct {
 	Wearer int `json:"wearer"`
 }
 
-// SnapChar 快照中的花名册条目（保持顺序，顺序即入队次序）。
+// SnapChar 快照中的花名册条目（顺序即招募次序，出战队列单独由 Party 表达）。
 type SnapChar struct {
 	CID int `json:"cid"`
+}
+
+// SnapRun 战绩记录（history 响应条目）。
+type SnapRun struct {
+	RunID      string `json:"runId"`
+	Outcome    int    `json:"outcome"`
+	Difficulty int    `json:"difficulty"`
+	Seed       int64  `json:"seed"`
+	StartedAt  int64  `json:"startedAt"`
+	EndedAt    int64  `json:"endedAt"`
 }
 
 // Snapshot 全量经济快照，服务器为唯一真源。
@@ -102,6 +134,10 @@ type Snapshot struct {
 	Items       []SnapRow  `json:"items"`
 	Characters  []SnapChar `json:"characters"`
 	Initialized bool       `json:"initialized"`
+	// 战备配置：出战队列（空=未配置）、难度（0=未配置）、携带计划。
+	Party      []int   `json:"party,omitempty"`
+	Difficulty int     `json:"difficulty,omitempty"`
+	Carried    []Stack `json:"carried,omitempty"`
 }
 
 // Envelope 消息信封。
@@ -112,11 +148,20 @@ type Envelope struct {
 	// Device register 时的设备 UUID。
 	Device string `json:"device,omitempty"`
 	// Token auth 时的令牌；ok 响应时为下发的新令牌。
-	Token   string          `json:"token,omitempty"`
+	Token string `json:"token,omitempty"`
+	// UserID register/auth 成功时返回的稳定账号标识，不是认证凭据。
+	UserID  int64           `json:"userId,omitempty"`
 	RunID   string          `json:"runId,omitempty"`
 	Outcome int             `json:"outcome,omitempty"`
 	Ops     []Op            `json:"ops,omitempty"`
 	Migrate *MigratePayload `json:"migrate,omitempty"`
+	// settle 携带的战绩元数据，落 settlements 审计列。
+	Difficulty int   `json:"difficulty,omitempty"`
+	Seed       int64 `json:"seed,omitempty"`
+	StartedAt  int64 `json:"startedAt,omitempty"`
+	EndedAt    int64 `json:"endedAt,omitempty"`
+	// history 响应携带的战绩列表（其余 ok 响应携带 Snapshot）。
+	History []SnapRun `json:"history,omitempty"`
 	// Snapshot ok 响应携带的权威快照。
 	Snapshot *Snapshot `json:"snapshot,omitempty"`
 	// Code/Msg err 响应的错误码与说明。
