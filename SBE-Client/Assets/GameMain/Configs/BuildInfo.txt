@@ -1,0 +1,10 @@
+{
+  "GameVersion": "0.1.0",
+  "InternalGameVersion": 0,
+  "CheckVersionUrl": "https://sepcomet.xyz/Resources/{0}Version.txt",
+  "WindowsAppUrl": "https://sepcomet.xyz",
+  "MacOSAppUrl": "https://sepcomet.xyz",
+  "IOSAppUrl": "https://sepcomet.xyz",
+  "AndroidAppUrl": "https://sepcomet.xyz",
+  "END_OF_JSON": ""
+}

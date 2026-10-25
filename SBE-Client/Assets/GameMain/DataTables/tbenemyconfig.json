@@ -1,0 +1,195 @@
+[
+  {
+    "id": 3001,
+    "name": "敌人1",
+    "maxHp": 50,
+    "maxMp": 0,
+    "atk": 8,
+    "mat": 0,
+    "speed": 8,
+    "threatLevelId": 1,
+    "aiType": 1,
+    "actionIds": [
+      201
+    ],
+    "dropTableId": 1,
+    "icon": "敌人1"
+  },
+  {
+    "id": 3002,
+    "name": "敌人2",
+    "maxHp": 80,
+    "maxMp": 0,
+    "atk": 12,
+    "mat": 0,
+    "speed": 10,
+    "threatLevelId": 2,
+    "aiType": 1,
+    "actionIds": [
+      201
+    ],
+    "dropTableId": 2,
+    "icon": "敌人2"
+  },
+  {
+    "id": 3003,
+    "name": "敌人3",
+    "maxHp": 60,
+    "maxMp": 30,
+    "atk": 6,
+    "mat": 12,
+    "speed": 12,
+    "threatLevelId": 3,
+    "aiType": 1,
+    "actionIds": [
+      201,
+      202
+    ],
+    "dropTableId": 3,
+    "icon": "敌人3"
+  },
+  {
+    "id": 3004,
+    "name": "敌人4",
+    "maxHp": 80,
+    "maxMp": 0,
+    "atk": 12,
+    "mat": 0,
+    "speed": 10,
+    "threatLevelId": 2,
+    "aiType": 1,
+    "actionIds": [
+      201
+    ],
+    "dropTableId": 2,
+    "icon": "敌人4"
+  },
+  {
+    "id": 3005,
+    "name": "敌人5",
+    "maxHp": 80,
+    "maxMp": 0,
+    "atk": 12,
+    "mat": 0,
+    "speed": 10,
+    "threatLevelId": 2,
+    "aiType": 1,
+    "actionIds": [
+      201
+    ],
+    "dropTableId": 2,
+    "icon": "敌人5"
+  },
+  {
+    "id": 3006,
+    "name": "敌人6",
+    "maxHp": 80,
+    "maxMp": 0,
+    "atk": 12,
+    "mat": 0,
+    "speed": 10,
+    "threatLevelId": 2,
+    "aiType": 1,
+    "actionIds": [
+      201
+    ],
+    "dropTableId": 2,
+    "icon": "敌人6"
+  },
+  {
+    "id": 3007,
+    "name": "敌人7",
+    "maxHp": 80,
+    "maxMp": 0,
+    "atk": 12,
+    "mat": 0,
+    "speed": 10,
+    "threatLevelId": 2,
+    "aiType": 1,
+    "actionIds": [
+      201
+    ],
+    "dropTableId": 2,
+    "icon": "敌人7"
+  },
+  {
+    "id": 3008,
+    "name": "敌人8",
+    "maxHp": 80,
+    "maxMp": 0,
+    "atk": 12,
+    "mat": 0,
+    "speed": 10,
+    "threatLevelId": 2,
+    "aiType": 1,
+    "actionIds": [
+      201
+    ],
+    "dropTableId": 2,
+    "icon": "敌人8"
+  },
+  {
+    "id": 3009,
+    "name": "敌人9",
+    "maxHp": 80,
+    "maxMp": 0,
+    "atk": 12,
+    "mat": 0,
+    "speed": 10,
+    "threatLevelId": 2,
+    "aiType": 1,
+    "actionIds": [
+      201
+    ],
+    "dropTableId": 2,
+    "icon": "敌人9"
+  },
+  {
+    "id": 3010,
+    "name": "敌人10",
+    "maxHp": 80,
+    "maxMp": 0,
+    "atk": 12,
+    "mat": 0,
+    "speed": 10,
+    "threatLevelId": 2,
+    "aiType": 1,
+    "actionIds": [
+      201
+    ],
+    "dropTableId": 2,
+    "icon": "敌人10"
+  },
+  {
+    "id": 3011,
+    "name": "敌人11",
+    "maxHp": 80,
+    "maxMp": 0,
+    "atk": 12,
+    "mat": 0,
+    "speed": 10,
+    "threatLevelId": 2,
+    "aiType": 1,
+    "actionIds": [
+      201
+    ],
+    "dropTableId": 2,
+    "icon": "敌人11"
+  },
+  {
+    "id": 3012,
+    "name": "敌人12",
+    "maxHp": 80,
+    "maxMp": 0,
+    "atk": 12,
+    "mat": 0,
+    "speed": 10,
+    "threatLevelId": 2,
+    "aiType": 1,
+    "actionIds": [
+      201
+    ],
+    "dropTableId": 2,
+    "icon": "敌人12"
+  }
+]

@@ -1,0 +1,58 @@
+[
+  {
+    "assetName": "ItemEntity",
+    "prefabPath": "ItemEntity.prefab"
+  },
+  {
+    "assetName": "WorldFloatText",
+    "prefabPath": "WorldFloatText.prefab"
+  },
+  {
+    "assetName": "ResourcePoint1",
+    "prefabPath": "ResourcePoint/ResourcePoint1.prefab"
+  },
+  {
+    "assetName": "ResourcePoint2",
+    "prefabPath": "ResourcePoint/ResourcePoint2.prefab"
+  },
+  {
+    "assetName": "ResourcePoint3",
+    "prefabPath": "ResourcePoint/ResourcePoint3.prefab"
+  },
+  {
+    "assetName": "ResourcePoint4",
+    "prefabPath": "ResourcePoint/ResourcePoint4.prefab"
+  },
+  {
+    "assetName": "ResourcePoint5",
+    "prefabPath": "ResourcePoint/ResourcePoint5.prefab"
+  },
+  {
+    "assetName": "EnemyPartyLowThreat",
+    "prefabPath": "EnemyUnit/EnemyPartyLowThreat.prefab"
+  },
+  {
+    "assetName": "EnemyPartyMiddleThreat",
+    "prefabPath": "EnemyUnit/EnemyPartyMiddleThreat.prefab"
+  },
+  {
+    "assetName": "EnemyPartyHighThreat",
+    "prefabPath": "EnemyUnit/EnemyPartyHighThreat.prefab"
+  },
+  {
+    "assetName": "CharacterLeader",
+    "prefabPath": "Character/CharacterLeader.prefab"
+  },
+  {
+    "assetName": "CharacterRetinue",
+    "prefabPath": "Character/CharacterRetinue.prefab"
+  },
+  {
+    "assetName": "EvacuatePoint",
+    "prefabPath": "Map/EvacuatePoint.prefab"
+  },
+  {
+    "assetName": "MainCamera",
+    "prefabPath": "Map/MainCamera.prefab"
+  }
+]

@@ -1,0 +1,107 @@
+[
+  {
+    "id": 1,
+    "lootConfigs": [
+      {
+        "difficulty": 1,
+        "minCount": 1,
+        "maxCount": 2,
+        "whiteWeight": 85,
+        "greenWeight": 13,
+        "blueWeight": 2,
+        "goldWeight": 0,
+        "redWeight": 0
+      },
+      {
+        "difficulty": 2,
+        "minCount": 1,
+        "maxCount": 3,
+        "whiteWeight": 65,
+        "greenWeight": 25,
+        "blueWeight": 8,
+        "goldWeight": 2,
+        "redWeight": 0
+      },
+      {
+        "difficulty": 3,
+        "minCount": 2,
+        "maxCount": 3,
+        "whiteWeight": 45,
+        "greenWeight": 30,
+        "blueWeight": 15,
+        "goldWeight": 8,
+        "redWeight": 2
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "lootConfigs": [
+      {
+        "difficulty": 1,
+        "minCount": 0,
+        "maxCount": 1,
+        "whiteWeight": 65,
+        "greenWeight": 25,
+        "blueWeight": 8,
+        "goldWeight": 2,
+        "redWeight": 0
+      },
+      {
+        "difficulty": 2,
+        "minCount": 1,
+        "maxCount": 2,
+        "whiteWeight": 45,
+        "greenWeight": 30,
+        "blueWeight": 18,
+        "goldWeight": 6,
+        "redWeight": 1
+      },
+      {
+        "difficulty": 3,
+        "minCount": 1,
+        "maxCount": 2,
+        "whiteWeight": 25,
+        "greenWeight": 30,
+        "blueWeight": 25,
+        "goldWeight": 15,
+        "redWeight": 5
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "lootConfigs": [
+      {
+        "difficulty": 1,
+        "minCount": 1,
+        "maxCount": 2,
+        "whiteWeight": 45,
+        "greenWeight": 35,
+        "blueWeight": 15,
+        "goldWeight": 5,
+        "redWeight": 0
+      },
+      {
+        "difficulty": 2,
+        "minCount": 1,
+        "maxCount": 2,
+        "whiteWeight": 25,
+        "greenWeight": 35,
+        "blueWeight": 25,
+        "goldWeight": 12,
+        "redWeight": 3
+      },
+      {
+        "difficulty": 3,
+        "minCount": 1,
+        "maxCount": 3,
+        "whiteWeight": 10,
+        "greenWeight": 25,
+        "blueWeight": 30,
+        "goldWeight": 25,
+        "redWeight": 10
+      }
+    ]
+  }
+]

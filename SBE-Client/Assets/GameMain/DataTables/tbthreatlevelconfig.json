@@ -1,0 +1,63 @@
+[
+  {
+    "id": 1,
+    "maxViewDistanceMilli": 3500,
+    "alertDecayPerSecondMilli": 200,
+    "distanceBands": [
+      {
+        "maxDistanceMilli": 1000,
+        "alertPerSecondMilli": 2000
+      },
+      {
+        "maxDistanceMilli": 2200,
+        "alertPerSecondMilli": 1200
+      },
+      {
+        "maxDistanceMilli": 3500,
+        "alertPerSecondMilli": 600
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "maxViewDistanceMilli": 5000,
+    "alertDecayPerSecondMilli": 150,
+    "distanceBands": [
+      {
+        "maxDistanceMilli": 1500,
+        "alertPerSecondMilli": 1800
+      },
+      {
+        "maxDistanceMilli": 3000,
+        "alertPerSecondMilli": 1000
+      },
+      {
+        "maxDistanceMilli": 5000,
+        "alertPerSecondMilli": 800
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "maxViewDistanceMilli": 7000,
+    "alertDecayPerSecondMilli": 100,
+    "distanceBands": [
+      {
+        "maxDistanceMilli": 1000,
+        "alertPerSecondMilli": 8000
+      },
+      {
+        "maxDistanceMilli": 2000,
+        "alertPerSecondMilli": 4000
+      },
+      {
+        "maxDistanceMilli": 4000,
+        "alertPerSecondMilli": 1000
+      },
+      {
+        "maxDistanceMilli": 7000,
+        "alertPerSecondMilli": 800
+      }
+    ]
+  }
+]

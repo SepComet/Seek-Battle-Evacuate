@@ -1,0 +1,121 @@
+[
+  {
+    "id": 1,
+    "name": "普通攻击",
+    "actionType": 1,
+    "targetType": 4,
+    "mpCost": 0,
+    "effects": [
+      {
+        "targetStat": 1,
+        "flatValue": 0,
+        "sourceStat": 5,
+        "sourceScalePermille": -1000,
+        "status": 0,
+        "durationRounds": 0
+      }
+    ]
+  },
+  {
+    "id": 101,
+    "name": "技能1",
+    "actionType": 2,
+    "targetType": 4,
+    "mpCost": 10,
+    "effects": [
+      {
+        "targetStat": 7,
+        "flatValue": -5,
+        "sourceStat": 0,
+        "sourceScalePermille": 0,
+        "status": 0,
+        "durationRounds": 0
+      }
+    ]
+  },
+  {
+    "id": 102,
+    "name": "技能2",
+    "actionType": 2,
+    "targetType": 2,
+    "mpCost": 30,
+    "effects": [
+      {
+        "targetStat": 1,
+        "flatValue": 20,
+        "sourceStat": 6,
+        "sourceScalePermille": 1000,
+        "status": 0,
+        "durationRounds": 0
+      }
+    ]
+  },
+  {
+    "id": 103,
+    "name": "技能3",
+    "actionType": 2,
+    "targetType": 5,
+    "mpCost": 10,
+    "effects": [
+      {
+        "targetStat": 1,
+        "flatValue": -2,
+        "sourceStat": 6,
+        "sourceScalePermille": -800,
+        "status": 0,
+        "durationRounds": 0
+      }
+    ]
+  },
+  {
+    "id": 104,
+    "name": "技能4",
+    "actionType": 2,
+    "targetType": 4,
+    "mpCost": 10,
+    "effects": [
+      {
+        "targetStat": 0,
+        "flatValue": 0,
+        "sourceStat": 0,
+        "sourceScalePermille": 0,
+        "status": 1,
+        "durationRounds": 1
+      }
+    ]
+  },
+  {
+    "id": 201,
+    "name": "敌人攻击",
+    "actionType": 1,
+    "targetType": 4,
+    "mpCost": 0,
+    "effects": [
+      {
+        "targetStat": 1,
+        "flatValue": 0,
+        "sourceStat": 5,
+        "sourceScalePermille": -1000,
+        "status": 0,
+        "durationRounds": 0
+      }
+    ]
+  },
+  {
+    "id": 202,
+    "name": "敌人魔法",
+    "actionType": 2,
+    "targetType": 4,
+    "mpCost": 8,
+    "effects": [
+      {
+        "targetStat": 1,
+        "flatValue": -4,
+        "sourceStat": 6,
+        "sourceScalePermille": -1200,
+        "status": 0,
+        "durationRounds": 0
+      }
+    ]
+  }
+]

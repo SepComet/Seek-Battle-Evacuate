@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1,
+    "assetName": "music_menu"
+  },
+  {
+    "id": 2,
+    "assetName": "music_background"
+  },
+  {
+    "id": 3,
+    "assetName": "music_about"
+  }
+]

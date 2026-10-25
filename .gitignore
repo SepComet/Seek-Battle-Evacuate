@@ -1,0 +1,97 @@
+# This .gitignore lives at the repo root, above SBE-Client / SBE-Design / SBE-Server.
+# Based on: https://github.com/github/gitignore/blob/main/Unity.gitignore
+
+# Unity-generated directories (SBE-Client)
+/SBE-Client/[Ll]ibrary/
+/SBE-Client/[Tt]emp/
+/SBE-Client/[Oo]bj/
+/SBE-Client/[Bb]uild/
+/SBE-Client/[Bb]uilds/
+/SBE-Client/[Ll]ogs/
+/SBE-Client/[Uu]ser[Ss]ettings/
+/SBE-Client/[Mm]emoryCaptures/
+/SBE-Client/[Rr]ecordings/
+/SBE-Client/Bundle/
+
+# Asset Store and generated editor plugins
+/SBE-Client/[Aa]ssets/AssetStoreTools*
+/SBE-Client/[Aa]ssets/Plugins/Editor/JetBrains*
+
+# Addressables-generated data
+/SBE-Client/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
+/SBE-Client/[Aa]ssets/[Ss]treamingAssets/aa.meta
+/SBE-Client/[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# Temporary scene backups
+/SBE-Client/[Aa]ssets/[Ss]cenes/*.unity.orig
+
+# Source assets that are intentionally kept outside version control
+/SBE-Client/Assets/RawResources/
+/SBE-Client/Assets/RawResources.meta
+/SBE-Client/Assets/StreamingAssets/*.dat
+/SBE-Client/Assets/StreamingAssets/*.dat.meta
+
+# IDE and editor state
+.idea/
+.vscode/
+.vs/
+.gradle/
+.consulo/
+.zcode/
+ExportedObj/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.DotSettings.user
+
+# Unity-generated metadata for debugging databases
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Crash and diagnostic output
+sysinfo.txt
+mono_crash.*
+crash_*.dmp
+
+# Build artifacts
+*.apk
+*.aab
+*.unitypackage
+*.app
+crashlytics-build.properties
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Luban (SBE-Design): local config, temp workbook files, generated outputs.
+# Sources, schemas, templates, tools, and scripts stay tracked.
+/SBE-Design/path.txt
+/SBE-Design/Datas/~$*.xlsx
+/SBE-Design/Datas/.~*.xlsx
+/SBE-Design/Datas/*.xlsx~
+/SBE-Design/**/*.log
+/SBE-Design/.cache/
+/SBE-Design/Temp/
+/SBE-Design/output/
+/SBE-Design/output-server/
+
+# Go (SBE-Server)
+/SBE-Server/bin/
+*.test
+coverage.out
+
+# Codegraph index
+/.codegraph

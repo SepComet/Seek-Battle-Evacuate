@@ -1,0 +1,98 @@
+[
+  {
+    "name": "ATKFormatText",
+    "format": "ATK   {0}"
+  },
+  {
+    "name": "MATFormatText",
+    "format": "MAT   {0}"
+  },
+  {
+    "name": "SPDFormatText",
+    "format": "SPD   {0}"
+  },
+  {
+    "name": "HPFormatText",
+    "format": "HP   {0}"
+  },
+  {
+    "name": "MPFormatText",
+    "format": "MP   {0}"
+  },
+  {
+    "name": "STAFormatText",
+    "format": "STA   {0}"
+  },
+  {
+    "name": "LobbyFooterStatus",
+    "format": "主仓库   {0} 道具"
+  },
+  {
+    "name": "WarehouseCapacity",
+    "format": "{0} ITEMS   /   {1} TOTAL UNITS"
+  },
+  {
+    "name": "SquadMemberText",
+    "format": "{0} / {1} Selected"
+  },
+  {
+    "name": "BattleBarText",
+    "format": "{0} / {1}"
+  },
+  {
+    "name": "RoundHUDRemainingTime",
+    "format": "{0:00}:{1:00}"
+  },
+  {
+    "name": "RoundHUDNorthLabel",
+    "format": "N"
+  },
+  {
+    "name": "RoundHUDFreeSlots",
+    "format": "{0} / {1}"
+  },
+  {
+    "name": "RoundHUDLootValue",
+    "format": "{0:N0}"
+  },
+  {
+    "name": "BackpackSafeCapacity",
+    "format": "{0} / {1}"
+  },
+  {
+    "name": "BackpackMemberHp",
+    "format": "HP {0}/{1}"
+  },
+  {
+    "name": "BackpackMemberMp",
+    "format": "MP {0}/{1}"
+  },
+  {
+    "name": "BackpackItemName",
+    "format": "{0} x{1}"
+  },
+  {
+    "name": "SettlementResult",
+    "format": "{0}"
+  },
+  {
+    "name": "SettlementTotalValue",
+    "format": "{0:N0}"
+  },
+  {
+    "name": "SettlementElapsed",
+    "format": "{0:00}:{1:00}"
+  },
+  {
+    "name": "SettlementRedLootCount",
+    "format": "{0} 件"
+  },
+  {
+    "name": "SettlementItemQuantity",
+    "format": "×{0}"
+  },
+  {
+    "name": "SettlementItemValue",
+    "format": "价值  {0:N0}"
+  }
+]

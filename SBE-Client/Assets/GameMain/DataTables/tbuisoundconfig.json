@@ -1,0 +1,14 @@
+[
+  {
+    "id": 10000,
+    "assetName": "select",
+    "priority": 0,
+    "volume": 1
+  },
+  {
+    "id": 10001,
+    "assetName": "click",
+    "priority": 0,
+    "volume": 1
+  }
+]
