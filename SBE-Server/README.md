@@ -99,6 +99,9 @@ bash tools/mysql_integration_test.sh -user root -pass 你的密码
 | `internal/core` | 纯函数核心：操作集应用（校验+原子合并）、迁移初始化 |
 | `internal/itemtable` | 加载 Luban 导出的 tbitemconfig.json |
 | `internal/globaltable` | 加载 tbglobalconfig.json 的队伍/背包上限、tbdifficultyconfig.json 的 tier 集合 |
+| `internal/mapdef` | 加载编辑器导出的 tbmapdefinition.json（房间 + 四类点位候选），校验敌人点房间归属 |
+| `internal/gametable` | 加载 tbresourcepointconfig.json / tbenemypartyconfig.json / tbdifficultyconfig.json 的生成表 |
+| `internal/mapgen` | 探索内容生成器（纯函数）：SplitMix64、子种子、`Generate` |
 | `internal/ws` | WebSocket 传输层（gorilla/websocket 薄包装） |
 | `internal/server` | 会话与分派：rid 去重、register/auth/pull/migrate/settle/ops/history |
 | `internal/memorystore` | 内存存储（开发/测试） |
@@ -149,5 +152,37 @@ Go 侧配置加载直接读取 gen_cli 导出的 `tbitemconfig.json`、`tbglobal
 - `tbenemypartyconfig.json`：敌队伍进战敌人序列与威胁等级（按威胁建池）。
 
 三者与物品表一同在启动时加载并校验（`cmd/sbe-server/config.go`）。硬性不变量：**每个敌人点必须落在某个房间内**（判定 `x >= minX && x < maxX+1`，两端一致），且地图引用的 `resourcePointId` 必须在资源点表中存在；任一违反即 `log.Fatalf` 启动失败。`cmd/sbe-server/config_test.go` 直接读 `config/` 下的真实导出产物跑这条加载路径。
+
+## 探索内容生成器（`internal/mapgen`）
+
+服务器是本局探索内容的唯一生成者。生成器把「主种子 + 难度 + 固定布局 + 三张生成表」变成全图内容，
+供会话层（`start_run`/`encounter`/`loot`）持有与回放。
+
+```go
+// 纯函数：配置进、结果出；不碰 IO、不持状态、不修改入参。
+content, err := mapgen.Generate(masterSeed, difficulty, layout, tables)
+```
+
+- 入参：`masterSeed int64`（服务器分配，取值 [1, 2147483647]）、`difficulty int`（难度 tier）、
+  `*mapdef.Layout`（固定布局）、`*gametable.Tables`（物资点掉落 / 敌队伍 / 难度威胁权重 / 物品稀有度分桶）。
+  `cmd/sbe-server` 的 `configs.Tables()` 负责把六份配置装配成后两个入参。
+- 出参 `*Content`：`PlayerSpawnPoint`、`ExtractionPoint`、`ResourcePoints`（位置 + `ItemIDs` 掉落清单）、
+  `EnemyPoints`（位置 + 存在性 + 威胁等级 + `EnemyPartyID` + 所属房间下标）。
+  两类点位列表与地图定义同序同长，交互主键 `r<i>` / `e<i>` 由列表下标构造（契约 §6）。
+- 随机：SplitMix64 + 子种子（`SubSeed(master, kind, index)`），每个点位独立 PRNG，
+  点位之间不共享随机流；消费序见 `notes/contracts.md` §3。
+- 错误不静默：配置缺失、权重全零、稀有度桶空、队伍池空、候选列表空、敌点不归属任何房间
+  （契约 §8 要求的生成侧第二次校验，不依赖 `mapdef.Load` 是否走过）一律返回 error。
+
+**与客户端同构**：算法与 C# 侧 `SBE-Client/Assets/GameMain/Scripts/Runtime/CustomComponent/Exploration/`
+（`MapBuilder`、`PointGenerator/*`、`Random/SplitMix64.cs`、`Random/ExplorationSeed.cs`）逐位一致，
+两端由同一批种子向量锁死。向量 fixture 在
+`.scratch/exploration-online-v1/notes/vectors.md`；Go 侧断言见 `internal/mapgen/vectors_test.go`
+（PRNG/子种子已知值 + 4 组完整生成 + 4 组摆位投影 + 子种子隔离 + 换种子换图），
+C# 侧同一批常量在 `Assets/GameMain/Scripts/Tests/EditMode/Exploration/MapBuilderTests.cs`。
+改生成算法时两侧必须同步改并同时更新向量，否则交叉用例先红。
+
+`internal/mapgen/mapgen_test.go` 另有真实配置冒烟：读 `config/` 下真实六份配置跑完整生成，
+只断言一致性不变量（点位与布局对齐、物品与队伍都在表内、敌点归属房间），不断言具体内容。
 
 客户端编译、EditMode 与真实运行验收按仓库纪律由已开启的 Editor 或用户执行；Go 测试通过不能替代 Unity 验收或真实 MySQL 验证。

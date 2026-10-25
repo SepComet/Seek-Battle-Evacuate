@@ -39,6 +39,42 @@ func (c *Catalog) RarityPool(rarity int) []int {
 	return c.rarityPools[rarity]
 }
 
+// CatalogEntry 构造目录用的单条物品数据（免 IO 路径，供测试装配内联配置）。
+type CatalogEntry struct {
+	ID         int
+	Rarity     int
+	StackLimit int
+	EquipSlot  int
+}
+
+// NewCatalog 用已解析的物品数据构造目录；与 LoadCatalog 共用同一套校验
+// （id 为正且不重复、稀有度为 [White,Red] 内的值），桶内顺序 = 入参顺序。
+func NewCatalog(entries []CatalogEntry) (*Catalog, error) {
+	catalog := &Catalog{
+		Table:       make(Table, len(entries)),
+		rarityPools: make(map[int][]int),
+	}
+	for _, entry := range entries {
+		if entry.ID <= 0 {
+			return nil, fmt.Errorf("invalid id %d", entry.ID)
+		}
+		if _, dup := catalog.Table[entry.ID]; dup {
+			return nil, fmt.Errorf("duplicate id %d", entry.ID)
+		}
+		if entry.Rarity < core.RarityWhite || entry.Rarity > core.RarityRed {
+			return nil, fmt.Errorf("id %d: rarity %d out of range [%d,%d]",
+				entry.ID, entry.Rarity, core.RarityWhite, core.RarityRed)
+		}
+		stackLimit := entry.StackLimit
+		if stackLimit <= 0 {
+			stackLimit = 1
+		}
+		catalog.Table[entry.ID] = core.ItemDef{StackLimit: stackLimit, EquipSlot: entry.EquipSlot, Rarity: entry.Rarity}
+		catalog.rarityPools[entry.Rarity] = append(catalog.rarityPools[entry.Rarity], entry.ID)
+	}
+	return catalog, nil
+}
+
 // Load 从 Luban 导出的 JSON 文件加载物品定义表（不含稀有度分桶）。
 func Load(path string) (Table, error) {
 	catalog, err := LoadCatalog(path)
@@ -58,27 +94,14 @@ func LoadCatalog(path string) (*Catalog, error) {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil, fmt.Errorf("parse item table %s: %w", path, err)
 	}
-	catalog := &Catalog{
-		Table:       make(Table, len(raw)),
-		rarityPools: make(map[int][]int),
+	entries := make([]CatalogEntry, len(raw))
+	for i, it := range raw {
+		// 数组序即配置表序，分桶依赖它，不得重排
+		entries[i] = CatalogEntry{ID: it.ID, Rarity: it.Rarity, StackLimit: it.StackLimit, EquipSlot: it.EquipSlot}
 	}
-	for _, it := range raw {
-		if it.ID <= 0 {
-			return nil, fmt.Errorf("item table %s: invalid id %d", path, it.ID)
-		}
-		if _, dup := catalog.Table[it.ID]; dup {
-			return nil, fmt.Errorf("item table %s: duplicate id %d", path, it.ID)
-		}
-		if it.Rarity < core.RarityWhite || it.Rarity > core.RarityRed {
-			return nil, fmt.Errorf("item table %s: id %d: rarity %d out of range [%d,%d]",
-				path, it.ID, it.Rarity, core.RarityWhite, core.RarityRed)
-		}
-		if it.StackLimit <= 0 {
-			it.StackLimit = 1
-		}
-		catalog.Table[it.ID] = core.ItemDef{StackLimit: it.StackLimit, EquipSlot: it.EquipSlot, Rarity: it.Rarity}
-		// append 保持 JSON 数组顺序 = 配置表顺序
-		catalog.rarityPools[it.Rarity] = append(catalog.rarityPools[it.Rarity], it.ID)
+	catalog, err := NewCatalog(entries)
+	if err != nil {
+		return nil, fmt.Errorf("item table %s: %w", path, err)
 	}
 	return catalog, nil
 }

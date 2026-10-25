@@ -71,6 +71,28 @@ func TestLoadConfigsFromRealExports(t *testing.T) {
 			t.Fatalf("threat %d party pool is empty", threat)
 		}
 	}
+
+	// 难度威胁权重：tbdifficultyconfig 的每个 tier 都必须有非空权重（生成敌点用），
+	// 且与 globaltable 加载的 tier 集合一致（同一份文件的两处视角）。
+	if cfg.Difficulties.Len() != len(cfg.Limits.Difficulties) {
+		t.Fatalf("difficulty weights cover %d tiers, tier set has %d",
+			cfg.Difficulties.Len(), len(cfg.Limits.Difficulties))
+	}
+	for tier := range cfg.Limits.Difficulties {
+		weights, ok := cfg.Difficulties.Weights(tier)
+		if !ok {
+			t.Fatalf("tier %d has no threat weights", tier)
+		}
+		if len(weights) == 0 {
+			t.Fatalf("tier %d threat weights are empty", tier)
+		}
+	}
+
+	// 生成器入参装配：四张表都必须就位（mapgen.Generate 依赖它们，任何一张为 nil 都报错）。
+	tables := cfg.Tables()
+	if tables.Resources == nil || tables.Parties == nil || tables.Difficulties == nil || tables.Items == nil {
+		t.Fatalf("generator tables incomplete: %+v", tables)
+	}
 }
 
 func TestLoadConfigsRejectsUnknownResourcePointID(t *testing.T) {
