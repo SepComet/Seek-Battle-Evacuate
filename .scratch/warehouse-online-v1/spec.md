@@ -143,3 +143,24 @@ SBE 目前是纯单机：局外经济数据（仓库物品与布局、角色花�
 
 - 工作量估算（单人、熟悉 Unity 与 Go，纯开发口径）：客户端 8–12 人日、服务端 5–8 人日、联调与部署 2–3 人日；改造比例约 客户端 55% / 服务端 30% / 联调 15%，局内玩法 0%。
 - 本 spec 由两轮设计问询（14 项决策）+ 6 项默认小决定综合而来，代码事实基于对 SBE-Client 现状的一次全量探索（存档层、物品模型、撤离结算流程、Luban 工具链）。
+
+## Comments
+
+### 实现后审查记录（2026-10-25，code-review 两轴）
+
+已确认的实现偏差（环境受限，均为可回退决策）：
+
+1. WebSocket 库：gorilla/websocket → Go 标准库手写最小实现（构建环境无外网；`SBE-Server/internal/ws`，有帧/握手/回显测试）。
+2. Go 侧配置加载：Luban Go 代码生成 → 直接读取 gen_cli 导出的 `tbitemconfig.json`（同源生成物；`tools/sync_config` 同步）。
+3. 网络序列化：Newtonsoft → JsonUtility（协议信封为扁平 camelCase DTO，与存档 DataStruct 惯例一致，JsonUtility 足够，少一个依赖）。
+4. 协议消息：spec 中的 `move_batch`/`equip`/`unequip` 统一为单一 `ops` 消息（同一操作集语义，服务器同一分派路径）。
+
+已知限制（接受，待后续 ticket）：
+
+- 大厅断线门控覆盖"开局"与"穿卸装备"入口；仓库布局整理未门控（纯展示性，未上报的调整在下次拉取时以服务器为准纠正）。
+- 结算界面不阻塞等待服务器 ack：结算在后台串行重试，ack 前强退 = 本局作废（与 spec 落地时序一致）。
+- 稀有度校验不适用：v1 协议消息不携带 rarity 字段，无从校验。
+- 无词条实例模型下，"死亡销毁装备"与"同物品新战利品入库"在差分中可能以 rel 语义表达，经济总量等价；引入词条系统时需收紧为按实例身份的 del+add。
+- ProcedureMainFsmTests 的 settle-经假连接扩展用例、MySQL store 集成测试（需 docker/本机 MySQL）留待后续。
+
+审查修复（已入库）：ProcedureLogin/M​ainSettlementState 两处编译错误；MySQL rewrite 显式保留 uid（防 AUTO_INCREMENT 重铸导致客户端引用失效）；LoadoutForm 四个穿卸入口补离线门控；SettleAsync 改用可注入延迟；DeviceIdentity 读取失败补 Log.Error；Go 两处 newToken 去重至 store.NewToken。

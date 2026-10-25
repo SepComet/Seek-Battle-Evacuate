@@ -7,9 +7,7 @@ package mysqlstore
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -44,20 +42,12 @@ func Open(dsn string) (*Store, error) {
 // Close 关闭连接池。
 func (s *Store) Close() error { return s.db.Close() }
 
-func newToken() (string, error) {
-	var raw [16]byte
-	if _, err := rand.Read(raw[:]); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(raw[:]), nil
-}
-
 // Register 实现 store.Store。
 func (s *Store) Register(ctx context.Context, device string) (int64, string, error) {
 	if device == "" || len(device) > 64 {
 		return 0, "", fmt.Errorf("%w: invalid device", core.ErrRejected)
 	}
-	token, err := newToken()
+	token, err := store.NewToken()
 	if err != nil {
 		return 0, "", err
 	}
@@ -158,6 +148,8 @@ func (s *Store) loadForUpdate(ctx context.Context, q queryer, userID int64) (cor
 }
 
 // rewrite 全量重写用户经济行（在小规模数据量下简单可靠）。
+// 注意必须显式写回 uid：UID 是服务器铸造的稳定身份，客户端会引用它，
+// 让 AUTO_INCREMENT 重新铸号会使已下发的 uid 全部失效。
 func rewrite(ctx context.Context, tx *sql.Tx, userID int64, state core.State) error {
 	if _, err := tx.ExecContext(ctx, `DELETE FROM warehouse_items WHERE user_id = ?`, userID); err != nil {
 		return err
@@ -168,8 +160,8 @@ func rewrite(ctx context.Context, tx *sql.Tx, userID int64, state core.State) er
 			rotated = 1
 		}
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO warehouse_items (user_id, item_id, count, x, y, is_rotated, wearer) VALUES (?,?,?,?,?,?,?)`,
-			userID, r.ItemID, r.Count, r.X, r.Y, rotated, r.Wearer); err != nil {
+			`INSERT INTO warehouse_items (uid, user_id, item_id, count, x, y, is_rotated, wearer) VALUES (?,?,?,?,?,?,?,?)`,
+			r.UID, userID, r.ItemID, r.Count, r.X, r.Y, rotated, r.Wearer); err != nil {
 			return err
 		}
 	}

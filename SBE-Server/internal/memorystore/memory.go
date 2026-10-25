@@ -3,8 +3,6 @@ package memorystore
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"sync"
 
@@ -38,20 +36,12 @@ func New() *Store {
 	}
 }
 
-func newToken() (string, error) {
-	var raw [16]byte
-	if _, err := rand.Read(raw[:]); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(raw[:]), nil
-}
-
 // Register 实现 store.Store。
 func (s *Store) Register(_ context.Context, device string) (int64, string, error) {
 	if device == "" || len(device) > 64 {
 		return 0, "", fmt.Errorf("%w: invalid device", core.ErrRejected)
 	}
-	token, err := newToken()
+	token, err := store.NewToken()
 	if err != nil {
 		return 0, "", err
 	}

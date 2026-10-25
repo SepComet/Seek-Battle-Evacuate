@@ -41,9 +41,9 @@ namespace SepCore.Net
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // 读取失败按新设备处理
+                Log.Error("Load device identity failure: {0}", ex);
             }
 
             _cachedDevice = Guid.NewGuid().ToString("N");

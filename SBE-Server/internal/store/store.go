@@ -4,6 +4,8 @@ package store
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 
 	"sbe-server/internal/core"
@@ -15,6 +17,15 @@ var ErrUnknownToken = errors.New("store: unknown token")
 
 // ErrAlreadyInitialized 账号已完成初始化，拒绝再次迁移。
 var ErrAlreadyInitialized = errors.New("store: already initialized")
+
+// NewToken 生成随机登录令牌（32 位十六进制）。
+func NewToken() (string, error) {
+	var raw [16]byte
+	if _, err := rand.Read(raw[:]); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(raw[:]), nil
+}
 
 // Store 经济状态存储接口。所有方法须线程安全。
 type Store interface {

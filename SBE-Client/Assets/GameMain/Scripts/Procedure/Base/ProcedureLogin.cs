@@ -19,7 +19,7 @@ namespace SepCore.Procedure
 
         protected override void OnEnter(ProcedureOwner procedureOwner)
         {
-            base.OnEnter(procedure);
+            base.OnEnter(procedureOwner);
             _leaving = false;
             if (GameEntry.Net != null)
             {

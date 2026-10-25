@@ -284,6 +284,13 @@ namespace SepCore.UI
 
         private void OnWeaponSlotClicked(int slotId)
         {
+            // 强制在线：穿卸装备需要服务器记账
+            if (GameEntry.Net != null && !GameEntry.Net.OnlineReady)
+            {
+                Log.Error("Equip or unequip requires online.");
+                return;
+            }
+
             SaveData save = GameEntry.Save.Data;
             if (save == null || save.characters == null ||
                 _selectedCharacterIndex < 0 || _selectedCharacterIndex >= save.characters.Count)
@@ -326,6 +333,13 @@ namespace SepCore.UI
 
         private void OnArmorSlotClicked(int slotId)
         {
+            // 强制在线：穿卸装备需要服务器记账
+            if (GameEntry.Net != null && !GameEntry.Net.OnlineReady)
+            {
+                Log.Error("Equip or unequip requires online.");
+                return;
+            }
+
             SaveData save = GameEntry.Save.Data;
             if (save == null || save.characters == null ||
                 _selectedCharacterIndex < 0 || _selectedCharacterIndex >= save.characters.Count)
@@ -368,6 +382,13 @@ namespace SepCore.UI
 
         private void OnUnequipWeaponRequested()
         {
+            // 强制在线：穿卸装备需要服务器记账
+            if (GameEntry.Net != null && !GameEntry.Net.OnlineReady)
+            {
+                Log.Error("Equip or unequip requires online.");
+                return;
+            }
+
             SaveData save = GameEntry.Save.Data;
             if (save == null || save.characters == null ||
                 _selectedCharacterIndex < 0 || _selectedCharacterIndex >= save.characters.Count)
@@ -393,6 +414,13 @@ namespace SepCore.UI
 
         private void OnUnequipArmorRequested()
         {
+            // 强制在线：穿卸装备需要服务器记账
+            if (GameEntry.Net != null && !GameEntry.Net.OnlineReady)
+            {
+                Log.Error("Equip or unequip requires online.");
+                return;
+            }
+
             SaveData save = GameEntry.Save.Data;
             if (save == null || save.characters == null ||
                 _selectedCharacterIndex < 0 || _selectedCharacterIndex >= save.characters.Count)

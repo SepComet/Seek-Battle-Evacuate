@@ -175,13 +175,13 @@ namespace SepCore.Net
                 {
                     if (_token == null)
                     {
-                        await UniTask.Delay(2000);
+                        await _delay(2000);
                         continue;
                     }
 
                     if (!_connection.IsConnected)
                     {
-                        await UniTask.Delay(2000);
+                        await _delay(2000);
                         continue;
                     }
 
