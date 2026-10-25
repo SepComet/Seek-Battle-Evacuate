@@ -35,6 +35,11 @@ namespace SepCore.Net
         public WarehouseSyncService Warehouse { get; private set; }
 
         /// <summary>
+        /// 探索局域服务（start_run / encounter / loot 的请求、超时与拒绝归一）。
+        /// </summary>
+        public RunService Run { get; private set; }
+
+        /// <summary>
         /// 是否已连接。
         /// </summary>
         public bool IsConnected => _connection != null && _connection.IsConnected;
@@ -68,6 +73,7 @@ namespace SepCore.Net
                 id => GameEntry.Luban != null && GameEntry.Luban.IsReady ? GameEntry.Luban.Get<ItemConfig>(id) : null,
                 () => GameEntry.Luban != null && GameEntry.Luban.IsReady ? GameEntry.Luban.Global?.Data : null,
                 PersistLocalCache);
+            Run = new RunService(_rpc);
 
             _connection.Disconnected += OnDisconnected;
         }
