@@ -5,7 +5,8 @@ Go + WebSocket + MySQL。实现 spec：根目录 `.scratch/warehouse-online-v1/s
 ## 快速开始（开发，内存存储）
 
 ```bash
-# 1. 同步物品、全局与难度三张配置（从客户端 Luban 导出物拷贝；每次改表后重跑）
+# 1. 同步配置（从客户端 DataTables 拷贝；每次改表或重导地图后重跑）
+#    含 item/global/difficulty 三张校验表 + resourcepoint/enemyparty 生成表 + 编辑器导出的 mapdefinition
 tools/sync_config.bat          # Windows
 bash tools/sync_config.sh      # bash
 
@@ -140,5 +141,13 @@ bash tools/mysql_integration_test.sh -user root -pass 你的密码
 
 网络恢复后已按 spec 原案切换到 gorilla/websocket，MySQL 驱动也已进 go.mod（无需构建标签）。
 Go 侧配置加载直接读取 gen_cli 导出的 `tbitemconfig.json`、`tbglobalconfig.json`、`tbdifficultyconfig.json`（见 `tools/sync_config`），不生成 Luban Go 代码。当前实际导出的全局配置为 camelCase 单元素数组，难度表以 `tier` 为键。入口 `-items / -global / -difficulties` 可指定文件路径；缺失或非法配置使启动失败。
+
+探索内容生成另需三份配置（`-map / -resourcepoints / -enemyparties`，默认指向 `config/` 下同名文件）：
+
+- `tbmapdefinition.json`：固定地图布局（房间矩形 + 物资点/敌人点/出生/撤离候选），**不是 Luban 表**——由客户端编辑器菜单 `Utility/Map/Export Map Definition JSON` 把 `MapDefinition.asset` 序列化产出，再经 `sync_config` 同步过来。
+- `tbresourcepointconfig.json`：物资点各难度掉落数量区间与五档稀有度权重。
+- `tbenemypartyconfig.json`：敌队伍进战敌人序列与威胁等级（按威胁建池）。
+
+三者与物品表一同在启动时加载并校验（`cmd/sbe-server/config.go`）。硬性不变量：**每个敌人点必须落在某个房间内**（判定 `x >= minX && x < maxX+1`，两端一致），且地图引用的 `resourcePointId` 必须在资源点表中存在；任一违反即 `log.Fatalf` 启动失败。`cmd/sbe-server/config_test.go` 直接读 `config/` 下的真实导出产物跑这条加载路径。
 
 客户端编译、EditMode 与真实运行验收按仓库纪律由已开启的 Editor 或用户执行；Go 测试通过不能替代 Unity 验收或真实 MySQL 验证。

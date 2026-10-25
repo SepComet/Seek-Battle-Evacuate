@@ -50,6 +50,15 @@ func toolConsistencyCheck(args map[string]any) (string, error) {
 
 // ---------- 组 1：Luban 表名多处一致 ----------
 
+// nonLubanStems DataTables 下刻意存在、但不由 Luban 生成的产物，
+// 不参与「产物必须有注册表」的一致性检查（见 contracts §8）。
+// tbmapdefinition：地图固定布局，由编辑器菜单 Utility/Map/Export Map Definition JSON
+// 把 MapDefinition 资产序列化而来；它随 sync_config 同步到 SBE-Server/config，
+// 服务器据此重建固定布局，不是 Luban 表。
+var nonLubanStems = map[string]bool{
+	"tbmapdefinition": true,
+}
+
 type lubanTableRow struct {
 	FullName  string
 	ValueType string
@@ -198,9 +207,14 @@ func checkLubanTables() (map[string]any, int, int) {
 	}
 	sort.Strings(dataSorted)
 	for _, stem := range dataSorted {
-		if !expectedStems[stem] {
-			violations = append(violations, fmt.Sprintf("DataTables/%s.* 无对应注册表（stale 产物或表名不一致）", stem))
+		if expectedStems[stem] {
+			continue
 		}
+		// 白名单：co-located 在 DataTables 下但不经 Luban 生成的产物（见 nonLubanStems）。
+		if nonLubanStems[stem] {
+			continue
+		}
+		violations = append(violations, fmt.Sprintf("DataTables/%s.* 无对应注册表（stale 产物或表名不一致）", stem))
 	}
 
 	if len(loaderArgs) > 0 && len(tableNames) > 0 && !sameOrder(loaderArgs, tableNames) {

@@ -18,8 +18,6 @@ import (
 	"os"
 
 	"sbe-server/internal/boot"
-	"sbe-server/internal/globaltable"
-	"sbe-server/internal/itemtable"
 	"sbe-server/internal/server"
 	"sbe-server/internal/snowflake"
 )
@@ -30,20 +28,19 @@ func main() {
 	items := flag.String("items", "config/tbitemconfig.json", "Luban 导出的物品表 JSON 路径")
 	global := flag.String("global", "config/tbglobalconfig.json", "Luban 导出的全局配置 JSON 路径")
 	diffs := flag.String("difficulties", "config/tbdifficultyconfig.json", "Luban 导出的难度表 JSON 路径")
+	mapPath := flag.String("map", "config/tbmapdefinition.json", "编辑器导出的地图定义 JSON 路径")
+	resourcePoints := flag.String("resourcepoints", "config/tbresourcepointconfig.json", "Luban 导出的物资点配置 JSON 路径")
+	enemyParties := flag.String("enemyparties", "config/tbenemypartyconfig.json", "Luban 导出的敌队伍配置 JSON 路径")
 	storeKind := flag.String("store", "memory", "存储类型：memory | mysql")
 	dsn := flag.String("dsn", "", "MySQL DSN（-store mysql 时必填）")
 	workerID := flag.Int64("worker-id", 1, "雪花 uid 铸号的 worker id（0~1023，多实例部署必须互异）")
 	flag.Parse()
 
-	table, err := itemtable.Load(*items)
+	cfg, err := loadConfigs(*items, *global, *diffs, *mapPath, *resourcePoints, *enemyParties)
 	if err != nil {
-		log.Fatalf("load item table: %v", err)
+		log.Fatalf("%v", err)
 	}
-
-	limits, err := globaltable.Load(*global, *diffs)
-	if err != nil {
-		log.Fatalf("load global table: %v", err)
-	}
+	table := cfg.Catalog.Table
 
 	uidGen, err := snowflake.New(*workerID)
 	if err != nil {
@@ -56,9 +53,14 @@ func main() {
 	}
 	defer func() { _ = closeStore() }()
 
-	app := &server.Server{Store: st, Items: table, Limits: limits}
+	app := &server.Server{Store: st, Items: table, Limits: cfg.Limits}
 	log.Printf("sbe-server listening on ws://%s%s (store=%s, items=%d, maxParty=%d, worker=%d)",
-		*addr, *path, *storeKind, len(table), limits.MaxPlayerPartySize, *workerID)
+		*addr, *path, *storeKind, len(table), cfg.Limits.MaxPlayerPartySize, *workerID)
+	log.Printf("exploration content: rooms=%d resourcePoints=%d enemySpawnPoints=%d playerSpawns=%d extractions=%d",
+		len(cfg.Layout.Rooms), len(cfg.Layout.ResourcePoints), len(cfg.Layout.EnemySpawnPoints),
+		len(cfg.Layout.PlayerSpawnPoints), len(cfg.Layout.ExtractionPoints))
+	log.Printf("exploration tables: resourcePointTypes=%d enemyPartyThreats=%d",
+		cfg.ResourcePoints.Len(), cfg.EnemyParties.ThreatCount())
 
 	srv := &http.Server{Addr: *addr, Handler: app.Handler(*path)}
 	if err := srv.ListenAndServe(); err != nil {

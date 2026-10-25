@@ -1,0 +1,38 @@
+{
+  "rooms": [
+    { "type": 0, "minX": -23, "minY": -5, "maxX": -13, "maxY": 6 },
+    { "type": 0, "minX": -6, "minY": -5, "maxX": 14, "maxY": 6 },
+    { "type": 0, "minX": -3, "minY": -19, "maxX": 10, "maxY": -12 },
+    { "type": 0, "minX": 23, "minY": -5, "maxX": 36, "maxY": 7 },
+    { "type": 0, "minX": -5, "minY": 11, "maxX": 11, "maxY": 18 },
+    { "type": 1, "minX": -12, "minY": -1, "maxX": -7, "maxY": 2 },
+    { "type": 1, "minX": 2, "minY": 7, "maxX": 5, "maxY": 10 },
+    { "type": 1, "minX": 2, "minY": -11, "maxX": 5, "maxY": -6 },
+    { "type": 1, "minX": 15, "minY": -1, "maxX": 22, "maxY": 2 }
+  ],
+  "resourcePoints": [
+    { "x": -4, "y": 5, "resourcePointId": 1 },
+    { "x": 1, "y": -4, "resourcePointId": 1 },
+    { "x": 5, "y": 5, "resourcePointId": 2 },
+    { "x": -22, "y": 2, "resourcePointId": 3 },
+    { "x": -20, "y": -3, "resourcePointId": 2 },
+    { "x": -16, "y": 5, "resourcePointId": 4 },
+    { "x": -3, "y": 14, "resourcePointId": 4 }
+  ],
+  "enemySpawnPoints": [
+    { "x": -19, "y": 1 },
+    { "x": -16, "y": 1 },
+    { "x": 0, "y": 3 },
+    { "x": 6, "y": 14 },
+    { "x": -1, "y": 16 }
+  ],
+  "playerSpawnPoints": [
+    { "x": 1, "y": -16 },
+    { "x": 3, "y": -16 },
+    { "x": 5, "y": -16 }
+  ],
+  "extractionPoints": [
+    { "x": 30, "y": -3 },
+    { "x": 28, "y": 2 }
+  ]
+}

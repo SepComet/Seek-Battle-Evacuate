@@ -12,7 +12,20 @@ import (
 type ItemDef struct {
 	StackLimit int
 	EquipSlot  int // 0=不可穿戴，1=武器，2=防具
+	Rarity     int // 稀有度：1=White 2=Green 3=Blue 4=Gold 5=Red（内容生成分桶用）
 }
+
+// 稀有度枚举（与客户端 Rarity 一致，None=0 不参与掉落分桶）。
+const (
+	RarityWhite = 1
+	RarityGreen = 2
+	RarityBlue  = 3
+	RarityGold  = 4
+	RarityRed   = 5
+)
+
+// RarityOrder 掉落分桶的稀有度顺序，与客户端 ResourcePointGenerator.RarityOrder 一致。
+var RarityOrder = [5]int{RarityWhite, RarityGreen, RarityBlue, RarityGold, RarityRed}
 
 // ItemTable 物品配置表查询接口，由配置加载层实现。
 type ItemTable interface {
