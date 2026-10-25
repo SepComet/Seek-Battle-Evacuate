@@ -2,6 +2,7 @@ using GameFramework.Fsm;
 using GameFramework.Procedure;
 using Cysharp.Threading.Tasks;
 using SepCore.Base;
+using SepCore.Definition;
 using SepCore.Net;
 using UnityGameFramework.Runtime;
 using ProcedureOwner = GameFramework.Fsm.IFsm<GameFramework.Procedure.IProcedureManager>;
