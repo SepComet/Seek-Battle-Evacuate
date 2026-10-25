@@ -280,3 +280,47 @@ func TestApplyFullSettlementBatch(t *testing.T) {
 		t.Fatalf("new weapon not worn: %+v", next.Rows)
 	}
 }
+
+// TestSumAdds 结算对账的「带出物资」口径：只汇总 add 的 Count，按 itemId 累加。
+func TestSumAdds(t *testing.T) {
+	ops := []protocol.Op{
+		{K: protocol.OpAdd, TID: 1, ItemID: 5001, Count: 2},
+		{K: protocol.OpAdd, TID: 2, ItemID: 5001, Count: 3},
+		{K: protocol.OpAdd, TID: 3, ItemID: 5301, Count: 1},
+		{K: protocol.OpRecruit, CID: 1001},
+		{K: protocol.OpDel, UID: 9, Count: 4},
+		{K: protocol.OpWear, CID: 1001, Slot: 1, ItemID: 5101},
+		{K: protocol.OpParty, Party: []int{1001}},
+	}
+	got := SumAdds(ops)
+	want := map[int]int{5001: 5, 5301: 1}
+	if len(got) != len(want) {
+		t.Fatalf("SumAdds = %v, want %v", got, want)
+	}
+	for itemID, count := range want {
+		if got[itemID] != count {
+			t.Fatalf("SumAdds[%d] = %d, want %d (%v)", itemID, got[itemID], count, got)
+		}
+	}
+	// 空批次不产生条目（对账时额度只由 looted/carried/battle 决定）。
+	if sums := SumAdds(nil); len(sums) != 0 {
+		t.Fatalf("SumAdds(nil) = %v", sums)
+	}
+}
+
+// TestSumStacks 携带计划与战斗所得的汇总口径。
+func TestSumStacks(t *testing.T) {
+	got := SumStacks([]Stack{{ItemID: 5001, Count: 5}, {ItemID: 5001, Count: 2}, {ItemID: 5301, Count: 1}})
+	want := map[int]int{5001: 7, 5301: 1}
+	if len(got) != len(want) {
+		t.Fatalf("SumStacks = %v, want %v", got, want)
+	}
+	for itemID, count := range want {
+		if got[itemID] != count {
+			t.Fatalf("SumStacks[%d] = %d, want %d", itemID, got[itemID], count)
+		}
+	}
+	if sums := SumStacks(nil); len(sums) != 0 {
+		t.Fatalf("SumStacks(nil) = %v", sums)
+	}
+}
