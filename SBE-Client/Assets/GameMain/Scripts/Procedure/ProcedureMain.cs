@@ -1,8 +1,13 @@
+using System;
+using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using GameFramework.Fsm;
 using GameFramework.Procedure;
 using SepCore.Definition;
 using SepCore.Entity;
 using SepCore.Exploration;
+using SepCore.Net;
+using SepCore.Run;
 using SepCore.UI;
 using UnityEngine;
 using UnityGameFramework.Runtime;
@@ -20,6 +25,8 @@ namespace SepCore.Procedure
     {
         private IFsm<IProcedureManager> _procedureOwner;
         private IFsm<ProcedureMain> _fsm;
+        private bool _resumeAttempted;
+        private bool _resumeInFlight;
 
         /// <summary>
         /// 本局开放的撤离点世界坐标。
@@ -79,6 +86,11 @@ namespace SepCore.Procedure
             PendingOutcome = null;
             MainCamera = null;
             RunStartTimeUtcMs = 0;
+            // 恢复尝试按"单局流程"计次：重进流程（新局）允许新一轮恢复尝试；
+            // 重上线标记一并丢弃——断线期间在大厅重上的场景由下一局 start_run 幂等承接，不走恢复。
+            _resumeAttempted = false;
+            _resumeInFlight = false;
+            GameEntry.Net?.TryConsumeBackOnline();
 
             Difficulty = DifficultyTier.Tier1;
             if (GameEntry.Save.Data?.loadout != null)
@@ -99,6 +111,7 @@ namespace SepCore.Procedure
             float realElapseSeconds)
         {
             base.OnUpdate(procedureOwner, elapseSeconds, realElapseSeconds);
+            TryBeginResumeRun();
         }
 
         protected override void OnLeave(IFsm<IProcedureManager> procedureOwner, bool isShutdown)
@@ -257,6 +270,156 @@ namespace SepCore.Procedure
             Log.Info("[ProcedureMain] Returning to Menu procedure...");
             _procedureOwner.SetData<VarInt32>("NextSceneId", (int)SceneType.Menu);
             ChangeState<ProcedureChangeScene>(_procedureOwner);
+        }
+
+        /// <summary>
+        /// 判定本局已失效（断线重连恢复被拒或种子不一致）：提示玩家、清理单局状态并回大厅。
+        /// 绝不以 resume=false 重开新局（契约 §9 恢复流程）。
+        /// </summary>
+        public void AbortInvalidatedRun(string message)
+        {
+            Log.Error("[ProcedureMain] Run invalidated; aborting to menu. Reason: {0}", message);
+
+            NetworkNotice.Show(message);
+
+            if (GameEntry.Round != null && GameEntry.Round.HasActiveRun)
+            {
+                GameEntry.Round.EndRun();
+            }
+
+            GameEntry.TurnBattle.EndRun();
+            GameEntry.Random.EndRun();
+            GameEntry.Net?.Run.ResetRun();
+
+            _resumeAttempted = true;
+            _resumeInFlight = false;
+            ReturnToMenu();
+        }
+
+        /// <summary>
+        /// 断线重连后的恢复入口（轮询）：仅在探索状态、本流程尚未尝试过恢复、且网络刚完成
+        /// false→true 重上线迁移时，发起一次 start_run(resume=true)。
+        /// in-flight 期间与失败后都不再重试（一次会话一次尝试，失败按失效/继续本地游玩处理）。
+        /// </summary>
+        private void TryBeginResumeRun()
+        {
+            if (_resumeAttempted || _resumeInFlight)
+            {
+                return;
+            }
+
+            // 只在探索循环内恢复：地图构建尚未持有本地局（Round.Session 未建），
+            // 结算/切场景阶段没有恢复可言。
+            if (!(_fsm != null && _fsm.CurrentState is MainExplorationBattleState))
+            {
+                return;
+            }
+
+            NetComponent net = GameEntry.Net;
+            if (net == null || !net.OnlineReady)
+            {
+                return;
+            }
+
+            if (!net.TryConsumeBackOnline())
+            {
+                return;
+            }
+
+            // 探索中本地局必然已建立（地图构建成功才会进入探索状态）；没有即是装配缺陷。
+            RoundSession session = GameEntry.Round != null ? GameEntry.Round.Session : null;
+            if (session == null)
+            {
+                Log.Error("[ProcedureMain] Exploration is running but Round.Session is missing; cannot resume.");
+                _resumeAttempted = true;
+                return;
+            }
+
+            _resumeAttempted = true;
+            _resumeInFlight = true;
+            ResumeRunAsync(session).Forget();
+        }
+
+        /// <summary>
+        /// 恢复执行：start_run(resume=true) → 决策（种子校验/失效/网络态）→ 应用服务器回放的消耗状态。
+        /// 恢复不重建地图：摆位由同种子预测保证一致（spec 用户故事 4）。
+        /// </summary>
+        private async UniTask ResumeRunAsync(RoundSession session)
+        {
+            try
+            {
+                Log.Info("[ProcedureMain] Back online; resuming run with seed {0} (difficulty {1}).",
+                    session.Seed, session.Difficulty);
+
+                StartRunResult result = await GameEntry.Net.Run.StartRunAsync(session.Difficulty, resume: true);
+
+                RunResumeDecision decision = RunResumeEvaluator.Evaluate(result, session.Seed);
+                switch (decision.Action)
+                {
+                    case RunResumeAction.RunInvalid:
+                        AbortInvalidatedRun("本局已失效");
+                        return;
+
+                    case RunResumeAction.NetworkDown:
+                        // 网络仍不可用：本局不失效，恢复尝试就此结束，玩家继续本地游玩；
+                        // 后续交互失败照旧走各自的拒绝提示，不再自动重试恢复。
+                        Log.Warning("[ProcedureMain] Run resume attempt ended without success ({0}); staying in current run.",
+                            decision.Result != null ? decision.Result.Outcome.ToString() : "unknown");
+                        NetworkNotice.ShowInteractionRejected();
+                        return;
+                }
+
+                // 成功：服务器 spawn/extraction 与当前局理论上必同值（服务器幂等保证同 run 必同种子与点位），
+                // 不一致只记日志，不中断恢复。
+                if (decision.Result.SpawnPoint == null || decision.Result.ExtractionPoint == null)
+                {
+                    Log.Error("[ProcedureMain] Run resume response is missing spawn/extraction points (runId {0}).",
+                        decision.Result.RunId);
+                }
+                else
+                {
+                    Vector2 serverSpawn = new Vector2(decision.Result.SpawnPoint.x, decision.Result.SpawnPoint.y);
+                    Vector2 serverExtraction = new Vector2(decision.Result.ExtractionPoint.x, decision.Result.ExtractionPoint.y);
+                    if (serverSpawn != PlayerSpawnPoint || serverExtraction != ExtractionPoint)
+                    {
+                        Log.Warning(
+                            "[ProcedureMain] Run resume points differ from current run (spawn {0}/{1}, extraction {2}/{3}); keeping local.",
+                            serverSpawn, PlayerSpawnPoint, serverExtraction, ExtractionPoint);
+                    }
+                }
+
+                ApplyConsumedSnapshot(decision.Result.Looted);
+                Log.Info("[ProcedureMain] Run resumed. RunId: {0}, consumed points: {1}.",
+                    decision.Result.RunId, decision.Result.Consumed.Count);
+            }
+            catch (InvalidOperationException ex)
+            {
+                // 服务器回放与本地状态不一致（ResourcePointRecovery 抛出）：不静默继续，按失效处理。
+                Log.Error("[ProcedureMain] Run resume state mismatch: {0}", ex);
+                AbortInvalidatedRun("本局已失效");
+            }
+            finally
+            {
+                _resumeInFlight = false;
+            }
+        }
+
+        /// <summary>
+        /// 把服务器回放的已开箱清单应用到本局物资点实体上：开过的箱子不可再开、内容与消耗记录一致。
+        /// </summary>
+        private static void ApplyConsumedSnapshot(List<NetLootRecord> looted)
+        {
+            List<ResourcePointData> points = new List<ResourcePointData>();
+            foreach (UnityGameFramework.Runtime.Entity entity in GameEntry.Entity.GetAllLoadedEntities())
+            {
+                if (entity != null && entity.Logic is ResourcePointLogic resourcePointLogic &&
+                    resourcePointLogic.Data != null)
+                {
+                    points.Add(resourcePointLogic.Data);
+                }
+            }
+
+            ResourcePointRecovery.Apply(points, looted);
         }
     }
 }
