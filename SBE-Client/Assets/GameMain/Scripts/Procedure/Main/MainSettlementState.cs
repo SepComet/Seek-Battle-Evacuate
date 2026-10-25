@@ -172,14 +172,20 @@ namespace SepCore.Procedure
                 RoundRecord record = new RoundRecord(outcome, difficulty, seed, startedAt, endedAt);
                 save.runHistory.Add(record);
 
-                // 4. 上报结算（含战绩元数据）并以服务器 ack 为准落盘（runId 幂等 + 断线重试）；
-                //    无网络组件（无头测试）时保留纯本地落盘路径
+                // 4. 上报结算（含战绩元数据）并以服务器 ack 为准落盘（runId 幂等 + 断线重试）。
+                //    联网路径必须复用 start_run 下发的 runId：服务器据此对账开箱所得并终结该局；
+                //    离线（场景调试/无头测试）没有服务器 runId，仍用本地生成的 runId。
                 if (GameEntry.Net != null)
                 {
-                    string runId = Guid.NewGuid().ToString("N");
-                    GameEntry.Net.Warehouse.SettleAsync(runId, record).Forget();
-                    Log.Info("[ProcedureMain] Settlement reported. Outcome: {0}, Difficulty: {1}, Seed: {2}, RunId: {3}.",
-                        outcome, difficulty, seed, runId);
+                    string runId = GameEntry.Net.Run.HasActiveRun
+                        ? GameEntry.Net.Run.RunId
+                        : Guid.NewGuid().ToString("N");
+                    // 战斗所得必须随结算上报：服务器对账额度 = 开箱所得 + 携带入场 + 战斗所得，
+                    // 漏报会让带出敌人掉落的结算被整批拒绝。RunSession 未建立时没有战斗所得可言。
+                    IReadOnlyList<ItemStack> battleLoot = GameEntry.Round?.Session?.BattleLoot;
+                    GameEntry.Net.Warehouse.SettleAsync(runId, record, battleLoot).Forget();
+                    Log.Info("[ProcedureMain] Settlement reported. Outcome: {0}, Difficulty: {1}, Seed: {2}, RunId: {3} (server run: {4}, battle loot kinds: {5}).",
+                        outcome, difficulty, seed, runId, GameEntry.Net.Run.HasActiveRun, battleLoot?.Count ?? 0);
                 }
                 else
                 {
@@ -198,8 +204,9 @@ namespace SepCore.Procedure
             // 6. 清理战斗组件单局临时状态与计时器
             GameEntry.TurnBattle.EndRun();
 
-            // 7. 清理本局共享随机源
+            // 7. 清理本局共享随机源与服务器 run 缓存（下一局由 start_run 重新建立）
             GameEntry.Random.EndRun();
+            GameEntry.Net?.Run.ResetRun();
 
             // 8. 关闭探索常驻 UI 与辅助 UI，禁用探索输入
             procedureMain.CloseJoystickForm();

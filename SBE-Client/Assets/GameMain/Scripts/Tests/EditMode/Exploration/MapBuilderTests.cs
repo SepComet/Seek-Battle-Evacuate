@@ -638,6 +638,11 @@ namespace SepCore.Tests
                 Assert.AreEqual(full.ResourcePoints[i].ResourcePointId,
                     placement.ResourcePoints[i].ResourcePointId);
                 Assert.IsTrue(placement.ResourcePoints[i].Present);
+
+                // 交互主键（契约 §6）：两条来源必须给出同一个 "r<i>"，否则实体发出的 loot 点不到服务器记录的点。
+                Assert.AreEqual(i, full.ResourcePoints[i].Index);
+                Assert.AreEqual(PointIds.ResourcePoint(i), full.ResourcePoints[i].PointId);
+                Assert.AreEqual(full.ResourcePoints[i].PointId, placement.ResourcePoints[i].PointId);
             }
 
             Assert.AreEqual(enemyDefinitionCount, placement.EnemyPoints.Count);
@@ -660,6 +665,11 @@ namespace SepCore.Tests
                 Assert.IsTrue(placed.Present, "Enemy point " + FormatInt(i) + " should be present.");
                 Assert.AreEqual(built.Position, placed.Position);
                 Assert.AreEqual(built.ThreatLevel, placed.ThreatLevel);
+
+                // 交互主键（契约 §6）：完整生成与摆位出口必须给出同一个 "e<i>"。
+                Assert.AreEqual(built.Index, placed.Index);
+                Assert.AreEqual(PointIds.EnemyPoint(i), placed.PointId);
+                Assert.AreEqual(built.PointId, placed.PointId);
             }
         }
 

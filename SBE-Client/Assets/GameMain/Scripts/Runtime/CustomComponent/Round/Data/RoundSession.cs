@@ -24,6 +24,15 @@ namespace SepCore.Run
 
         public IReadOnlyList<RoundCharacterState> Party { get; }
 
+        /// <summary>
+        /// 本局战斗所得（击杀敌人掉落、已被拾取入背包的件数汇总）。
+        /// 结算上报给服务器用于开箱对账：带出物资 ⊆ 开箱所得 ∪ 携带入场 ∪ 战斗所得
+        /// （exploration-online-v1 契约 §7）。本阶段服务器信任此项。
+        /// </summary>
+        public IReadOnlyList<ItemStack> BattleLoot => _battleLoot;
+
+        private readonly List<ItemStack> _battleLoot = new List<ItemStack>();
+
         public int TotalLootValue => Backpack.TotalValue + SafeCase.TotalValue;
 
         public int FreeBackpackSlots => Backpack.FreeSlotsCount;
@@ -82,6 +91,31 @@ namespace SepCore.Run
                 list.Add(Party[i].ToPlayerUnitState());
             }
             return list;
+        }
+
+        /// <summary>
+        /// 记录一笔战斗所得（敌人掉落、已被拾取入背包）。同一 itemId 累加件数。
+        /// 结算时按 itemId 汇总上报，作为服务器开箱对账的允许额度之一。
+        /// </summary>
+        public void RecordBattleLoot(int itemId, int count)
+        {
+            if (itemId <= 0 || count <= 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _battleLoot.Count; i++)
+            {
+                if (_battleLoot[i].itemId == itemId)
+                {
+                    ItemStack stack = _battleLoot[i];
+                    stack.count += count;
+                    _battleLoot[i] = stack;
+                    return;
+                }
+            }
+
+            _battleLoot.Add(new ItemStack(itemId, count));
         }
 
         /// <summary>

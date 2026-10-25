@@ -104,7 +104,7 @@ namespace SepCore.Exploration
                 new List<ResourcePointPlacementData>(mapDefinition.ResourcePoints.Count);
             for (int i = 0; i < mapDefinition.ResourcePoints.Count; i++)
             {
-                resourcePoints.Add(ResourcePointGenerator.PlacePoint(mapDefinition.ResourcePoints[i]));
+                resourcePoints.Add(ResourcePointGenerator.PlacePoint(i, mapDefinition.ResourcePoints[i]));
             }
 
             List<EnemyPointPlacementData> enemyPoints =

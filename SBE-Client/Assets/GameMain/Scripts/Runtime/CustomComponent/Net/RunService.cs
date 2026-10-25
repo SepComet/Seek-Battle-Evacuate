@@ -246,6 +246,17 @@ namespace SepCore.Net
         }
 
         /// <summary>
+        /// 清空本局缓存（runId / seed / 已消耗点）。单局结算后调用，
+        /// 避免下一局还没成功 start_run 时被误当成"仍持有活跃局"上报或交互。
+        /// </summary>
+        public void ResetRun()
+        {
+            RunId = null;
+            Seed = 0;
+            _consumed.Clear();
+        }
+
+        /// <summary>
         /// 开局：服务器分配种子并生成全图内容。resume=true 是断线重连的恢复路径，
         /// 无活跃局时服务器拒绝（客户端不得据此误建新局）。
         /// 成功后就地更新缓存的 runId/seed/consumed。

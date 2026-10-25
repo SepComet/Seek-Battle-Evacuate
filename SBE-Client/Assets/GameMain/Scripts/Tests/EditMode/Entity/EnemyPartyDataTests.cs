@@ -63,5 +63,33 @@ namespace SepCore.Tests
             Assert.AreEqual(threatLevel, data.ThreatLevel);
             Assert.AreEqual(assetName, data.AssetName);
         }
+        [Test]
+        public void Constructor_StoresPointId()
+        {
+            EnemyPartyData data = new EnemyPartyData(
+                entityId: 204,
+                assetName: "EnemyPartyLowThreat",
+                position: Vector3.zero,
+                enemyPartyId: 0,
+                threatLevel: EnemyPartyThreatLevel.Low,
+                pointId: "e3");
+
+            Assert.AreEqual("e3", data.PointId);
+            // 联网流程队伍构成未定：开局 ID 传 0 占位，等 encounter 响应。
+            Assert.AreEqual(0, data.EnemyPartyId);
+        }
+
+        [Test]
+        public void Constructor_WithoutPointId_LeavesItNull()
+        {
+            EnemyPartyData data = new EnemyPartyData(
+                entityId: 205,
+                assetName: "EnemyPartyLowThreat",
+                position: Vector3.zero,
+                enemyPartyId: 4001,
+                threatLevel: EnemyPartyThreatLevel.Low);
+
+            Assert.IsNull(data.PointId);
+        }
     }
 }

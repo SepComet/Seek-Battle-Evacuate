@@ -33,9 +33,9 @@ namespace SepCore.Exploration
         /// <summary>
         /// 摆位阶段：物资点存在性（本阶段恒为 true）与位置，不消费随机。
         /// </summary>
-        public static ResourcePointPlacementData PlacePoint(ResourcePointDefinition definition)
+        public static ResourcePointPlacementData PlacePoint(int index, ResourcePointDefinition definition)
         {
-            return new ResourcePointPlacementData(definition.Position, definition.ResourcePointId, true);
+            return new ResourcePointPlacementData(index, definition.Position, definition.ResourcePointId, true);
         }
 
         /// <summary>
@@ -44,7 +44,7 @@ namespace SepCore.Exploration
         public ResourcePointBuildData BuildPoint(ResourcePointDefinition definition, int index,
             DifficultyTier difficulty, long masterSeed)
         {
-            ResourcePointPlacementData placement = PlacePoint(definition);
+            ResourcePointPlacementData placement = PlacePoint(index, definition);
             ResourcePointConfig resourceConfig = FindResourceConfig(definition.ResourcePointId);
             LootGenerationConfig lootConfig = FindLootConfig(resourceConfig, difficulty);
 
@@ -68,7 +68,7 @@ namespace SepCore.Exploration
                 rarityItems.RemoveAt(itemIndex);
             }
 
-            return new ResourcePointBuildData(placement.Position, placement.ResourcePointId, itemIds);
+            return new ResourcePointBuildData(placement.Index, placement.Position, placement.ResourcePointId, itemIds);
         }
 
         private ResourcePointConfig FindResourceConfig(int id)

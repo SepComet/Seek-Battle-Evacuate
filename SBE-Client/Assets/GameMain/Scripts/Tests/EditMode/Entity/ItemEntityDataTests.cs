@@ -68,5 +68,33 @@ namespace SepCore.Tests
 
             Assert.AreEqual(1, data.Count);
         }
+
+        /// <summary>
+        /// 战斗掉落标记：默认 false（箱子/丢弃来源），敌点掉落显式置 true。
+        /// 只有带该标记的道具被拾取时才计入本局战斗所得（结算对账额度）。
+        /// </summary>
+        [Test]
+        public void Constructor_BattleLootFlag_DefaultsFalseAndCanBeSet()
+        {
+            ItemEntityData resourceLoot = new ItemEntityData(
+                entityId: 204,
+                assetName: "ItemEntity",
+                position: Vector3.zero,
+                itemId: 5001,
+                count: 1,
+                rarity: Rarity.White);
+
+            ItemEntityData battleLoot = new ItemEntityData(
+                entityId: 205,
+                assetName: "ItemEntity",
+                position: Vector3.zero,
+                itemId: 5001,
+                count: 1,
+                rarity: Rarity.White,
+                isBattleLoot: true);
+
+            Assert.IsFalse(resourceLoot.IsBattleLoot);
+            Assert.IsTrue(battleLoot.IsBattleLoot);
+        }
     }
 }

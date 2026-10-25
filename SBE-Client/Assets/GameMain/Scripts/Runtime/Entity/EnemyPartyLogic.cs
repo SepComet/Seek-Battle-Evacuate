@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using SepCore.Battle;
 using SepCore.CustomComponent;
 using SepCore.Definition;
 using SepCore.Exploration;
+using SepCore.Net;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityGameFramework.Runtime;
@@ -12,9 +14,11 @@ namespace SepCore.Entity
 {
     /// <summary>
     /// 敌人队伍实体逻辑。
-    /// 负责整合巡逻与追击移动（EnemyPartyMovementController）、正面 180° 视野与警惕值计算（EnemyAlertnessTracker），
+    /// 负责整合巡逻与追击移动（EnemyPartyMovementController）、正面 180° 视野与警惕值计算（EnemyAlertnessTracker）、
     /// 头顶警惕 UI（Image.fillAmount 与变红），
     /// 以及与玩家队伍发生碰撞时触发回合制战斗（警惕未满先制，警惕已满普通）和战后处理。
+    /// 联网流程撞敌先向服务器请求该点的权威队伍（encounter），响应到达才开战；
+    /// 请求期间的本地威胁等级只用于 prefab 选取与渲染。移动与碰撞主循环永不等待网络。
     /// </summary>
     public sealed class EnemyPartyLogic : EntityBase
     {
@@ -22,12 +26,20 @@ namespace SepCore.Entity
         private const float DefaultLootRangeMaxRadius = 1.5f;
         private const int MaxDropPositionAttempts = 15;
 
+        /// <summary>
+        /// 撞敌响应到达时玩家仍在附近的最大距离（世界单位）。
+        /// 请求是在途网络往返，玩家可能在等待期间已跑开；超出该距离视为本次遭遇作废，
+        /// 避免"已经逃远却被远程拉进战斗"。取明显大于碰撞接触距离的宽松值。
+        /// </summary>
+        private const float EncounterResponseMaxDistance = 2.5f;
+
         private EnemyPartyData _data;
         private EnemyPartyConfig _config;
         private EnemyPartyMovementController _movementController;
         private EnemyAlertnessTracker _alertnessTracker;
         private EnemyExplorationState _lastState;
         private bool _isInBattle;
+        private readonly EncounterRequestGate _encounterGate = new EncounterRequestGate();
 
         [SerializeField] private GameObject _alertUIRoot;
         [SerializeField] private Image _alertImage;
@@ -135,6 +147,7 @@ namespace SepCore.Entity
 
             _lastState = EnemyExplorationState.Patrol;
             _isInBattle = false;
+            _encounterGate.Reset();
 
             EnsureAlertImage();
             UpdateAlertUI();
@@ -154,6 +167,7 @@ namespace SepCore.Entity
             _data = null;
             _config = null;
             _isInBattle = false;
+            _encounterGate.Reset();
             base.OnHide(isShutdown, userData);
         }
 
@@ -165,6 +179,10 @@ namespace SepCore.Entity
             {
                 return;
             }
+
+            // 撞敌请求的退避冷却按真实时间推进（玩家贴住敌人时碰撞回调每帧都会到达，
+            // 但脱离接触后也要继续走完冷却，避免反复进出触发密集请求）。
+            _encounterGate.Tick(realElapseSeconds);
 
             // 探索暂停、战斗进行中或自身在战斗中时，停止一切探索移动与视线更新
             if (_isInBattle || (GameEntry.TurnBattle != null && (GameEntry.TurnBattle.IsBattleActive || GameEntry.TurnBattle.IsExplorationPaused)))
@@ -276,19 +294,130 @@ namespace SepCore.Entity
                 return;
             }
 
+            if (!IsOnline())
+            {
+                // 离线（场景调试）：队伍构成沿用本地完整生成值，直接开战。
+                StartBattle(_data.EnemyPartyId);
+                return;
+            }
+
+            if (string.IsNullOrEmpty(_data.PointId))
+            {
+                // 联网流程的敌点必须携带交互主键（契约 §6），缺失即是装配缺陷：不请求、不开战。
+                Log.Error("Enemy party entity '{0}' has no pointId; cannot request encounter.", Entity.Id);
+                return;
+            }
+
+            // 联网流程：先向服务器请求该点的权威队伍。碰撞回调每物理帧都会触发，
+            // 这里只抢占一次请求（在途/冷却期间直接放弃），移动与渲染不等网络。
+            if (!_encounterGate.TryBegin())
+            {
+                return;
+            }
+
+            // 等待期间实体可能被隐藏（_data 置空）或被池化复用给另一个敌点，
+            // 因此把身份与预测威胁在发起前抄下来，响应回来时校验仍是同一个敌点。
+            RequestEncounterAsync(_data, _data.PointId, _data.ThreatLevel).Forget();
+        }
+
+        /// <summary>
+        /// 向服务器请求本敌点的权威队伍，成功即开战；失败（超时/断线/拒绝）不开战、
+        /// 进入退避冷却并提示。战斗中队伍构成以响应为准，本地威胁等级只用于 prefab 与警惕参数。
+        /// </summary>
+        private async UniTaskVoid RequestEncounterAsync(EnemyPartyData data, string pointId,
+            EnemyPartyThreatLevel predictedThreat)
+        {
+            try
+            {
+                EncounterResult result = await GameEntry.Net.Run.EncounterAsync(pointId);
+                if (result.Success)
+                {
+                    _encounterGate.Complete();
+                    if (!Available || _isInBattle || !ReferenceEquals(_data, data))
+                    {
+                        // 请求期间已进入战斗、实体已隐藏、或已被复用给别的敌点：不再开战。
+                        return;
+                    }
+
+                    if (!IsPlayerStillNearby())
+                    {
+                        Log.Info("Encounter on '{0}' resolved after the player moved away; skipping battle.", pointId);
+                        return;
+                    }
+
+                    if ((EnemyPartyThreatLevel)result.Threat != predictedThreat)
+                    {
+                        // 预测与权威值不一致只影响渲染选择，不阻断战斗；记录以便发现双端漂移。
+                        Log.Warning("Encounter on '{0}' threat mismatch: predicted {1}, server {2}.",
+                            pointId, predictedThreat, (EnemyPartyThreatLevel)result.Threat);
+                    }
+
+                    StartBattle(result.EnemyPartyId);
+                    return;
+                }
+
+                if (ReferenceEquals(_data, data))
+                {
+                    _encounterGate.Reject();
+                }
+
+                Log.Warning("Encounter on '{0}' failed: {1}.", pointId, result.Outcome);
+                NetworkNotice.ShowInteractionRejected();
+            }
+            catch (Exception ex)
+            {
+                // 不允许异常吞掉在途标志，否则该敌点会永久无法再触发。
+                if (ReferenceEquals(_data, data))
+                {
+                    _encounterGate.Reject();
+                }
+
+                Log.Error("Encounter on '{0}' threw: {1}", pointId, ex);
+            }
+        }
+
+        /// <summary>
+        /// 玩家领队是否仍在撞敌响应来得及生效的范围内。
+        /// </summary>
+        private bool IsPlayerStillNearby()
+        {
+            PlayerCharacterLogic leader = PlayerCharacterLogic.Leader;
+            if (leader == null || !leader.Available)
+            {
+                return false;
+            }
+
+            Vector2 delta = (Vector2)leader.transform.position - (Vector2)transform.position;
+            return delta.sqrMagnitude <= EncounterResponseMaxDistance * EncounterResponseMaxDistance;
+        }
+
+        /// <summary>
+        /// 以给定队伍配置 ID 开战。警惕未满为先制战，与离线路径完全一致。
+        /// </summary>
+        private void StartBattle(int enemyPartyId)
+        {
             // 碰触玩家队伍，根据警惕度是否满值判定先制还是普通战斗
             bool isPreemptive = _alertnessTracker == null || !_alertnessTracker.IsAlertFull;
             _isInBattle = true;
             _movementController?.StopMovement();
 
-            BattleEncounter encounter = new BattleEncounter(Entity.Id, _data.EnemyPartyId, isPreemptive);
-            Log.Info("Enemy party '{0}' triggered battle with player (preemptive: {1}).", Entity.Id, isPreemptive);
+            BattleEncounter encounter = new BattleEncounter(Entity.Id, enemyPartyId, isPreemptive);
+            Log.Info("Enemy party '{0}' triggered battle with player (party: {1}, preemptive: {2}).",
+                Entity.Id, enemyPartyId, isPreemptive);
 
             bool started = GameEntry.TurnBattle.TryStartBattle(encounter, OnBattleCompleted);
             if (!started)
             {
+                // 开战被拒（例如战斗占用未释放）：同一个碰撞还在持续，给一次退避，
+                // 否则下一物理帧会立刻重新走一遍网络请求。
                 _isInBattle = false;
+                _encounterGate.Reject();
             }
+        }
+
+        private static bool IsOnline()
+        {
+            return GameEntry.Net != null && GameEntry.Net.OnlineReady;
         }
 
         private void OnBattleCompleted(BattleResult result)
@@ -397,7 +526,8 @@ namespace SepCore.Entity
                     1,
                     itemConfig.Rarity,
                     rotation: Quaternion.identity,
-                    spawnFromPosition: spawnOrigin);
+                    spawnFromPosition: spawnOrigin,
+                    isBattleLoot: true);
 
                 GameEntry.Entity.ShowEntity<ItemEntityLogic>(itemData, "Item", Constant.AssetPriority.SceneAsset);
                 Log.Info("Enemy party '{0}' dropped item '{1}' (Rarity: {2}) at position {3}.",

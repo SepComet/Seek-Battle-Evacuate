@@ -64,7 +64,7 @@ namespace SepCore.Exploration
         {
             pointRng = CreatePointRng(masterSeed, index);
             EnemyPartyThreatLevel threatLevel = SelectThreatLevel(pointRng, threatWeights);
-            return new EnemyPointPlacementData(position, threatLevel,
+            return new EnemyPointPlacementData(index, position, threatLevel,
                 threatLevel != EnemyPartyThreatLevel.None);
         }
 

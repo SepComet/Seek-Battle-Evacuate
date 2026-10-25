@@ -9,7 +9,9 @@ namespace SepCore.UI
 {
     /// <summary>
     /// 战备出战面板逻辑（手写 partial，与自动生成的 DeploymentForm.cs 合并）。
-    /// 负责难度切换、种子设定、出战信息显示，并在点击开始时直接构造出战角色列表并触发单局探索。
+    /// 负责难度切换、出战信息显示，并在点击开始时直接构造出战角色列表并触发单局探索。
+    /// 本局种子一律由服务器在 start_run 时分配（exploration-online-v1 契约 §5）：
+    /// prefab 上的种子输入框与随机按钮保留但不再参与任何逻辑。
     /// </summary>
     public partial class DeploymentForm : UGuiForm
     {
@@ -31,7 +33,6 @@ namespace SepCore.UI
             _listenersBound = true;
 
             View.beginRunButton.onClick.AddListener(OnBeginRunButtonClick);
-            View.randomizeButton.onClick.AddListener(OnRandomizeButtonClick);
             View.tier1Toggle.onValueChanged.AddListener(isOn =>
             {
                 if (isOn) OnDifficultyToggleChanged(DifficultyTier.Tier1);
@@ -65,12 +66,6 @@ namespace SepCore.UI
                 difficulty = DifficultyTier.Tier1;
             }
             SetDifficultyToggle(difficulty);
-
-            if (string.IsNullOrEmpty(View.seedInput.text))
-            {
-                int randomSeed = (int)(DateTime.UtcNow.Ticks & 0x7FFFFFFF);
-                View.seedInput.text = randomSeed.ToString();
-            }
 
             int characterCount = save?.characters?.Count ?? 0;
             int maxParty = global != null ? global.MaxPlayerPartySize : 4;
@@ -111,12 +106,6 @@ namespace SepCore.UI
                     GameEntry.Save.Save();
                 }
             }
-        }
-
-        private void OnRandomizeButtonClick()
-        {
-            int seed = (int)(DateTime.UtcNow.Ticks & 0x7FFFFFFF);
-            View.seedInput.text = seed.ToString();
         }
 
         private void OnBeginRunButtonClick()
@@ -187,21 +176,13 @@ namespace SepCore.UI
 
             save.loadout.difficultyId = difficulty;
 
-            // 3. 读取种子并播种共享随机源
-            int seed = (int)(DateTime.UtcNow.Ticks & 0x7FFFFFFF);
-            if (int.TryParse(View.seedInput.text, out int inputSeed))
-            {
-                seed = inputSeed;
-            }
-
-            GameEntry.Random.BeginRun(seed);
-
+            // 3. 本局种子由服务器在 start_run 时分配，此处不再播种共享随机源（契约 §5）
             // 4. 写盘保存战备配置；出战队伍与难度由服务器记账，差分上报
             GameEntry.Net?.NotifyEconomyChanged();
             GameEntry.Save.Save();
 
-            Log.Info("[DeploymentForm] Starting run with {0} characters, difficulty: {1}, seed: {2}.",
-                save.loadout.partyCharacterIds.Length, difficulty, seed);
+            Log.Info("[DeploymentForm] Starting run with {0} characters, difficulty: {1}.",
+                save.loadout.partyCharacterIds.Length, difficulty);
 
             // 5. 抛出开始单局事件，由 ProcedureMenu 接收并切场景进入单局
             GameEntry.Event.Fire(this, StartRunEventArgs.Create());

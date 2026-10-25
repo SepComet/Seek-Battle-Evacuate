@@ -188,6 +188,28 @@ namespace SepCore.Tests
             Assert.That(ctx.Service.IsConsumed("r0"), Is.True);
         }
 
+        /// <summary>
+        /// 结算后清空缓存：下一局还没成功 start_run 时不得被当成"仍持有活跃局"，
+        /// 否则结算会上报上局的 runId、交互也会带上过期 runId。
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ResetRun_ClearsRunIdSeedAndConsumed()
+        {
+            Ctx ctx = CreateService();
+            yield return ctx.Service.StartRunAsync(DifficultyTier.Tier1).ToCoroutine();
+            yield return ctx.Service.LootAsync("r0").ToCoroutine();
+            Assert.That(ctx.Service.HasActiveRun, Is.True);
+            Assert.That(ctx.Service.IsConsumed("r0"), Is.True);
+
+            ctx.Service.ResetRun();
+
+            Assert.That(ctx.Service.HasActiveRun, Is.False);
+            Assert.That(ctx.Service.RunId, Is.Null);
+            Assert.That(ctx.Service.Seed, Is.EqualTo(0L));
+            Assert.That(ctx.Service.ConsumedPointIds, Is.Empty);
+            Assert.That(ctx.Service.IsConsumed("r0"), Is.False);
+        }
+
         [UnityTest]
         public IEnumerator TimeoutReportsTimeoutAndRaisesEvent()
         {

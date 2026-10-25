@@ -276,12 +276,15 @@ namespace SepCore.Net
         /// 结算上报：操作集在入口一次捕获，之后按 runId 幂等重试直至服务器确认；
         /// 确认后以权威快照落地并写本地缓存。强制在线语义：断线期间一直等待。
         /// record 为本局战绩（结局/难度/种子/起止时间），随结算落服务器审计列。
+        /// battleLoot 为本局战斗所得（已拾取入背包的敌人掉落），服务器据此放宽开箱对账额度
+        /// （允许额度 = 开箱所得 + 携带入场 + 战斗所得，契约 §7）；可为 null。
         /// </summary>
-        public async UniTask SettleAsync(string runId, RoundRecord record)
+        public async UniTask SettleAsync(string runId, RoundRecord record, IReadOnlyList<ItemStack> battleLoot = null)
         {
             List<NetOp> ops = EconomyDiff.Compute(_ledger, _getSave(), _itemGetter);
             // 结算仅提交资产变化，战备配置由大厅 ops 独立同步。
             ops.RemoveAll(op => op.k == NetOpKind.Party || op.k == NetOpKind.Difficulty || op.k == NetOpKind.Carry);
+            List<NetStack> battleLootStacks = ToNetStacks(battleLoot);
             await RunSerialized(async () =>
             {
                 while (true)
@@ -306,6 +309,7 @@ namespace SepCore.Net
                     env.startedAt = record.startedAt;
                     env.endedAt = record.endedAt;
                     env.ops = ops;
+                    env.battleLoot = battleLootStacks;
                     NetEnvelope resp = await _rpc.SendAsync(env);
                     if (resp == null)
                     {
@@ -564,6 +568,30 @@ namespace SepCore.Net
             }
 
             return resp.IsOk ? "ok" : string.Format("{0}: {1}", resp.code, resp.msg);
+        }
+
+        /// <summary>
+        /// 把本局战斗所得转成线上 Stack 列表；空/null 返回 null（Go 侧 omitempty 语义）。
+        /// </summary>
+        private static List<NetStack> ToNetStacks(IReadOnlyList<ItemStack> stacks)
+        {
+            if (stacks == null || stacks.Count == 0)
+            {
+                return null;
+            }
+
+            List<NetStack> result = new List<NetStack>(stacks.Count);
+            for (int i = 0; i < stacks.Count; i++)
+            {
+                if (stacks[i].itemId <= 0 || stacks[i].count <= 0)
+                {
+                    continue;
+                }
+
+                result.Add(new NetStack(stacks[i].itemId, stacks[i].count));
+            }
+
+            return result.Count > 0 ? result : null;
         }
     }
 }

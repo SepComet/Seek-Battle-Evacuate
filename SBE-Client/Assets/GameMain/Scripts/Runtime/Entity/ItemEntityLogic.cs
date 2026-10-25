@@ -105,6 +105,13 @@ namespace SepCore.Entity
             int addedCount = backpack.TryAddItem(_data.ItemId, _data.Count);
             if (addedCount > 0)
             {
+                // 战斗掉落被拾取即记入本局战斗所得：结算上报后计入服务器开箱对账额度
+                // （带出物资 ⊆ 开箱所得 ∪ 携带入场 ∪ 战斗所得，契约 §7）。
+                if (_data.IsBattleLoot)
+                {
+                    GameEntry.Round.Session.RecordBattleLoot(_data.ItemId, addedCount);
+                }
+
                 // 派发背包变更事件，刷新 HUD 战利品与空闲槽位
                 GameEntry.Event.Fire(this, RoundBackpackChangedEventArgs.Create(
                     backpack.UsedSlotsCount, backpack.MaxSlots, GameEntry.Round.Session.TotalLootValue));

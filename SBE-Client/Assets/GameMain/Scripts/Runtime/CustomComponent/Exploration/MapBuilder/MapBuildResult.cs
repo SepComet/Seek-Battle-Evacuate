@@ -11,12 +11,20 @@ namespace SepCore.Exploration
     /// </summary>
     public sealed class ResourcePointPlacementData
     {
-        internal ResourcePointPlacementData(Vector2 position, int resourcePointId, bool present)
+        internal ResourcePointPlacementData(int index, Vector2 position, int resourcePointId, bool present)
         {
+            Index = index;
+            PointId = PointIds.ResourcePoint(index);
             Position = position;
             ResourcePointId = resourcePointId;
             Present = present;
         }
+
+        /// <summary>该点在物资点定义列表中的下标，用于构造交互主键（契约 §6）。</summary>
+        public int Index { get; }
+
+        /// <summary>交互主键 "r&lt;Index&gt;"。</summary>
+        public string PointId { get; }
 
         public Vector2 Position { get; }
 
@@ -30,12 +38,20 @@ namespace SepCore.Exploration
     /// </summary>
     public sealed class EnemyPointPlacementData
     {
-        internal EnemyPointPlacementData(Vector2 position, EnemyPartyThreatLevel threatLevel, bool present)
+        internal EnemyPointPlacementData(int index, Vector2 position, EnemyPartyThreatLevel threatLevel, bool present)
         {
+            Index = index;
+            PointId = PointIds.EnemyPoint(index);
             Position = position;
             ThreatLevel = threatLevel;
             Present = present;
         }
+
+        /// <summary>该点在敌点定义列表中的下标，用于构造交互主键（契约 §6）。</summary>
+        public int Index { get; }
+
+        /// <summary>交互主键 "e&lt;Index&gt;"。</summary>
+        public string PointId { get; }
 
         public Vector2 Position { get; }
 
@@ -85,12 +101,22 @@ namespace SepCore.Exploration
 
     public sealed class ResourcePointBuildData
     {
-        internal ResourcePointBuildData(Vector2 position, int resourcePointId, IList<int> itemIds)
+        internal ResourcePointBuildData(int index, Vector2 position, int resourcePointId, IList<int> itemIds)
         {
+            Index = index;
+            PointId = PointIds.ResourcePoint(index);
             Position = position;
             ResourcePointId = resourcePointId;
             ItemIds = new ReadOnlyCollection<int>(new List<int>(itemIds));
         }
+
+        /// <summary>
+        /// 该点在物资点定义列表中的下标，用于构造交互主键 "r{Index}"（契约 §6）。
+        /// </summary>
+        public int Index { get; }
+
+        /// <summary>交互主键 "r&lt;Index&gt;"。</summary>
+        public string PointId { get; }
 
         public Vector2 Position { get; }
 
@@ -105,6 +131,7 @@ namespace SepCore.Exploration
             int enemyPartyId)
         {
             Index = index;
+            PointId = PointIds.EnemyPoint(index);
             Position = position;
             ThreatLevel = threatLevel;
             EnemyPartyId = enemyPartyId;
@@ -114,6 +141,9 @@ namespace SepCore.Exploration
         /// 该敌点在地图定义敌点列表中的下标，用于构造交互主键 "e{Index}"（契约 §6）。
         /// </summary>
         public int Index { get; }
+
+        /// <summary>交互主键 "e&lt;Index&gt;"。</summary>
+        public string PointId { get; }
 
         public Vector2 Position { get; }
 
