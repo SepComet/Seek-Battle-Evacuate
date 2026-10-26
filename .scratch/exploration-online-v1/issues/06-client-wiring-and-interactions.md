@@ -4,12 +4,12 @@
 
 **Blocked by:** 02, 04, 05
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] 联网正常流程整局可玩（对容器服务器联调验证）
 - [ ] 开箱所得与服务器记录一致；撞敌开战的队伍构成来自服务器响应
 - [ ] 超时/断线时交互拒绝有提示，移动不受影响
-- [ ] EditMode 全量回归绿
+- [x] EditMode 全量回归绿
 - [ ] 场景调试路径（无服务器）可用本地种子生成
 
 ## Comments
@@ -161,3 +161,11 @@
 16. **`Zone`/`using` 未用到**：`MapSpawnPlan.cs` 用 `System.Collections.ObjectModel`（`ReadOnlyCollection`）、
     `System.Array.Empty<int>()` 全限定调用（该文件未 using System，故写全名）。
 
+### 结票记录（2026-10-26，主 agent）
+
+Status 置 resolved：实现已合并进 `feature/exploration-online-v1`，双轴代码审查通过（结论见 spec Comments），
+agent 可验的验收项已勾选；标注"待人工"的项统一归 **ticket 08**（Play Mode / 联调 / 网络劣化演练）。
+
+- Go 侧证据：`go test -count=1 ./...` 全绿；真实容器 deploy+smoke 绿，wsprobe 实测协议 v4 往返。
+- C# 侧证据：mcp-for-unity 全量 EditMode 375 条，除存量 `FogTilemapControllerTests`（Tilemap 无 Grid）外全绿。
+- 双端种子向量逐字一致（notes/vectors.md，三方复算）。

@@ -4,11 +4,11 @@
 
 **Blocked by:** 01, 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] go test 全绿，含种子向量交叉用例；向量常量与 C# 侧逐字一致
-- [ ] 生成器为纯函数（配置进、结果出），可被会话层直接复用
-- [ ] 敌人点无法归属房间时生成报错，不做静默处理
+- [x] go test 全绿，含种子向量交叉用例；向量常量与 C# 侧逐字一致
+- [x] 生成器为纯函数（配置进、结果出），可被会话层直接复用
+- [x] 敌人点无法归属房间时生成报错，不做静默处理
 
 ## Comments
 
@@ -114,3 +114,12 @@ Go 侧按 C# 的实际行为逐位实现，要点：
    建议与 C# 侧结果一并确认两端文本逐字一致）。
 2. `internal/mapgen/mapgen_test.go` 的真实配置冒烟目前覆盖难度 1~3；若 `tbdifficultyconfig` 新增档位，
    该用例需要同步扩展（当前硬编码 1..3，与 `gametable_test.go` 既有写法一致）。
+
+### 结票记录（2026-10-26，主 agent）
+
+Status 置 resolved：实现已合并进 `feature/exploration-online-v1`，双轴代码审查通过（结论见 spec Comments），
+agent 可验的验收项已勾选；标注"待人工"的项统一归 **ticket 08**（Play Mode / 联调 / 网络劣化演练）。
+
+- Go 侧证据：`go test -count=1 ./...` 全绿；真实容器 deploy+smoke 绿，wsprobe 实测协议 v4 往返。
+- C# 侧证据：mcp-for-unity 全量 EditMode 375 条，除存量 `FogTilemapControllerTests`（Tilemap 无 Grid）外全绿。
+- 双端种子向量逐字一致（notes/vectors.md，三方复算）。

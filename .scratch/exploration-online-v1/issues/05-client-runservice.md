@@ -4,12 +4,12 @@
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] EditMode 覆盖成功/超时/断线放行/错误码分支
-- [ ] 超时阈值可配置
-- [ ] 事件出口携带拒绝原因与目标点，供 UI 消费
-- [ ] 不引入对 UI/流程组件的依赖（纯域服务）
+- [x] EditMode 覆盖成功/超时/断线放行/错误码分支
+- [x] 超时阈值可配置
+- [x] 事件出口携带拒绝原因与目标点，供 UI 消费
+- [x] 不引入对 UI/流程组件的依赖（纯域服务）
 
 ## Comments
 
@@ -170,3 +170,12 @@
    成员/类型叫 `RunService`/`StartRunResult`/`EncounterResult`/`LootResult`。
 13. **`NetProtocol.cs` 里 `<see cref="consumed"/>` 引用小写字段**：XML doc 的 cref 到字段合法；
     若编译器把 doc 警告视为错误会有影响，但仓库未开启 `DocumentationFile` + warnaserror。
+
+### 结票记录（2026-10-26，主 agent）
+
+Status 置 resolved：实现已合并进 `feature/exploration-online-v1`，双轴代码审查通过（结论见 spec Comments），
+agent 可验的验收项已勾选；标注"待人工"的项统一归 **ticket 08**（Play Mode / 联调 / 网络劣化演练）。
+
+- Go 侧证据：`go test -count=1 ./...` 全绿；真实容器 deploy+smoke 绿，wsprobe 实测协议 v4 往返。
+- C# 侧证据：mcp-for-unity 全量 EditMode 375 条，除存量 `FogTilemapControllerTests`（Tilemap 无 Grid）外全绿。
+- 双端种子向量逐字一致（notes/vectors.md，三方复算）。

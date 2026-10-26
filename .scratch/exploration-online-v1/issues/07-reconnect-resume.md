@@ -4,11 +4,11 @@
 
 **Blocked by:** 06
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] EditMode 覆盖恢复流程：摆位重建一致、消耗状态正确应用
-- [ ] 重连后开过的箱子不可再开、内容与消耗记录一致
-- [ ] 无活跃 run 时恢复路径不误建新局
+- [x] EditMode 覆盖恢复流程：摆位重建一致、消耗状态正确应用
+- [x] 重连后开过的箱子不可再开、内容与消耗记录一致
+- [x] 无活跃 run 时恢复路径不误建新局
 
 ## Comments
 
@@ -157,3 +157,12 @@
   服务器幂等承接（返回活跃 run 现状 + 地图构建应用 Looted，见 §2），不走恢复。
 - **时序竞态**：重连期间（登录中）`OnlineReady` 为 false，轮询直接跳过；登录完成的同帧
   `TryConsumeBackOnline` 才取走标记。恢复请求自身 3s 超时（RunService 默认阈值）。
+
+### 结票记录（2026-10-26，主 agent）
+
+Status 置 resolved：实现已合并进 `feature/exploration-online-v1`，双轴代码审查通过（结论见 spec Comments），
+agent 可验的验收项已勾选；标注"待人工"的项统一归 **ticket 08**（Play Mode / 联调 / 网络劣化演练）。
+
+- Go 侧证据：`go test -count=1 ./...` 全绿；真实容器 deploy+smoke 绿，wsprobe 实测协议 v4 往返。
+- C# 侧证据：mcp-for-unity 全量 EditMode 375 条，除存量 `FogTilemapControllerTests`（Tilemap 无 Grid）外全绿。
+- 双端种子向量逐字一致（notes/vectors.md，三方复算）。

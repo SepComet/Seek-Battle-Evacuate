@@ -4,13 +4,13 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] start_run 幂等：已有活跃 run 返回现状（含已消耗点集合），新开局分配种子
-- [ ] encounter/loot 覆盖点不存在/已消耗/无活跃 run 分支；重试返回相同结果
-- [ ] settle 对账开箱所得；战斗所得不校验（边界记录在案）
-- [ ] TTL 清理超时未结算 run 有测试
-- [ ] fake WS 全流程 start_run→encounter→loot→settle 绿
+- [x] start_run 幂等：已有活跃 run 返回现状（含已消耗点集合），新开局分配种子
+- [x] encounter/loot 覆盖点不存在/已消耗/无活跃 run 分支；重试返回相同结果
+- [x] settle 对账开箱所得；战斗所得不校验（边界记录在案）
+- [x] TTL 清理超时未结算 run 有测试
+- [x] fake WS 全流程 start_run→encounter→loot→settle 绿
 
 ## Comments
 
@@ -168,3 +168,11 @@ ok  sbe-server/internal/ws 0.879s           （另有 4 个包 no test files）
 3. `-race` 未跑（本机无 gcc，见上）。
 4. 客户端协议 v4 对接（ticket 05/06/07）：`NetMsg.Version` 需同步升 4，字段名按本文件的 wire format 用例。
 
+### 结票记录（2026-10-26，主 agent）
+
+Status 置 resolved：实现已合并进 `feature/exploration-online-v1`，双轴代码审查通过（结论见 spec Comments），
+agent 可验的验收项已勾选；标注"待人工"的项统一归 **ticket 08**（Play Mode / 联调 / 网络劣化演练）。
+
+- Go 侧证据：`go test -count=1 ./...` 全绿；真实容器 deploy+smoke 绿，wsprobe 实测协议 v4 往返。
+- C# 侧证据：mcp-for-unity 全量 EditMode 375 条，除存量 `FogTilemapControllerTests`（Tilemap 无 Grid）外全绿。
+- 双端种子向量逐字一致（notes/vectors.md，三方复算）。

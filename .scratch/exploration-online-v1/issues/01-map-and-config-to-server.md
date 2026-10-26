@@ -4,12 +4,12 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] 导出产出的 JSON 覆盖房间矩形、物资点/敌人点/出生与撤离候选列表
-- [ ] sync_config 同步后服务器启动加载成功，加载用例跑真实导出 JSON
-- [ ] 资源点配置（含掉落权重）与敌队伍配置（含威胁池）在服务器可查询
-- [ ] 敌人点不在任何房间内时，导出侧报错拒绝产出
+- [x] 导出产出的 JSON 覆盖房间矩形、物资点/敌人点/出生与撤离候选列表
+- [x] sync_config 同步后服务器启动加载成功，加载用例跑真实导出 JSON
+- [x] 资源点配置（含掉落权重）与敌队伍配置（含威胁池）在服务器可查询
+- [x] 敌人点不在任何房间内时，导出侧报错拒绝产出
 
 > 四条均已在代码与 Go 测试层面就绪；勾选留待主 agent 跑完编辑器重导 + EditMode 后回填（见 Comments「待主 agent 验证」）。
 
@@ -83,3 +83,12 @@ ok  sbe-server/internal/ws 1.291s
 - 服务器加载期多了一条契约未要求的跨表校验（`resourcePointId` 必须在资源点表存在）。属契约"加载失败即 Fatal"的延展，不放宽任何既有约束；若认为超出票范围可单独撤掉。
 - `itemtable.Load` 保留双入口（`Load` / `LoadCatalog`）而非直接改签名，避免动既有调用点；`core.ItemDef` 加 `Rarity` 字段对所有使用处是键值字面量，无需改。
 - 未提交任何构建产物（`tools/sbe-dev-mcp/sbe-dev-mcp.exe`、`bin/` 均未出现）；新 `.cs` 未手写 `.meta`，交给 Editor 导入。
+
+### 结票记录（2026-10-26，主 agent）
+
+Status 置 resolved：实现已合并进 `feature/exploration-online-v1`，双轴代码审查通过（结论见 spec Comments），
+agent 可验的验收项已勾选；标注"待人工"的项统一归 **ticket 08**（Play Mode / 联调 / 网络劣化演练）。
+
+- Go 侧证据：`go test -count=1 ./...` 全绿；真实容器 deploy+smoke 绿，wsprobe 实测协议 v4 往返。
+- C# 侧证据：mcp-for-unity 全量 EditMode 375 条，除存量 `FogTilemapControllerTests`（Tilemap 无 Grid）外全绿。
+- 双端种子向量逐字一致（notes/vectors.md，三方复算）。

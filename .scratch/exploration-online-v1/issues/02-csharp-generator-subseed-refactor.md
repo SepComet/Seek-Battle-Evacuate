@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** implemented-pending-unity-verify
+**Status:** resolved
 
 - [x] EditMode 生成测试改为固定种子向量断言，全量回归绿（测试已写；EditMode 实跑待主 agent 经 mcp-for-unity 执行）
 - [x] 同一 masterSeed 两次生成结果逐位一致；各子种子互不影响（改物资配置不影响敌人摆位）
@@ -82,3 +82,12 @@
 - `MapPlacement.EnemyPoints` 与地图定义**同序同长**（不存在的点也占位、`Present=false`），而 `MapBuildResult.EnemyPoints` 只含存在点——两种语义都显式写在 XML 注释里，测试分别断言。
 - 战斗侧随机源（`RoundRandomSource`/`RandomComponent`/`IRoundRandomSource`）零改动。
 - `MainMapBuildingState` 的 `new MapBuilder(difficulty, GameEntry.Random.Seed)` 只改了参数来源；联网改造（服务器下发种子 + 摆位预测装配）属 ticket 06，本票不做。
+
+### 结票记录（2026-10-26，主 agent）
+
+Status 置 resolved：实现已合并进 `feature/exploration-online-v1`，双轴代码审查通过（结论见 spec Comments），
+agent 可验的验收项已勾选；标注"待人工"的项统一归 **ticket 08**（Play Mode / 联调 / 网络劣化演练）。
+
+- Go 侧证据：`go test -count=1 ./...` 全绿；真实容器 deploy+smoke 绿，wsprobe 实测协议 v4 往返。
+- C# 侧证据：mcp-for-unity 全量 EditMode 375 条，除存量 `FogTilemapControllerTests`（Tilemap 无 Grid）外全绿。
+- 双端种子向量逐字一致（notes/vectors.md，三方复算）。
