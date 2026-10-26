@@ -93,6 +93,12 @@ namespace SepCore.Exploration
             int totalWeight = 0;
             foreach (WeightedEnemyParty config in configs)
             {
+                if (config.Weight < 0)
+                {
+                    // 与 Go 侧 selectThreat 对齐：负权重是配置缺陷，报错而不是静默参与求和。
+                    throw new InvalidOperationException($"Negative threat weight for threat '{config.Threat}'.");
+                }
+
                 totalWeight += config.Weight;
             }
 

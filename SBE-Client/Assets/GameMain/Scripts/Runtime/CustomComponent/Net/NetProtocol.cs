@@ -333,6 +333,9 @@ namespace SepCore.Net
         /// <summary>start_run 响应下发的撤离点（显式值，不参与预测）。</summary>
         public NetVec2 extractionPoint;
 
+        /// <summary>start_run 响应下发的本局难度：幂等重入返回旧局现状，客户端据此发现难度漂移。</summary>
+        public int runDifficulty;
+
         /// <summary>start_run 响应：已消耗点 ID，按开箱序（重连恢复用）。</summary>
         public List<string> consumed;
 

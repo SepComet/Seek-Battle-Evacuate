@@ -46,7 +46,7 @@ namespace SepCore.Net
     }
 
     /// <summary>
-    /// start_run 的结果。成功时携带局标识、种子、出生/撤离点与已消耗点现状（重连恢复用）。
+    /// start_run 的结果。成功时携带局标识、种子、本局难度、出生/撤离点与已消耗点现状（重连恢复用）。
     /// </summary>
     public sealed class StartRunResult
     {
@@ -57,6 +57,9 @@ namespace SepCore.Net
 
         /// <summary>本局主种子（服务器分配）；未成功时为 0。</summary>
         public long Seed { get; }
+
+        /// <summary>本局难度（服务器权威值；幂等重入返回旧局难度，调用方据此发现难度漂移）；未成功时为 None。</summary>
+        public DifficultyTier Difficulty { get; }
 
         /// <summary>出生点（服务器显式值）；未成功时为 null。</summary>
         public NetVec2 SpawnPoint { get; }
@@ -78,12 +81,14 @@ namespace SepCore.Net
 
         public bool Success => Outcome == RunRequestOutcome.Success;
 
-        private StartRunResult(RunRequestOutcome outcome, string runId, long seed, NetVec2 spawnPoint,
-            NetVec2 extractionPoint, List<string> consumed, List<NetLootRecord> looted, string errCode, string errMsg)
+        private StartRunResult(RunRequestOutcome outcome, string runId, long seed, DifficultyTier difficulty,
+            NetVec2 spawnPoint, NetVec2 extractionPoint, List<string> consumed, List<NetLootRecord> looted,
+            string errCode, string errMsg)
         {
             Outcome = outcome;
             RunId = runId;
             Seed = seed;
+            Difficulty = difficulty;
             SpawnPoint = spawnPoint;
             ExtractionPoint = extractionPoint;
             Consumed = consumed;
@@ -93,17 +98,17 @@ namespace SepCore.Net
         }
 
         /// <summary>服务器 ok 应答。</summary>
-        public static StartRunResult Ok(string runId, long seed, NetVec2 spawnPoint, NetVec2 extractionPoint,
-            List<string> consumed, List<NetLootRecord> looted)
+        public static StartRunResult Ok(string runId, long seed, DifficultyTier difficulty, NetVec2 spawnPoint,
+            NetVec2 extractionPoint, List<string> consumed, List<NetLootRecord> looted)
         {
-            return new StartRunResult(RunRequestOutcome.Success, runId, seed, spawnPoint, extractionPoint,
-                consumed, looted, null, null);
+            return new StartRunResult(RunRequestOutcome.Success, runId, seed, difficulty, spawnPoint,
+                extractionPoint, consumed, looted, null, null);
         }
 
         /// <summary>未成功（超时 / 断线 / 服务器拒绝 / 应答不合契约）。</summary>
         public static StartRunResult Failed(RunRequestOutcome outcome, string errCode, string errMsg)
         {
-            return new StartRunResult(outcome, null, 0, null, null, new List<string>(),
+            return new StartRunResult(outcome, null, 0, DifficultyTier.None, null, null, new List<string>(),
                 new List<NetLootRecord>(), errCode, errMsg);
         }
     }
@@ -225,6 +230,9 @@ namespace SepCore.Net
         /// <summary>当前活跃局的主种子；未开局时为 0。</summary>
         public long Seed { get; private set; }
 
+        /// <summary>当前活跃局的难度（服务器权威值）；未开局时为 None。</summary>
+        public DifficultyTier Difficulty { get; private set; }
+
         /// <summary>是否已持有活跃局（start_run 成功后为 true）。</summary>
         public bool HasActiveRun => !string.IsNullOrEmpty(RunId);
 
@@ -253,6 +261,7 @@ namespace SepCore.Net
         {
             RunId = null;
             Seed = 0;
+            Difficulty = DifficultyTier.None;
             _consumed.Clear();
         }
 
@@ -292,23 +301,34 @@ namespace SepCore.Net
                 return FailInvalidStartRun();
             }
 
+            if (body.runDifficulty <= 0)
+            {
+                Log.Error("start_run response is missing runDifficulty (runId {0}).", body.runId);
+                return FailInvalidStartRun();
+            }
+
             // Go 侧 consumed/looted 带 omitempty：空清单不下发，缺失即空集合。
             List<string> consumed = body.consumed ?? new List<string>();
             List<NetLootRecord> looted = body.looted ?? new List<NetLootRecord>();
 
             RunId = body.runId;
             Seed = body.seed;
+            Difficulty = (DifficultyTier)body.runDifficulty;
             _consumed.Clear();
             foreach (string pointId in consumed)
             {
-                if (!_consumed.Contains(pointId))
+                if (_consumed.Contains(pointId))
                 {
-                    _consumed.Add(pointId);
+                    // 服务器以点索引保证 consumed 唯一：出现重复即是协议违例，不静默修正。
+                    Log.Error("start_run response has duplicate consumed point '{0}' (runId {1}).", pointId, body.runId);
+                    return FailInvalidStartRun();
                 }
-            }
 
-            Log.Info("Run started. RunId: {0}, Seed: {1}, Consumed: {2}.", RunId, Seed, _consumed.Count);
-            return StartRunResult.Ok(RunId, Seed, body.spawnPoint, body.extractionPoint, consumed, looted);
+                _consumed.Add(pointId);
+            }
+            Log.Info("Run started. RunId: {0}, Seed: {1}, Difficulty: {2}, Consumed: {3}.",
+                RunId, Seed, Difficulty, _consumed.Count);
+            return StartRunResult.Ok(RunId, Seed, Difficulty, body.spawnPoint, body.extractionPoint, consumed, looted);
         }
 
         /// <summary>

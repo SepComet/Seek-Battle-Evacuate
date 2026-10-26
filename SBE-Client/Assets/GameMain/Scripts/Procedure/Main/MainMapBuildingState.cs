@@ -204,21 +204,19 @@ namespace SepCore.Procedure
                     int roomIndex = -1;
                     Vector2 roomMin = Vector2.zero;
                     Vector2 roomMax = Vector2.zero;
-                    if (plan.Rooms != null)
+                    for (int r = 0; r < plan.Rooms.Count; r++)
                     {
-                        for (int r = 0; r < plan.Rooms.Count; r++)
+                        if (plan.Rooms[r].Contains(enemyPos))
                         {
-                            if (plan.Rooms[r].Contains(enemyPos))
-                            {
-                                roomIndex = r;
-                                roomMin = plan.Rooms[r].Min;
-                                roomMax = plan.Rooms[r].Max;
-                                break;
-                            }
+                            roomIndex = r;
+                            roomMin = plan.Rooms[r].Min;
+                            roomMax = plan.Rooms[r].Max;
+                            break;
                         }
                     }
 
-                    // 联网流程的队伍构成等 encounter 响应下发，EnemyPartyId 传 0 只作占位。
+                    // 敌点实体的 EnemyPartyId 是同威胁等级的本地占位队伍（选 prefab/警惕参数/掉落档位用）；
+                    // 联网流程真正参战的队伍构成等 encounter 响应下发。
                     EnemyPartyData enemyData = new EnemyPartyData(
                         enemyEntityId, assetName, enemyPos, enemyPoint.EnemyPartyId, enemyPoint.ThreatLevel,
                         roomIndex, roomMin, roomMax, pointId: enemyPoint.PointId);
@@ -291,10 +289,20 @@ namespace SepCore.Procedure
                     return null;
                 }
 
+                // 服务器有旧活跃 run 时幂等返回旧局现状（难度仍是旧局的）：继续沿用会以新难度的
+                // 威胁权重预测旧难度的图，encounter 必然对不上。发现漂移即中止进局，不静默落回旧局。
+                if (result.Difficulty != difficulty)
+                {
+                    Log.Error("[ProcedureMain] start_run returned an active run of difficulty {0} while {1} was requested (runId {2}); aborting run.",
+                        result.Difficulty, difficulty, result.RunId);
+                    NetworkNotice.Show(RunService.RejectionMessage);
+                    return null;
+                }
+
                 // 服务器种子同时用于内容生成与战斗随机源（契约 §5）。
                 GameEntry.Random.BeginRun((int)result.Seed);
-                Log.Info("[ProcedureMain] start_run ok. RunId: {0}, Seed: {1}, Consumed: {2}, Looted: {3}.",
-                    result.RunId, result.Seed, result.Consumed.Count, result.Looted.Count);
+                Log.Info("[ProcedureMain] start_run ok. RunId: {0}, Seed: {1}, Difficulty: {2}, Consumed: {3}, Looted: {4}.",
+                    result.RunId, result.Seed, result.Difficulty, result.Consumed.Count, result.Looted.Count);
 
                 return new RunSeedSource
                 {

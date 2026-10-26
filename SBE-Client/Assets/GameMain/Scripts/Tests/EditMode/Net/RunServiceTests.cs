@@ -66,11 +66,12 @@ namespace SepCore.Tests
             env.threat = 2;
             env.itemIds = new List<int> { 5001, 5003 };
             env.battleLoot = new List<NetStack> { new NetStack(5001, 2) };
+            env.runDifficulty = 2;
 
             string json = GameFramework.Utility.Json.ToJson(env);
             string[] names =
             {
-                "\"v\":4", "\"resume\"", "\"pointId\"", "\"spawnPoint\"", "\"extractionPoint\"",
+                "\"v\":4", "\"resume\"", "\"pointId\"", "\"spawnPoint\"", "\"extractionPoint\"", "\"runDifficulty\":2",
                 "\"consumed\"", "\"looted\"", "\"enemyPartyId\"", "\"threat\"", "\"itemIds\"", "\"battleLoot\"",
             };
             foreach (string name in names)
@@ -84,6 +85,7 @@ namespace SepCore.Tests
             Assert.That(round.pointId, Is.EqualTo("e3"));
             Assert.That(round.spawnPoint.x, Is.EqualTo(1f));
             Assert.That(round.extractionPoint.y, Is.EqualTo(-3f));
+            Assert.That(round.runDifficulty, Is.EqualTo(2));
             Assert.That(round.consumed.ToArray(), Is.EqualTo(new[] { "r2" }));
             Assert.That(round.looted[0].pointId, Is.EqualTo("r2"));
             Assert.That(round.looted[0].itemIds.ToArray(), Is.EqualTo(new[] { 5001, 5003 }));
@@ -106,6 +108,7 @@ namespace SepCore.Tests
             Assert.That(result.Success, Is.True);
             Assert.That(result.RunId, Is.EqualTo(FakeRunServer.DefaultRunId));
             Assert.That(result.Seed, Is.EqualTo(FakeRunServer.DefaultSeed));
+            Assert.That(result.Difficulty, Is.EqualTo(DifficultyTier.Tier2));
             Assert.That(result.SpawnPoint.x, Is.EqualTo(1f));
             Assert.That(result.SpawnPoint.y, Is.EqualTo(-16f));
             Assert.That(result.ExtractionPoint.x, Is.EqualTo(30f));
@@ -123,6 +126,7 @@ namespace SepCore.Tests
             Assert.That(ctx.Service.HasActiveRun, Is.True);
             Assert.That(ctx.Service.RunId, Is.EqualTo(FakeRunServer.DefaultRunId));
             Assert.That(ctx.Service.Seed, Is.EqualTo(FakeRunServer.DefaultSeed));
+            Assert.That(ctx.Service.Difficulty, Is.EqualTo(DifficultyTier.Tier2));
             Assert.That(ctx.Rejected, Is.Empty);
         }
 
@@ -478,6 +482,7 @@ namespace SepCore.Tests
                 NetEnvelope response = Ok(request);
                 response.runId = DefaultRunId;
                 response.seed = DefaultSeed;
+                response.runDifficulty = request.difficulty;
                 response.spawnPoint = new NetVec2(1, -16);
                 response.extractionPoint = new NetVec2(30, -3);
                 // 与服务端 omitempty 语义一致：空清单不下发。

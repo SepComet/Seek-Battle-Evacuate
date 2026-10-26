@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using SepCore.Definition;
 using SepCore.Entity;
 using SepCore.Net;
 using UnityEngine;
@@ -69,7 +70,7 @@ namespace SepCore.Tests
         [Test]
         public void Evaluate_SeedMatches_ReturnsApply()
         {
-            StartRunResult result = StartRunResult.Ok("run-abc", LocalSeed,
+            StartRunResult result = StartRunResult.Ok("run-abc", LocalSeed, DifficultyTier.Tier1,
                 new NetVec2(1, -16), new NetVec2(30, -3),
                 new List<string> { "r0" },
                 new List<NetLootRecord> { LootRecord("r0", 5001, 5003) });
@@ -86,7 +87,7 @@ namespace SepCore.Tests
             // 服务器认为活跃 run 的种子与本地不一致（理论不该发生）：不静默继续，按失效处理。
             UnityEngine.TestTools.LogAssert.Expect(UnityEngine.LogType.Error,
                 "Run resume seed mismatch: server 987654321 vs local 123456789 (runId run-abc). Run is invalid.");
-            StartRunResult result = StartRunResult.Ok("run-abc", 987654321L,
+            StartRunResult result = StartRunResult.Ok("run-abc", 987654321L, DifficultyTier.Tier1,
                 new NetVec2(1, -16), new NetVec2(30, -3), new List<string>(), new List<NetLootRecord>());
 
             RunResumeDecision decision = RunResumeEvaluator.Evaluate(result, LocalSeed);
