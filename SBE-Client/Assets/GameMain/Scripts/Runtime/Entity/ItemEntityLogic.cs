@@ -116,7 +116,8 @@ namespace SepCore.Entity
                 GameEntry.Event.Fire(this, RoundBackpackChangedEventArgs.Create(
                     backpack.UsedSlotsCount, backpack.MaxSlots, GameEntry.Round.Session.TotalLootValue));
 
-                Log.Info("Item '{0}' x{1} picked up successfully.", _data.ItemId, addedCount);
+                Log.Info("Item '{0}' x{1} picked up successfully{2}.", _data.ItemId, addedCount,
+                    _data.IsBattleLoot ? " (battle)" : "");
 
                 if (addedCount >= _data.Count)
                 {

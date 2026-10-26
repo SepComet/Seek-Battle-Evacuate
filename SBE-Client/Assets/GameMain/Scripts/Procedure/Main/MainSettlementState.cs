@@ -184,8 +184,8 @@ namespace SepCore.Procedure
                     // 漏报会让带出敌人掉落的结算被整批拒绝。RunSession 未建立时没有战斗所得可言。
                     IReadOnlyList<ItemStack> battleLoot = GameEntry.Round?.Session?.BattleLoot;
                     GameEntry.Net.Warehouse.SettleAsync(runId, record, battleLoot).Forget();
-                    Log.Info("[ProcedureMain] Settlement reported. Outcome: {0}, Difficulty: {1}, Seed: {2}, RunId: {3} (server run: {4}, battle loot kinds: {5}).",
-                        outcome, difficulty, seed, runId, GameEntry.Net.Run.HasActiveRun, battleLoot?.Count ?? 0);
+                    Log.Info("[ProcedureMain] Settlement reported. Outcome: {0}, Difficulty: {1}, Seed: {2}, RunId: {3} (server run: {4}, battleLoot: {5}).",
+                        outcome, difficulty, seed, runId, GameEntry.Net.Run.HasActiveRun, SummarizeStacks(battleLoot));
                 }
                 else
                 {
@@ -250,6 +250,20 @@ namespace SepCore.Procedure
                     GameEntry.UI.CloseUIForm(battleForm);
                 }
             }
+        }
+
+        /// <summary>
+        /// 把物品堆列表汇总成紧凑的 {itemId:count} 文本（诊断日志用；null/空为 none）。
+        /// </summary>
+        private static string SummarizeStacks(IReadOnlyList<ItemStack> stacks)
+        {
+            if (stacks == null || stacks.Count == 0)
+            {
+                return "none";
+            }
+
+            return string.Join(",", System.Linq.Enumerable.Select(
+                stacks, stack => $"{stack.itemId}:{stack.count}"));
         }
     }
 }

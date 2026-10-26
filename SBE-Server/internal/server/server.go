@@ -152,7 +152,7 @@ func detailFor(env *protocol.Envelope, resp *protocol.Envelope) string {
 		return fmt.Sprintf(" encounter: run=%s point=%s party=%d threat=%d",
 			env.RunID, env.PointID, resp.EnemyPartyID, resp.Threat)
 	case protocol.MsgLoot:
-		return fmt.Sprintf(" loot: run=%s point=%s items=%d", env.RunID, env.PointID, len(resp.ItemIDs))
+		return fmt.Sprintf(" loot: run=%s point=%s items=%d %v", env.RunID, env.PointID, len(resp.ItemIDs), resp.ItemIDs)
 	}
 	return ""
 }
@@ -321,9 +321,11 @@ func (s *Server) runManager() (*run.Manager, error) {
 // 未装配 run 管理器时同样跳过。
 func (s *Server) reconcileSettle(userID int64, env protocol.Envelope) error {
 	if s.Run == nil || !s.Run.HasAnyActive(userID) {
+		log.Printf("[settle-recon] user=%d run=%s skipped: no active run", userID, env.RunID)
 		return nil
 	}
 	if !s.Run.Active(userID, env.RunID) {
+		log.Printf("[settle-recon] user=%d run=%s rejected: runId does not match the active run", userID, env.RunID)
 		return fmt.Errorf("%w: runId %s does not match the active run", core.ErrRejected, env.RunID)
 	}
 	// 携带入场额度取服务器侧快照（不是客户端上报）；读不到就不放行，不做静态兜底。
@@ -335,7 +337,21 @@ func (s *Server) reconcileSettle(userID int64, env protocol.Envelope) error {
 	for i, stack := range env.BattleLoot {
 		battleLoot[i] = core.Stack{ItemID: stack.ItemID, Count: stack.Count}
 	}
-	return s.Run.ValidateSettle(userID, env.RunID, battleLoot, core.SumAdds(env.Ops), state.Carried)
+	added := core.SumAdds(env.Ops)
+	looted := s.Run.LootedSums(userID, env.RunID)
+	err = s.Run.ValidateSettle(userID, env.RunID, battleLoot, added, state.Carried)
+	// 对账明细一行：带出 vs 三项额度来源。拒绝与放行都打，便于对客户端漏报/账本漂移定位。
+	log.Printf("[settle-recon] user=%d run=%s added=%v looted=%v carried=%v battle=%v -> %s",
+		userID, env.RunID, added, looted, core.SumStacks(state.Carried), core.SumStacks(battleLoot), verdict(err))
+	return err
+}
+
+// verdict 对账结果的简短标记（配合 [settle-recon] 一行日志）。
+func verdict(err error) string {
+	if err != nil {
+		return "rejected"
+	}
+	return "ok"
 }
 
 // lootRecords 把会话层的开箱清单转成线上结构。
