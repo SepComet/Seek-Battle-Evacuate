@@ -118,3 +118,36 @@ Status: ready-for-agent
 - 敌遭遇为碰撞触发（撞上实体立即开战），故敌人摆位必须预测（含威胁等级——prefab 按威胁选取）；箱子无碰撞依赖，内容等 loot 响应即可。
 - 服务器消息集现状：register/login/auth/pull/migrate/settle/ops/history；settle 已携带 seed 字段（v2 引入），本 spec 将其语义升级为"本局主种子"。
 - 客户端随机源接口为单一接缝，战斗侧继续使用；内容生成切换到子种子 PRNG 后两者互不干扰。
+
+## Comments
+
+### 实施记录（2026-10-26）
+
+8 张票中 01~07 已由 agent 在集成分支 `feature/exploration-online-v1` 实现并逐票合并（08 人工验收票未动）。
+每票的实现与验证细节见 `issues/NN-*.md` 的 `## Comments`；状态已置 `resolved`。
+
+**验证证据**：
+- Go：`go vet` + `go test -count=1 ./...` 15 包全绿（含 internal/mapgen 种子向量交叉用例、internal/run 会话、internal/server fake WS 全流程）。
+- C#：mcp-for-unity 在已开 Editor 跑全量 EditMode 375 条，除存量环境失败 `FogTilemapControllerTests`（Tilemap 无 Grid，先于本特性存在）外全绿。
+- 双端一致性：种子向量 fixture（`notes/vectors.md`）由 Python、主 agent 独立 Go 实现、C# 实现三方复算逐字一致；Go/C# 测试常量逐字相同。
+- 真实容器：deploy + smoke 绿；wsprobe 对容器实测 start_run 幂等/runDifficulty 下发/encounter·loot 幂等与拒绝分支/settle 对账（超限拒、开箱放行、battleLoot 计入）。
+- 一致性预检：0 违规（tbmapdefinition 白名单为刻意放宽，见 ticket 01）。
+
+**两轴代码审查（2026-10-26，双轴并行）结论与处置**：
+
+已修复（commit 66fd7c2、7efc30d）：
+1. （Spec-中）start_run 响应增补 `runDifficulty`：幂等重入换难度落回旧局时，客户端原先无从发现威胁权重漂移；现响应携带旧局难度，`MainMapBuildingState` 发现不一致即中止进局。
+2. （Standards-硬）`MainMapBuildingState` 对构造保证非空的 `plan.Rooms` 残留判空 → 删除。
+3. （Standards）有活跃 run 时谎报 runId 的 settle 由"跳过对账"收紧为"拒绝"（v4 无旧客户端，补报路径不存在）；Go/C# 测试均补。
+4. （Standards）C# 生成器对负权重报错，与 Go `selectWeighted`/`selectThreat` 错误路径对齐。
+5. （Standards）敌点占位队伍的误导注释修正（实际传的是同威胁等级本地占位队，非 0）。
+6. （Standards）`RunService` 对 consumed 重复由静默去重改为按协议缺损报错。
+
+记录在案、未动（均为 judgement call，留待后续里程碑）：
+- `GameEntry.Net != null && OnlineReady` 谓词四处重复（提共享会引入静态状态访问，收益低）。
+- `MainMapBuildingState.AbortToMenu` 与 `ProcedureMain.AbortInvalidatedRun` 清理序列形状相近（差一个 ResetRun 与 AutoReturnToMenu 检查；合并会牵动流程代码，Play Mode 验收前不动）。
+- `mapgen` 内 `selectThreat`/`selectWeighted` 同算法两份（注释已自认）。
+- `ResourcePointContent.Present` 恒 true、`EnemySpawnSpec.PartyKnown` 无生产读者——契约 §8/票 02 记录在案的"箱子存在性权重另调"预留，与"不预留接口提前实现"的张力由 ticket 08 之后的箱子随机化里程碑消化。
+- 恢复失败（应答缺损）按"本局失效"处理可能废掉服务器仍持有的 run——ticket 07 已声明的取舍。
+
+**协议 v4 的字段清单以 `internal/protocol/protocol_test.go` 与 `RunServiceTests.EnvelopeWireNamesMatchProtocolV4` 双端钉死为准（含审查新增的 `runDifficulty`）**；本文档正文未随实施逐字更新。
