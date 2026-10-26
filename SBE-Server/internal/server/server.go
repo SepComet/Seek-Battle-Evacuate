@@ -233,6 +233,7 @@ func (s *Server) dispatch(sess *session, env protocol.Envelope) protocol.Envelop
 				RID:             env.RID,
 				RunID:           view.RunID,
 				Seed:            view.Seed,
+				RunDifficulty:   view.Difficulty,
 				SpawnPoint:      &protocol.Vec2{X: view.Spawn.X, Y: view.Spawn.Y},
 				ExtractionPoint: &protocol.Vec2{X: view.Extraction.X, Y: view.Extraction.Y},
 				Consumed:        view.Consumed,
@@ -315,12 +316,15 @@ func (s *Server) runManager() (*run.Manager, error) {
 // reconcileSettle 结算额度对账（契约 §7 settle）：
 // 带出物资（本批 add 按 itemId 汇总）⊆ 开箱所得 ∪ 携带入场（服务器快照的 Carried）∪ 战斗所得。
 //
-// 只有该用户存在活跃 run 且 runId 匹配时才校验（见 ticket 04 Comments 的边界说明）；
+// 该用户有活跃 run 时必须 runId 匹配才放行（谎报其他 runId 等于绕过开箱对账，直接拒绝；
+// 协议 v4 无旧客户端，不存在需要兼容的补报路径）；无活跃 run 跳过（幂等回放/离线结算）；
 // 未装配 run 管理器时同样跳过。
 func (s *Server) reconcileSettle(userID int64, env protocol.Envelope) error {
-	if s.Run == nil || !s.Run.Active(userID, env.RunID) {
-		// 无活跃 run 或 runId 不认识：跳过对账（v3 兼容与幂等回放路径），也不去多读一次快照。
+	if s.Run == nil || !s.Run.HasAnyActive(userID) {
 		return nil
+	}
+	if !s.Run.Active(userID, env.RunID) {
+		return fmt.Errorf("%w: runId %s does not match the active run", core.ErrRejected, env.RunID)
 	}
 	// 携带入场额度取服务器侧快照（不是客户端上报）；读不到就不放行，不做静态兜底。
 	state, err := s.Store.Load(context.Background(), userID)

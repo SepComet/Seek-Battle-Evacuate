@@ -467,6 +467,64 @@ func TestSweepExpiresIdleRun(t *testing.T) {
 	mustReject(t, c, protocol.Envelope{T: protocol.MsgStartRun, Difficulty: 1, Resume: true}, "no active run")
 }
 
+// TestSettleWithForgedRunIDRejected 有活跃 run 时谎报其他 runId 的 settle 必须拒绝：
+// 绕过开箱对账的口子在协议 v4 下没有合法路径（无旧客户端补报），不能放行。
+func TestSettleWithForgedRunIDRejected(t *testing.T) {
+	exp := newExploration(t)
+	_, addr := newRunServer(t, exp)
+	c := dial(t, addr)
+	registerPlayer(t, c, "run-forged")
+	mustOK(c, protocol.Envelope{T: protocol.MsgMigrate, Migrate: &protocol.MigratePayload{
+		Characters: []protocol.MigrateChar{{CID: 1001}},
+	}})
+	start := mustStartRun(t, c, 1, false)
+	point := exp.content.ResourcePoints[0]
+	loot := c.call(protocol.Envelope{T: protocol.MsgLoot, RunID: start.RunID, PointID: point.PointID})
+	if loot.T != protocol.MsgOK || len(loot.ItemIDs) == 0 {
+		t.Fatalf("loot: %+v", loot)
+	}
+	itemID := loot.ItemIDs[0]
+
+	// 活跃 run 存在，但 settle 报了别的 runId → 拒绝且不落地。
+	mustReject(t, c, protocol.Envelope{T: protocol.MsgSettle, RunID: "run-forged-by-client", Outcome: 1,
+		Ops: []protocol.Op{{K: protocol.OpAdd, TID: 1, ItemID: itemID, Count: 1}}}, "does not match the active run")
+	snap := mustOK(c, protocol.Envelope{T: protocol.MsgPull})
+	if len(snap.Items) != 0 {
+		t.Fatalf("forged settle leaked items: %+v", snap.Items)
+	}
+
+	// 原 runId 结算仍正常，走通即说明拒绝只针对谎报。
+	mustOK(c, protocol.Envelope{T: protocol.MsgSettle, RunID: start.RunID, Outcome: 1,
+		Ops: []protocol.Op{{K: protocol.OpAdd, TID: 1, ItemID: itemID, Count: 1}}})
+}
+
+// TestStartRunReportsRunDifficulty start_run 响应携带本局难度，且幂等重入返回旧局难度：
+// 客户端凭它发现"换了难度却落回旧局"的预测漂移（审查修复，契约 §7）。
+func TestStartRunReportsRunDifficulty(t *testing.T) {
+	exp := newExploration(t)
+	_, addr := newRunServer(t, exp)
+	c := dial(t, addr)
+	registerPlayer(t, c, "run-diff")
+
+	first := mustStartRun(t, c, 1, false)
+	if first.RunDifficulty != 1 {
+		t.Fatalf("start_run difficulty = %d, want 1", first.RunDifficulty)
+	}
+
+	// 幂等重入（哪怕请求换了难度）返回旧局现状与旧局难度。
+	reentered := c.call(protocol.Envelope{T: protocol.MsgStartRun, Difficulty: 3, Resume: false})
+	if reentered.T != protocol.MsgOK {
+		t.Fatalf("idempotent start_run: %+v", reentered)
+	}
+	if reentered.RunID != first.RunID || reentered.Seed != first.Seed {
+		t.Fatalf("idempotent start_run drifted: %+v vs %+v", reentered, first)
+	}
+	if reentered.RunDifficulty != 1 {
+		t.Fatalf("idempotent start_run difficulty = %d, want the original 1", reentered.RunDifficulty)
+	}
+}
+
+
 // TestFullFlowStartEncounterLootSettle 联网探索全流程：开局 → 撞敌 → 开箱 → 结算。
 func TestFullFlowStartEncounterLootSettle(t *testing.T) {
 	exp := newExploration(t)

@@ -198,6 +198,9 @@ type Envelope struct {
 	// SpawnPoint/ExtractionPoint start_run 响应下发的出生/撤离点（显式值，不参与预测）。
 	SpawnPoint      *Vec2 `json:"spawnPoint,omitempty"`
 	ExtractionPoint *Vec2 `json:"extractionPoint,omitempty"`
+	// RunDifficulty start_run 响应下发的本局难度：幂等重入返回的是旧局现状，
+	// 客户端据此发现"本地难度 ≠ 服务器旧局难度"的预测漂移，不得静默沿用本地值。
+	RunDifficulty int `json:"runDifficulty,omitempty"`
 	// Consumed start_run 响应：已消耗点 ID，按开箱序（重连恢复用）。
 	Consumed []string `json:"consumed,omitempty"`
 	// Looted start_run 响应：已开箱清单，与 Consumed 同序（重连恢复用）。

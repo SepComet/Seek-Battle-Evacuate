@@ -43,12 +43,13 @@ func TestStartRunRequestWireFormat(t *testing.T) {
 	}
 }
 
-// TestStartRunResponseWireFormat start_run 响应（契约 §7），含 consumed/looted。
+// TestStartRunResponseWireFormat start_run 响应（契约 §7），含 runDifficulty/consumed/looted。
 func TestStartRunResponseWireFormat(t *testing.T) {
 	raw, err := json.Marshal(Envelope{
 		T: MsgOK, V: Version, RID: 8,
 		RunID:           "abc123",
 		Seed:            123456789,
+		RunDifficulty:   2,
 		SpawnPoint:      &Vec2{X: 1, Y: -16},
 		ExtractionPoint: &Vec2{X: 30, Y: -3},
 		Consumed:        []string{"r2"},
@@ -58,7 +59,7 @@ func TestStartRunResponseWireFormat(t *testing.T) {
 		t.Fatalf("marshal: %v", err)
 	}
 	want := `{"t":"ok","v":4,"rid":8,"runId":"abc123","seed":123456789,` +
-		`"spawnPoint":{"x":1,"y":-16},"extractionPoint":{"x":30,"y":-3},` +
+		`"spawnPoint":{"x":1,"y":-16},"extractionPoint":{"x":30,"y":-3},"runDifficulty":2,` +
 		`"consumed":["r2"],"looted":[{"pointId":"r2","itemIds":[5001,5003]}]}`
 	if string(raw) != want {
 		t.Fatalf("start_run response =\n%s\nwant\n%s", raw, want)

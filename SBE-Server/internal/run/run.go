@@ -303,6 +303,16 @@ func (m *Manager) Active(userID int64, runID string) bool {
 	return sess != nil && sess.runID == runID
 }
 
+// HasAnyActive 报告该用户是否存在任意活跃 run（无论 runId 是什么）。
+// 供结算对账区分"无活跃 run（跳过校验）"与"有活跃 run 但上报了别的 runId
+//（伪造身份绕过开箱对账，拒绝）"。
+func (m *Manager) HasAnyActive(userID int64) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return m.sessions[userID] != nil
+}
+
 // Finish 终结一局（settle 成功后的唯一清理路径）。runId 不匹配时什么也不做。
 func (m *Manager) Finish(userID int64, runID string) {
 	m.mu.Lock()
