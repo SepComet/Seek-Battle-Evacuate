@@ -524,6 +524,49 @@ func TestStartRunReportsRunDifficulty(t *testing.T) {
 	}
 }
 
+// TestSettleReconciliationUsesNetDelta 已有堆叠的数量增长必须按净增口径对账（验收实测踩中）：
+// 账本已有 5001×20，玩家拾取 1 枚战斗金币并仓后本地行变 21；
+// 客户端 diff 把它表达为「删整行 + 铸新行(21)」，净增只有 1 = battleLoot 额度 → 放行。
+// 对照组：无 del 的凭空 add 21 仍然拒绝。
+func TestSettleReconciliationUsesNetDelta(t *testing.T) {
+	exp := newExploration(t)
+	_, addr := newRunServer(t, exp)
+
+	t.Run("stack growth counts as net gain", func(t *testing.T) {
+		c := dial(t, addr)
+		registerPlayer(t, c, "run-netgain")
+		mustOK(c, protocol.Envelope{T: protocol.MsgMigrate, Migrate: &protocol.MigratePayload{
+			Characters: []protocol.MigrateChar{{CID: 1001}},
+			Items:      []protocol.MigrateItem{{ItemID: 5001, Count: 20, X: 0, Y: 0}},
+		}})
+		snap := mustOK(c, protocol.Envelope{T: protocol.MsgPull})
+		uid := uidOfGridItem(snap, 5001)
+		if uid == 0 {
+			t.Fatalf("migrated coin row missing: %+v", snap.Items)
+		}
+
+		start := mustStartRun(t, c, 1, false)
+		// 未开箱（looted 空）、未携带；战斗所得 1 枚，行 20→21。
+		mustOK(c, protocol.Envelope{T: protocol.MsgSettle, RunID: start.RunID, Outcome: 1,
+			BattleLoot: []protocol.Stack{{ItemID: 5001, Count: 1}},
+			Ops: []protocol.Op{
+				{K: protocol.OpDel, UID: uid},
+				{K: protocol.OpAdd, TID: 1, ItemID: 5001, Count: 21, X: 0, Y: 0},
+			}})
+	})
+
+	t.Run("fresh add without del still rejected", func(t *testing.T) {
+		c := dial(t, addr)
+		registerPlayer(t, c, "run-freshadd")
+		mustOK(c, protocol.Envelope{T: protocol.MsgMigrate, Migrate: &protocol.MigratePayload{
+			Characters: []protocol.MigrateChar{{CID: 1001}},
+		}})
+		start := mustStartRun(t, c, 1, false)
+		mustReject(t, c, protocol.Envelope{T: protocol.MsgSettle, RunID: start.RunID, Outcome: 1,
+			Ops: []protocol.Op{{K: protocol.OpAdd, TID: 1, ItemID: 5001, Count: 21, X: 0, Y: 0}}}, "exceeds allowance")
+	})
+}
+
 
 // TestFullFlowStartEncounterLootSettle 联网探索全流程：开局 → 撞敌 → 开箱 → 结算。
 func TestFullFlowStartEncounterLootSettle(t *testing.T) {

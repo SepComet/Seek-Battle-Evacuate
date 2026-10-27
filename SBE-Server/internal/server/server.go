@@ -337,11 +337,14 @@ func (s *Server) reconcileSettle(userID int64, env protocol.Envelope) error {
 	for i, stack := range env.BattleLoot {
 		battleLoot[i] = core.Stack{ItemID: stack.ItemID, Count: stack.Count}
 	}
+	// 带出物资按净增口径：客户端 diff 把「已有堆叠数量增长」表达为删整行+铸新行，
+	// 毛口径会把堆叠 20→21 误判为凭空获得 21 件（验收实测踩中）。
 	added := core.SumAdds(env.Ops)
+	core.SubtractDels(added, env.Ops, state)
 	looted := s.Run.LootedSums(userID, env.RunID)
 	err = s.Run.ValidateSettle(userID, env.RunID, battleLoot, added, state.Carried)
-	// 对账明细一行：带出 vs 三项额度来源。拒绝与放行都打，便于对客户端漏报/账本漂移定位。
-	log.Printf("[settle-recon] user=%d run=%s added=%v looted=%v carried=%v battle=%v -> %s",
+	// 对账明细一行：净带出 vs 三项额度来源。拒绝与放行都打，便于对客户端漏报/账本漂移定位。
+	log.Printf("[settle-recon] user=%d run=%s net-added=%v looted=%v carried=%v battle=%v -> %s",
 		userID, env.RunID, added, looted, core.SumStacks(state.Carried), core.SumStacks(battleLoot), verdict(err))
 	return err
 }

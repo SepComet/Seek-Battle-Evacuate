@@ -266,8 +266,8 @@ func applyCarry(s *State, op protocol.Op, items ItemTable, limits Limits) error 
 	return nil
 }
 
-// SumAdds 按 itemId 汇总一批操作里 add 的 Count（结算对账的「带出物资」口径）。
-// 只统计 OpAdd：del/mov/wear 等不产生新的「取得」，不进入额度。
+// SumAdds 按 itemId 汇总一批操作里 add 的 Count（结算对账的「带出物资」毛口径）。
+// 只统计 OpAdd：mov/rel/wear 等不产生新的「取得」，不进入额度。
 func SumAdds(ops []protocol.Op) map[int]int {
 	sums := make(map[int]int)
 	for _, op := range ops {
@@ -276,6 +276,28 @@ func SumAdds(ops []protocol.Op) map[int]int {
 		}
 	}
 	return sums
+}
+
+// SubtractDels 按 itemId 从毛口径里扣掉 del 的件数，得到净增量。
+// 客户端 diff 把「已有堆叠数量增长」表达为「删整行 + 铸新行」：
+// 结算对账必须按净增核验，否则堆叠 20→21 会被误判为凭空获得 21 件而整批误拒。
+// del 的件数归属按 uid 查应用前状态的行；uid 不存在的 del 由 Apply 拒绝，这里跳过。
+func SubtractDels(sums map[int]int, ops []protocol.Op, state State) {
+	for _, op := range ops {
+		if op.K != protocol.OpDel {
+			continue
+		}
+		idx := state.findRow(op.UID)
+		if idx < 0 {
+			continue
+		}
+		count := op.Count
+		if count <= 0 || count >= state.Rows[idx].Count {
+			// 与 applyDel 同语义：count=0 或不小于行存量即整行删除
+			count = state.Rows[idx].Count
+		}
+		sums[state.Rows[idx].ItemID] -= count
+	}
 }
 
 // SumStacks 按 itemId 汇总一批无实例身份的物品堆（携带计划、战斗所得）。
