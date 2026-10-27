@@ -11,7 +11,8 @@ namespace SepCore.UI
 {
     /// <summary>
     /// 大厅顶级页面共用的返回入口与连接状态栏。
-    /// 由所属 Form 的 OnOpen/OnClose 管理绑定，不参与经济数据读写。
+    /// 由所属 Form 的 OnOpen/OnClose 管理绑定；连接状态与信用点余额为只读展示
+    /// （余额来自 GameEntry.Net 的服务器快照，本组件不发起任何经济操作）。
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class LobbyPageHeader : MonoBehaviour
@@ -24,6 +25,8 @@ namespace SepCore.UI
         private int _ownerSerialId;
         private bool _returning;
         private string _statusKey;
+        private bool _renderedHasCredits;
+        private long _renderedCredits;
 
         public void Open(int serialId)
         {
@@ -40,7 +43,7 @@ namespace SepCore.UI
             _backButton.gameObject.SetActive(_canReturnToLobby);
             _backButton.interactable = _canReturnToLobby;
             _backButton.onClick.AddListener(ReturnToLobby);
-            _currencyText.Set();
+            RefreshCurrency();
             RefreshStatus();
         }
 
@@ -92,10 +95,30 @@ namespace SepCore.UI
             }
 
             RefreshStatus();
+            RefreshCurrency();
             if (_canReturnToLobby && !_returning && Input.GetKeyDown(KeyCode.Escape) && !IsEditingText())
             {
                 ReturnToLobby();
             }
+        }
+
+        /// <summary>
+        /// 渲染信用点余额：拿到过服务器快照显示真实数值，否则保留占位文案。
+        /// 与连接状态一样逐帧调用，按已渲染值做缓存守卫避免每帧重设文本。
+        /// </summary>
+        private void RefreshCurrency()
+        {
+            bool hasCredits = GameEntry.Net != null && GameEntry.Net.Warehouse != null &&
+                              GameEntry.Net.Warehouse.HasCredits;
+            long credits = hasCredits ? GameEntry.Net.Warehouse.Credits : 0;
+            if (_renderedHasCredits == hasCredits && (!_renderedHasCredits || _renderedCredits == credits))
+            {
+                return;
+            }
+
+            _currencyText.Set(hasCredits ? credits : (object)"—");
+            _renderedHasCredits = hasCredits;
+            _renderedCredits = credits;
         }
 
         private bool IsCurrentPage()

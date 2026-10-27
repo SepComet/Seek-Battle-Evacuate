@@ -116,6 +116,8 @@ namespace SepCore.Tests
             public int[] Party;
             public int Difficulty;
             public List<NetStack> Carried = new List<NetStack>();
+            /// <summary>注册发放的初始信用点（复刻服务端 initialCredits 语义）。</summary>
+            public long Credits = 1000;
 
             public string IssueToken()
             {
@@ -320,7 +322,7 @@ namespace SepCore.Tests
 
             public NetSnapshot Snapshot()
             {
-                NetSnapshot snapshot = new NetSnapshot { initialized = Initialized, difficulty = Difficulty };
+                NetSnapshot snapshot = new NetSnapshot { initialized = Initialized, difficulty = Difficulty, credits = Credits };
                 foreach (NetSnapRow row in Rows)
                 {
                     snapshot.items.Add(new NetSnapRow
@@ -382,6 +384,27 @@ namespace SepCore.Tests
         private static UniTask<LoginResult> LoginNewAccount(WarehouseSyncService service)
         {
             return service.TryCredentialLoginAsync("ws://test", "tester", "secret-1", register: true);
+        }
+
+        [UnityTest]
+        public IEnumerator LoginGrantsInitialCreditsAndSnapshotKeepsItFresh()
+        {
+            Ctx ctx = CreateService();
+            yield return LoginNewAccount(ctx.Service).ToCoroutine();
+
+            // 协议 v5：注册发放的余额随快照落地；本地存档不上传也不持久化余额
+            Assert.That(ctx.Service.Credits, Is.EqualTo(1000));
+            Assert.That(ctx.Service.HasCredits, Is.True);
+
+            // 新快照刷新余额
+            ctx.Server.Credits = 555;
+            ctx.Service.ApplySnapshot(ctx.Server.Snapshot());
+            Assert.That(ctx.Service.Credits, Is.EqualTo(555));
+
+            // 断线清回"尚无快照"状态，页头回退占位文案而不是虚构余额
+            ctx.Connection.Close();
+            Assert.That(ctx.Service.HasCredits, Is.False);
+            Assert.That(ctx.Service.Credits, Is.EqualTo(0));
         }
 
         [UnityTest]

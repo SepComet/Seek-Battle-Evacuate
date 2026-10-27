@@ -78,6 +78,12 @@ namespace SepCore.Net
         /// <summary>服务端账号主键；未完成登录或已断线时为 0，不暴露认证令牌。</summary>
         public long UserId { get; private set; }
 
+        /// <summary>最近一次权威快照携带的信用点余额；HasCredits 为 false 时不代表 0，代表尚无快照。</summary>
+        public long Credits { get; private set; }
+
+        /// <summary>是否已拿到含余额的权威快照（登录后为 true，断线/登出清回 false）。</summary>
+        public bool HasCredits { get; private set; }
+
         /// <summary>
         /// 账本是否已与服务器同步过（决定差分是否可用）。
         /// </summary>
@@ -340,6 +346,7 @@ namespace SepCore.Net
         /// 仓库网格经容器往返规范化（重叠/越界自愈）；角色穿戴按穿戴行反推；
         /// 花名册顺序以服务器为准；战备配置（出战队列/难度/携带计划）以服务器为准，
         /// 快照空队列写回 null 保留"从未配置则默认组队"的既有流程。
+        /// 余额只落在内存（Credits/HasCredits），不写本地缓存——服务器是唯一真源。
         /// </summary>
         public void ApplySnapshot(NetSnapshot snapshot)
         {
@@ -349,6 +356,9 @@ namespace SepCore.Net
                 Log.Error("ApplySnapshot with no SaveData.");
                 return;
             }
+
+            Credits = snapshot.credits;
+            HasCredits = true;
 
             // 1. 仓库网格行（经容器规范化）
             List<GridItemStack> stacks = new List<GridItemStack>();
@@ -558,6 +568,8 @@ namespace SepCore.Net
         private void ResetLoginState()
         {
             UserId = 0;
+            Credits = 0;
+            HasCredits = false;
         }
 
         private static string Describe(NetEnvelope resp)

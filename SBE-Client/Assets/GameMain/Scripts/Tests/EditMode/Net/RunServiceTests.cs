@@ -28,9 +28,9 @@ namespace SepCore.Tests
 
         /// <summary>协议版本必须与服务器一致（契约 §7），回退即断代。</summary>
         [Test]
-        public void ProtocolVersionIsV4()
+        public void ProtocolVersionIsV5()
         {
-            Assert.That(NetMsg.Version, Is.EqualTo(4));
+            Assert.That(NetMsg.Version, Is.EqualTo(5));
             Assert.That(NetMsg.StartRun, Is.EqualTo("start_run"));
             Assert.That(NetMsg.Encounter, Is.EqualTo("encounter"));
             Assert.That(NetMsg.Loot, Is.EqualTo("loot"));
@@ -50,7 +50,7 @@ namespace SepCore.Tests
         /// 改名即断代，因此既查序列化后的 JSON 文本，也查反序列化能读回。
         /// </summary>
         [Test]
-        public void EnvelopeWireNamesMatchProtocolV4()
+        public void EnvelopeWireNamesMatchProtocolV5()
         {
             NetEnvelope env = NetEnvelope.Create(NetMsg.StartRun);
             env.resume = true;
@@ -71,7 +71,7 @@ namespace SepCore.Tests
             string json = GameFramework.Utility.Json.ToJson(env);
             string[] names =
             {
-                "\"v\":4", "\"resume\"", "\"pointId\"", "\"spawnPoint\"", "\"extractionPoint\"", "\"runDifficulty\":2",
+                "\"v\":5", "\"resume\"", "\"pointId\"", "\"spawnPoint\"", "\"extractionPoint\"", "\"runDifficulty\":2",
                 "\"consumed\"", "\"looted\"", "\"enemyPartyId\"", "\"threat\"", "\"itemIds\"", "\"battleLoot\"",
             };
             foreach (string name in names)
@@ -80,7 +80,7 @@ namespace SepCore.Tests
             }
 
             NetEnvelope round = GameFramework.Utility.Json.ToObject<NetEnvelope>(json);
-            Assert.That(round.v, Is.EqualTo(4));
+            Assert.That(round.v, Is.EqualTo(5));
             Assert.That(round.resume, Is.True);
             Assert.That(round.pointId, Is.EqualTo("e3"));
             Assert.That(round.spawnPoint.x, Is.EqualTo(1f));

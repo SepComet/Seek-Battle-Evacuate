@@ -10,7 +10,9 @@ namespace SepCore.Net
         // v3：账号体系改为用户名+密码（register=注册账号、login=账密登录），用户主键为雪花 uid。
         // v4：探索内容上云——新增 start_run/encounter/loot，settle 增补 battleLoot；
         //     信封增加 run 会话字段（契约 exploration-online-v1 §7）。
-        public const int Version = 4;
+        // v5：经济余额上云——快照增加 credits，注册时由服务器按 initialCredits 发放；
+        //     客户端不上传余额，商城买卖随 P1-M3 接入。
+        public const int Version = 5;
 
         public const string Register = "register";
         public const string Login = "login";
@@ -235,6 +237,9 @@ namespace SepCore.Net
         public List<NetSnapRow> items = new List<NetSnapRow>();
         public List<NetSnapChar> characters = new List<NetSnapChar>();
         public bool initialized;
+
+        /// <summary>账号信用点余额：注册时按 initialCredits 发放，服务器恒下发该字段。</summary>
+        public long credits;
 
         // 战备配置：空队列/0 难度/空携带 = 未配置
         public int[] party;
