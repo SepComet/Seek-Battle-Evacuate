@@ -162,3 +162,7 @@ Status: ready-for-agent
 （净带出 = add − del，负值自然放行）；`[settle-recon]` 观测日志同步改为 net-added。
 测试：行 20→21 + battleLoot 1 放行、无 del 凭空 add 仍拒绝；对容器实测同一报文绿。
 其余对账语义（谎报 runId 拒绝、battleLoot 信任上报、无活跃 run 跳过）不变。
+
+### 验收结论（2026-10-27，人工验收全部通过）
+
+用户确认：正常网络整局+结算通过（净增口径修复后）；Clumsy 注入延迟/丢包劣化网络通过（拒绝提示、移动不卡、恢复可继续）；断线重连续局通过。ticket 08 已结（resolved），里程碑登记于 `SBE-Client/Docs/Tech/TODO.md` 第五节（联网改造里程碑）；feature/exploration-online-v1 已合入 master。
