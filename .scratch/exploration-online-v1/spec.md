@@ -151,3 +151,14 @@ Status: ready-for-agent
 - 恢复失败（应答缺损）按"本局失效"处理可能废掉服务器仍持有的 run——ticket 07 已声明的取舍。
 
 **协议 v4 的字段清单以 `internal/protocol/protocol_test.go` 与 `RunServiceTests.EnvelopeWireNamesMatchProtocolV4` 双端钉死为准（含审查新增的 `runDifficulty`）**；本文档正文未随实施逐字更新。
+
+### 验收期修复（2026-10-27，commit 6d9fe37）
+
+人工验收发现结算被对账拒绝：新号自带 5001×20（CreateInitialWarehouse），战斗拾取 1 枚并仓后
+本地行 20→21；客户端 diff 对"已有堆叠数量增长"的表达是「删整行 + 铸新行(21)」（EconomyDiff 既有语义，
+本特性未改动），而服务端对账按毛口径只统计 add 侧的 21，把净增 1 误判为凭空 21 整批拒绝。
+
+修复：`core.SubtractDels` 按 uid 行归属扣减 del 件数，`reconcileSettle` 改净增口径
+（净带出 = add − del，负值自然放行）；`[settle-recon]` 观测日志同步改为 net-added。
+测试：行 20→21 + battleLoot 1 放行、无 del 凭空 add 仍拒绝；对容器实测同一报文绿。
+其余对账语义（谎报 runId 拒绝、battleLoot 信任上报、无活跃 run 跳过）不变。
