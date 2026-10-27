@@ -1,7 +1,8 @@
 // sbe-dev-mcp：SBE（Seek-Battle-Evacuate）开发工作流 MCP server（stdio）。
-// 提供五个工具：luban_export（Luban 配置导出）、server_test（Go 服务端测试）、
+// 提供六个工具：luban_export（Luban 配置导出）、server_test（Go 服务端测试）、
 // consistency_check（表名/生成文件头/asmdef 引用一致性预检）、
-// deploy（Docker 栈一键部署）、smoke（服务器注册/ping/登录冒烟）。
+// deploy（Docker 栈一键部署）、smoke（服务器注册/ping/登录冒烟）、
+// unity_verify（batchmode 编译检查与 EditMode 测试，Editor 未运行时）。
 // 仅依赖 Go 标准库，构建：go build -o bin/sbe-dev-mcp.exe .
 package main
 
@@ -17,7 +18,7 @@ import (
 )
 
 const serverName = "sbe-dev"
-const serverVersion = "0.2.0"
+const serverVersion = "0.3.0"
 
 const maxContentChars = 48000
 
@@ -97,7 +98,8 @@ func handleLine(line []byte, enc *json.Encoder) {
 			"capabilities":    map[string]any{"tools": map[string]any{"listChanged": false}},
 			"serverInfo":      map[string]any{"name": serverName, "version": serverVersion},
 			"instructions": "SBE 仓库开发工具：改动 SBE-Design 源表后用 luban_export 导出；服务端改动用 server_test 跑测试；" +
-				"改表/改 UI/改程序集引用后、提交前用 consistency_check 做一致性预检。Unity 编辑器内的操作不走本 server（用 MCP for Unity）。",
+					"改表/改 UI/改程序集引用后、提交前用 consistency_check 做一致性预检；" +
+					"客户端代码改完用 unity_verify 验证（mode=check 先确认 Editor 状态：Editor 未运行时 batchmode 编译/跑测，运行中改走 MCP for Unity）",
 		})
 	case "ping":
 		writeResult(enc, req.ID, map[string]any{})

@@ -103,6 +103,39 @@ func allTools() []tool {
 			fn: toolDeploy,
 		},
 		{
+			name: "unity_verify",
+			description: "Unity 客户端验证，按 Editor 状态分流。mode=check：查 Temp/UnityLockfile（Editor 运行中/疑似残留锁/未运行三态）、" +
+				"项目 Unity 版本与 Unity.exe 路径（Hub 目录自动解析，unity_path 可覆盖），秒回。" +
+				"mode=tests：Editor 未运行时一条命令同时得出编译+测试双结论（-runTests 隐含完整编译：先从日志解析编译结论，命中 error CS 即失败且测试未运行，" +
+				"再从 NUnit XML 解析通过/失败/跳过计数与失败明细；test_filter 可过滤；跑前自动扫描测试源码中 WaitForEndOfFrame 等 -nographics 下会永久挂起的 yield 指令并告警）。" +
+				"mode=compile：只想快速查编译时用（-quit）。" +
+				"残留锁自愈：lockfile 存在但无 Unity 进程时判定为 batchmode 退出残留，自动清除后继续；lockfile 与 Unity 进程并存才拒绝（Editor 运行中，改走 mcp-for-unity）。" +
+				"任何情况下都不跑 Play Mode。热 Library 下 tests 全程约 15s~3min（375 例执行仅 1.5s），适合改完一批代码后的收尾门禁。" +
+				"已知存量失败：fog 用例（Tilemap 无 Grid）会红属预期。",
+			schema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"mode": map[string]any{
+						"type":        "string",
+						"description": "check（默认，只查状态不跑 Unity）/ tests（编译检查+EditMode 测试一条命令完成）/ compile（仅编译检查）",
+					},
+					"test_filter": map[string]any{
+						"type":        "string",
+						"description": "仅 mode=tests：-testFilter 过滤表达式（全名或正则），为空跑全部",
+					},
+					"unity_path": map[string]any{
+						"type":        "string",
+						"description": "可选，Unity.exe 绝对路径；默认按 ProjectVersion.txt 在 Unity Hub 安装目录自动解析",
+					},
+					"timeout_sec": map[string]any{
+						"type":        "number",
+						"description": "可选，Unity 进程超时秒数：tests 默认 900，compile 默认 600",
+					},
+				},
+			},
+			fn: toolUnityVerify,
+		},
+		{
 			name:        "smoke",
 			description: "对运行中的 sbe-server 跑冒烟验证（register → ping → login，走 cmd/smoke）。" +
 				"默认地址 127.0.0.1:7777（容器栈映射端口）。部署工具跑完后用它确认服务可用；" +
