@@ -195,6 +195,10 @@ public partial class TbGlobalConfig
     /// </summary>
      public System.Collections.Generic.List<int> NewGameCharacterIds => _data.NewGameCharacterIds;
     /// <summary>
+    /// 新账号初始信用点（服务器注册时发放）
+    /// </summary>
+     public int InitialCredits => _data.InitialCredits;
+    /// <summary>
     /// LobbyForm选中标记移动动画持续时间，毫秒
     /// </summary>
      public int LobbySelectionMarkerMoveDurationMs => _data.LobbySelectionMarkerMoveDurationMs;

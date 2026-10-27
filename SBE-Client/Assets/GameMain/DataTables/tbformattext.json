@@ -117,7 +117,7 @@
   },
   {
     "name": "LobbyCurrencyPending",
-    "format": "CREDITS: —"
+    "format": "CREDITS: {0:N0}"
   },
   {
     "name": "LobbyExpedition",

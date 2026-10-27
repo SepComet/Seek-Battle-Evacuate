@@ -46,6 +46,7 @@
       1003,
       1004
     ],
+    "initialCredits": 1000,
     "lobbySelectionMarkerMoveDurationMs": 250,
     "battleResultDisplayDelayMs": 1500,
     "battleInDurationMs": 420,

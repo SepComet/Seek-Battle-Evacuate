@@ -14,7 +14,9 @@
     "speedBonus": 0,
     "icon": "铜币",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 80,
+    "buyPrice": 0
   },
   {
     "id": 5002,
@@ -31,7 +33,9 @@
     "speedBonus": 0,
     "icon": "银币",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 180,
+    "buyPrice": 0
   },
   {
     "id": 5003,
@@ -48,7 +52,9 @@
     "speedBonus": 0,
     "icon": "金币",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 280,
+    "buyPrice": 0
   },
   {
     "id": 5004,
@@ -65,7 +71,9 @@
     "speedBonus": 0,
     "icon": "铂币",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 380,
+    "buyPrice": 0
   },
   {
     "id": 5005,
@@ -82,7 +90,9 @@
     "speedBonus": 0,
     "icon": "全币",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 480,
+    "buyPrice": 0
   },
   {
     "id": 5006,
@@ -99,7 +109,9 @@
     "speedBonus": 0,
     "icon": "骨头 I",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 80,
+    "buyPrice": 0
   },
   {
     "id": 5007,
@@ -116,7 +128,9 @@
     "speedBonus": 0,
     "icon": "骨头 II",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 80,
+    "buyPrice": 0
   },
   {
     "id": 5008,
@@ -133,7 +147,9 @@
     "speedBonus": 0,
     "icon": "骨头 III",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 80,
+    "buyPrice": 0
   },
   {
     "id": 5009,
@@ -150,7 +166,9 @@
     "speedBonus": 0,
     "icon": "骨头 IV",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 80,
+    "buyPrice": 0
   },
   {
     "id": 5010,
@@ -167,7 +185,9 @@
     "speedBonus": 0,
     "icon": "骨头 V",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 80,
+    "buyPrice": 0
   },
   {
     "id": 5011,
@@ -184,7 +204,9 @@
     "speedBonus": 0,
     "icon": "骨头 VI",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 80,
+    "buyPrice": 0
   },
   {
     "id": 5012,
@@ -201,7 +223,9 @@
     "speedBonus": 0,
     "icon": "骨头 VII",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 80,
+    "buyPrice": 0
   },
   {
     "id": 5013,
@@ -218,7 +242,9 @@
     "speedBonus": 0,
     "icon": "骨头 VIII",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 80,
+    "buyPrice": 0
   },
   {
     "id": 5014,
@@ -235,7 +261,9 @@
     "speedBonus": 0,
     "icon": "骨头 IX",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 80,
+    "buyPrice": 0
   },
   {
     "id": 5015,
@@ -252,7 +280,9 @@
     "speedBonus": 0,
     "icon": "符文 I",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 180,
+    "buyPrice": 0
   },
   {
     "id": 5016,
@@ -269,7 +299,9 @@
     "speedBonus": 0,
     "icon": "符文 II",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 180,
+    "buyPrice": 0
   },
   {
     "id": 5017,
@@ -286,7 +318,9 @@
     "speedBonus": 0,
     "icon": "符文 III",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 180,
+    "buyPrice": 0
   },
   {
     "id": 5018,
@@ -303,7 +337,9 @@
     "speedBonus": 0,
     "icon": "符文 IV",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 180,
+    "buyPrice": 0
   },
   {
     "id": 5019,
@@ -320,7 +356,9 @@
     "speedBonus": 0,
     "icon": "符文 V",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 180,
+    "buyPrice": 0
   },
   {
     "id": 5020,
@@ -337,7 +375,9 @@
     "speedBonus": 0,
     "icon": "符文 VI",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 180,
+    "buyPrice": 0
   },
   {
     "id": 5021,
@@ -354,7 +394,9 @@
     "speedBonus": 0,
     "icon": "符文 VII",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 180,
+    "buyPrice": 0
   },
   {
     "id": 5022,
@@ -371,7 +413,9 @@
     "speedBonus": 0,
     "icon": "符文 VIII",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 180,
+    "buyPrice": 0
   },
   {
     "id": 5023,
@@ -388,7 +432,9 @@
     "speedBonus": 0,
     "icon": "符文 IX",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 180,
+    "buyPrice": 0
   },
   {
     "id": 5024,
@@ -405,7 +451,9 @@
     "speedBonus": 0,
     "icon": "种子 I",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 280,
+    "buyPrice": 0
   },
   {
     "id": 5025,
@@ -422,7 +470,9 @@
     "speedBonus": 0,
     "icon": "种子 II",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 280,
+    "buyPrice": 0
   },
   {
     "id": 5026,
@@ -439,7 +489,9 @@
     "speedBonus": 0,
     "icon": "种子 III",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 280,
+    "buyPrice": 0
   },
   {
     "id": 5027,
@@ -456,7 +508,9 @@
     "speedBonus": 0,
     "icon": "种子 IV",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 280,
+    "buyPrice": 0
   },
   {
     "id": 5028,
@@ -473,7 +527,9 @@
     "speedBonus": 0,
     "icon": "种子 V",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 280,
+    "buyPrice": 0
   },
   {
     "id": 5029,
@@ -490,7 +546,9 @@
     "speedBonus": 0,
     "icon": "种子 VI",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 280,
+    "buyPrice": 0
   },
   {
     "id": 5030,
@@ -507,7 +565,9 @@
     "speedBonus": 0,
     "icon": "种子 VII",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 280,
+    "buyPrice": 0
   },
   {
     "id": 5031,
@@ -524,7 +584,9 @@
     "speedBonus": 0,
     "icon": "种子 VIII",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 280,
+    "buyPrice": 0
   },
   {
     "id": 5032,
@@ -541,7 +603,9 @@
     "speedBonus": 0,
     "icon": "种子 IX",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 280,
+    "buyPrice": 0
   },
   {
     "id": 5033,
@@ -558,7 +622,9 @@
     "speedBonus": 0,
     "icon": "宝石 I",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 380,
+    "buyPrice": 0
   },
   {
     "id": 5034,
@@ -575,7 +641,9 @@
     "speedBonus": 0,
     "icon": "宝石 II",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 380,
+    "buyPrice": 0
   },
   {
     "id": 5035,
@@ -592,7 +660,9 @@
     "speedBonus": 0,
     "icon": "宝石 III",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 380,
+    "buyPrice": 0
   },
   {
     "id": 5036,
@@ -609,7 +679,9 @@
     "speedBonus": 0,
     "icon": "宝石 IV",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 380,
+    "buyPrice": 0
   },
   {
     "id": 5037,
@@ -626,7 +698,9 @@
     "speedBonus": 0,
     "icon": "宝石 V",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 380,
+    "buyPrice": 0
   },
   {
     "id": 5038,
@@ -643,7 +717,9 @@
     "speedBonus": 0,
     "icon": "宝石 VI",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 380,
+    "buyPrice": 0
   },
   {
     "id": 5039,
@@ -660,7 +736,9 @@
     "speedBonus": 0,
     "icon": "宝石 VII",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 380,
+    "buyPrice": 0
   },
   {
     "id": 5040,
@@ -677,7 +755,9 @@
     "speedBonus": 0,
     "icon": "宝石 VIII",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 380,
+    "buyPrice": 0
   },
   {
     "id": 5041,
@@ -694,7 +774,9 @@
     "speedBonus": 0,
     "icon": "宝石 IX",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 380,
+    "buyPrice": 0
   },
   {
     "id": 5043,
@@ -711,7 +793,9 @@
     "speedBonus": 0,
     "icon": "收集品 I",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 480,
+    "buyPrice": 0
   },
   {
     "id": 5044,
@@ -728,7 +812,9 @@
     "speedBonus": 0,
     "icon": "收集品 II",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 480,
+    "buyPrice": 0
   },
   {
     "id": 5045,
@@ -745,7 +831,9 @@
     "speedBonus": 0,
     "icon": "收集品 III",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 480,
+    "buyPrice": 0
   },
   {
     "id": 5046,
@@ -762,7 +850,9 @@
     "speedBonus": 0,
     "icon": "收集品 IV",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 480,
+    "buyPrice": 0
   },
   {
     "id": 5047,
@@ -779,7 +869,9 @@
     "speedBonus": 0,
     "icon": "收集品 V",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 480,
+    "buyPrice": 0
   },
   {
     "id": 5048,
@@ -796,7 +888,9 @@
     "speedBonus": 0,
     "icon": "收集品 VI",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 480,
+    "buyPrice": 0
   },
   {
     "id": 5049,
@@ -813,7 +907,9 @@
     "speedBonus": 0,
     "icon": "收集品 VII",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 480,
+    "buyPrice": 0
   },
   {
     "id": 5050,
@@ -830,7 +926,9 @@
     "speedBonus": 0,
     "icon": "收集品 VIII",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 480,
+    "buyPrice": 0
   },
   {
     "id": 5051,
@@ -847,7 +945,9 @@
     "speedBonus": 0,
     "icon": "收集品 IX",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 480,
+    "buyPrice": 0
   },
   {
     "id": 5101,
@@ -864,7 +964,9 @@
     "speedBonus": 0,
     "icon": "短剑 I",
     "width": 1,
-    "height": 2
+    "height": 2,
+    "sellPrice": 110,
+    "buyPrice": 220
   },
   {
     "id": 5102,
@@ -881,7 +983,9 @@
     "speedBonus": 0,
     "icon": "短剑 II",
     "width": 2,
-    "height": 1
+    "height": 1,
+    "sellPrice": 210,
+    "buyPrice": 420
   },
   {
     "id": 5103,
@@ -898,7 +1002,9 @@
     "speedBonus": 0,
     "icon": "短剑 III",
     "width": 2,
-    "height": 2
+    "height": 2,
+    "sellPrice": 310,
+    "buyPrice": 0
   },
   {
     "id": 5104,
@@ -915,7 +1021,9 @@
     "speedBonus": 0,
     "icon": "菜刀 I",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 210,
+    "buyPrice": 420
   },
   {
     "id": 5105,
@@ -932,7 +1040,9 @@
     "speedBonus": 0,
     "icon": "菜刀 II",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 310,
+    "buyPrice": 620
   },
   {
     "id": 5106,
@@ -949,7 +1059,9 @@
     "speedBonus": 0,
     "icon": "菜刀 III",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 410,
+    "buyPrice": 0
   },
   {
     "id": 5107,
@@ -966,7 +1078,9 @@
     "speedBonus": 0,
     "icon": "阔剑 I",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 310,
+    "buyPrice": 620
   },
   {
     "id": 5108,
@@ -983,7 +1097,9 @@
     "speedBonus": 0,
     "icon": "阔剑 II",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 410,
+    "buyPrice": 820
   },
   {
     "id": 5109,
@@ -1000,7 +1116,9 @@
     "speedBonus": 0,
     "icon": "阔剑 III",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 510,
+    "buyPrice": 0
   },
   {
     "id": 5110,
@@ -1017,7 +1135,9 @@
     "speedBonus": 0,
     "icon": "小法杖 I",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 110,
+    "buyPrice": 220
   },
   {
     "id": 5111,
@@ -1034,7 +1154,9 @@
     "speedBonus": 0,
     "icon": "小法杖 II",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 210,
+    "buyPrice": 420
   },
   {
     "id": 5112,
@@ -1051,7 +1173,9 @@
     "speedBonus": 0,
     "icon": "小法杖 III",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 310,
+    "buyPrice": 0
   },
   {
     "id": 5113,
@@ -1068,7 +1192,9 @@
     "speedBonus": 0,
     "icon": "中法杖 I",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 210,
+    "buyPrice": 420
   },
   {
     "id": 5114,
@@ -1085,7 +1211,9 @@
     "speedBonus": 0,
     "icon": "中法杖 II",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 310,
+    "buyPrice": 620
   },
   {
     "id": 5115,
@@ -1102,7 +1230,9 @@
     "speedBonus": 0,
     "icon": "中法杖 III",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 410,
+    "buyPrice": 0
   },
   {
     "id": 5116,
@@ -1119,7 +1249,9 @@
     "speedBonus": 0,
     "icon": "大法杖 I",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 310,
+    "buyPrice": 620
   },
   {
     "id": 5117,
@@ -1136,7 +1268,9 @@
     "speedBonus": 0,
     "icon": "大法杖 II",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 410,
+    "buyPrice": 820
   },
   {
     "id": 5118,
@@ -1153,7 +1287,9 @@
     "speedBonus": 0,
     "icon": "大法杖 III",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 510,
+    "buyPrice": 0
   },
   {
     "id": 5201,
@@ -1170,7 +1306,9 @@
     "speedBonus": 0,
     "icon": "头盔 I",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 100,
+    "buyPrice": 200
   },
   {
     "id": 5202,
@@ -1187,7 +1325,9 @@
     "speedBonus": 0,
     "icon": "头盔 II",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 200,
+    "buyPrice": 400
   },
   {
     "id": 5203,
@@ -1204,7 +1344,9 @@
     "speedBonus": 0,
     "icon": "头盔 III",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 300,
+    "buyPrice": 0
   },
   {
     "id": 5204,
@@ -1221,7 +1363,9 @@
     "speedBonus": 0,
     "icon": "头盔 IV",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 400,
+    "buyPrice": 0
   },
   {
     "id": 5205,
@@ -1238,7 +1382,9 @@
     "speedBonus": 0,
     "icon": "头盔 V",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 500,
+    "buyPrice": 0
   },
   {
     "id": 5206,
@@ -1255,7 +1401,9 @@
     "speedBonus": 2,
     "icon": "术士长袍 I",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 100,
+    "buyPrice": 200
   },
   {
     "id": 5207,
@@ -1272,7 +1420,9 @@
     "speedBonus": 2,
     "icon": "术士长袍 II",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 200,
+    "buyPrice": 400
   },
   {
     "id": 5208,
@@ -1289,7 +1439,9 @@
     "speedBonus": 2,
     "icon": "术士长袍 III",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 300,
+    "buyPrice": 0
   },
   {
     "id": 5209,
@@ -1306,7 +1458,9 @@
     "speedBonus": 2,
     "icon": "术士长袍 IV",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 400,
+    "buyPrice": 0
   },
   {
     "id": 5210,
@@ -1323,7 +1477,9 @@
     "speedBonus": 2,
     "icon": "术士长袍 V",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 500,
+    "buyPrice": 0
   },
   {
     "id": 5301,
@@ -1340,7 +1496,9 @@
     "speedBonus": 0,
     "icon": "小药",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 120,
+    "buyPrice": 240
   },
   {
     "id": 5302,
@@ -1357,7 +1515,9 @@
     "speedBonus": 0,
     "icon": "中小药",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 220,
+    "buyPrice": 440
   },
   {
     "id": 5303,
@@ -1374,7 +1534,9 @@
     "speedBonus": 0,
     "icon": "中药",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 320,
+    "buyPrice": 640
   },
   {
     "id": 5304,
@@ -1391,7 +1553,9 @@
     "speedBonus": 0,
     "icon": "中大药",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 420,
+    "buyPrice": 840
   },
   {
     "id": 5305,
@@ -1408,6 +1572,8 @@
     "speedBonus": 0,
     "icon": "大药",
     "width": 1,
-    "height": 1
+    "height": 1,
+    "sellPrice": 520,
+    "buyPrice": 1040
   }
 ]

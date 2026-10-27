@@ -65,6 +65,7 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         CardStateTextDurationMs = _buf.ReadInt();
         CardStateTextFloatPx = _buf.ReadInt();
         {int n0 = System.Math.Min(_buf.ReadSize(), _buf.Size);NewGameCharacterIds = new System.Collections.Generic.List<int>(n0);for(var i0 = 0 ; i0 < n0 ; i0++) { int _e0;  _e0 = _buf.ReadInt(); NewGameCharacterIds.Add(_e0);}}
+        InitialCredits = _buf.ReadInt();
         LobbySelectionMarkerMoveDurationMs = _buf.ReadInt();
         BattleResultDisplayDelayMs = _buf.ReadInt();
         BattleInDurationMs = _buf.ReadInt();
@@ -256,6 +257,10 @@ public sealed partial class GlobalConfig : Luban.BeanBase
     /// </summary>
     public readonly System.Collections.Generic.List<int> NewGameCharacterIds;
     /// <summary>
+    /// 新账号初始信用点（服务器注册时发放）
+    /// </summary>
+    public readonly int InitialCredits;
+    /// <summary>
     /// LobbyForm选中标记移动动画持续时间，毫秒
     /// </summary>
     public readonly int LobbySelectionMarkerMoveDurationMs;
@@ -357,6 +362,7 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         
         
         
+        
     }
 
     public override string ToString()
@@ -403,6 +409,7 @@ public sealed partial class GlobalConfig : Luban.BeanBase
         + "cardStateTextDurationMs:" + CardStateTextDurationMs + ","
         + "cardStateTextFloatPx:" + CardStateTextFloatPx + ","
         + "newGameCharacterIds:" + Luban.StringUtil.CollectionToString(NewGameCharacterIds) + ","
+        + "initialCredits:" + InitialCredits + ","
         + "lobbySelectionMarkerMoveDurationMs:" + LobbySelectionMarkerMoveDurationMs + ","
         + "battleResultDisplayDelayMs:" + BattleResultDisplayDelayMs + ","
         + "battleInDurationMs:" + BattleInDurationMs + ","

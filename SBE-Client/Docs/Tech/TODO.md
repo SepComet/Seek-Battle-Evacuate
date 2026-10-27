@@ -69,7 +69,7 @@ graph TD
 
 > 目标：实现顶级 UI 架构拆分、局外买卖经济闭环、战备药品局内使用，形成完整的“搜刮变现-补给-再战”闭环。
 
-### [ ] P1-M1 大厅顶级 UI 架构解耦与入口重构
+### [x] P1-M1 大厅顶级 UI 架构解耦与入口重构
 - **目标**：将原本嵌套在 LobbyForm 下的子面板拆分为独立顶级 Form，重构 Lobby 入口导航。
 - **范围**：
   - 在 `UIFormConfig.xlsx` 中为 `DeploymentForm`、`ShopForm` 等正式注册独立 Form ID。
@@ -77,7 +77,7 @@ graph TD
   - 统一顶级 Form 打开/关闭生命周期与返回机制（ESC / 返回按钮回到大厅）。
   - 右上角常驻资产栏显示（金币与存档状态）。
 
-**实现记录（2026-10-25，待人工 Play Mode 验收）**：
+**实现记录（2026-10-25 实现；2026-10-28 人工验收通过）**：
 - `LobbyForm` 已移除功能页嵌套，保留 Expedition / Roster / Supply / Warehouse 四个入口；Supply 在 P1-M3 前禁用。
 - 复用现有名称注册独立顶级页：`HomeForm=111`（完整战备页，内含 SquadForm 与 DeploymentForm）、`LoadoutForm=112`（局外整备）、`WarehouseForm=113`、`ShopForm=114`（占位页）。现有 `CharacterForm` 仍为局内背包组件。
 - 功能页暂停大厅，返回按钮 / ESC 关闭当前功能页并恢复大厅；输入框编辑期间 ESC 不返回。打开中锁定大厅入口，加载失败后恢复。
@@ -86,12 +86,18 @@ graph TD
 - 验收清单与静态检查记录：根目录 `.scratch/p1-m1/spec.md`。
 
 ### [ ] P1-M2 经济系统与数据结构扩展
-- **目标**：完善局外货币持久化与配表买卖价格。
-- **范围**：
-  - `SaveData` 增加 `gold / credits` 字段（`int` 或 `long`），支持序列化与反序列化，新存档提供初始启动资金。
-  - `ItemConfig.xlsx` 增加 `SellPrice`（基础出售价）、`BuyPrice`（商人出售价，0 为不可购买）字段。
-  - 运行 `gen_cli.bat` 导出最新 Luban 数据与代码。
-  - 提供 `EconomyComponent` 或在 `SaveComponent` 中封装货币变动安全接口与日志。
+- **目标**：局外货币余额上云（服务端唯一真源），配表准备买卖价格。
+- **状态**：2026-10-28 实现并经自动化门禁验证，待人工 Play Mode 验收（清单见 `.scratch/p1-m2/spec.md`）。
+- **范围（2026-10-28 按服务器权威架构改写；原文的 SaveData 本地方案与 EconomyComponent 作废）**：
+  - 服务端：`users.credits` 列（migration `0005_credits.sql`，存量账号回填 1000）、快照恒携带 `credits`、注册按 `tbglobalconfig.initialCredits` 发放；协议 v4→v5，客户端永不上传余额。
+  - 客户端：`NetSnapshot.credits` 与 `WarehouseSyncService.Credits/HasCredits`（只落内存，不写本地缓存）；五个页头经共享组件显示真实余额，快照未落地维持 `CREDITS: —` 占位。
+  - `ItemConfig.xlsx` 增加 `SellPrice`（全表=价值）、`BuyPrice`（消耗品与 I/II 档武器防具=价值×2，战利品/货币道具/III 档及以上=0 不可购买）；`tbglobalconfig` 新增 `initialCredits=1000`。
+
+**实现记录（2026-10-28）**：
+- 余额变动路径当前仅注册发放；货币道具（铜币~全币）保持普通物品不变，"一键变现"换余额随 P1-M3 商店出售接入。结算对账与 migrate 上传链路均不涉及余额；结算幂等回放（settlements.snapshot_json）已随 credits 往返。
+- 页头格式串复用 M1 的 `LobbyCurrencyPending` key（值改为 `CREDITS: {0:N0}`，未知时传 `—`），prefab 零改动；`LobbyPageHeader` 逐帧按已渲染值缓存刷新。
+- 自动化验证：server_test 231 全绿 + MySQL 真库集成 2 用例通过（注册发放/结算不动余额/幂等回放往返）；EditMode 376 中 374 绿（fog 与 `PendingEconomicFlush_DoesNotBlockLatencyProbe` 为存量 batchmode 失败，后者经 HEAD 基线复跑确认与本里程碑无关）；consistency_check 0 违规；deploy+smoke 注册返回 credits=1000，存量账号已 ALTER+回填。
+- 决策与验收清单：`.scratch/p1-m2/spec.md`（人工验收待用户执行）。
 
 ### [ ] P1-M3 双栏商贸补给界面（ShopForm）
 - **目标**：实现商人货架购买与仓库战利品变现的一站式交易界面。

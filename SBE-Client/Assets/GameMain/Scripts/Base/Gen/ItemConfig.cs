@@ -32,6 +32,8 @@ public sealed partial class ItemConfig : Luban.BeanBase
         Icon_Ref = null;
         Width = _buf.ReadInt();
         Height = _buf.ReadInt();
+        SellPrice = _buf.ReadInt();
+        BuyPrice = _buf.ReadInt();
     }
 
     public static ItemConfig DeserializeItemConfig(ByteBuf _buf)
@@ -100,6 +102,14 @@ public sealed partial class ItemConfig : Luban.BeanBase
     /// 高度
     /// </summary>
     public readonly int Height;
+    /// <summary>
+    /// 基础出售价
+    /// </summary>
+    public readonly int SellPrice;
+    /// <summary>
+    /// 商人出售价，0=不可购买
+    /// </summary>
+    public readonly int BuyPrice;
    
     public const int __ID__ = -764023723;
     public override int GetTypeId() => __ID__;
@@ -119,6 +129,8 @@ public sealed partial class ItemConfig : Luban.BeanBase
         
         
         Icon_Ref = tables.TbSpriteConfig.GetOrDefault(Icon);
+        
+        
         
         
     }
@@ -141,6 +153,8 @@ public sealed partial class ItemConfig : Luban.BeanBase
         + "icon:" + Icon + ","
         + "width:" + Width + ","
         + "height:" + Height + ","
+        + "sellPrice:" + SellPrice + ","
+        + "buyPrice:" + BuyPrice + ","
         + "}";
     }
 }
