@@ -11,16 +11,17 @@ import (
 )
 
 // OpenStore 打开指定类型的存储。默认（memory）单机开发用，数据不落盘。
-// uidGen 为全局共享的雪花铸号器，内存与 MySQL 实现均从中铸造 uid。
-func OpenStore(kind, dsn string, uidGen *snowflake.Node) (st store.Store, closeFn func() error, err error) {
+// uidGen 为全局共享的雪花铸号器，内存与 MySQL 实现均从中铸造 uid；
+// initialCredits 为注册账号发放的初始信用点（tbglobalconfig.initialCredits）。
+func OpenStore(kind, dsn string, uidGen *snowflake.Node, initialCredits int64) (st store.Store, closeFn func() error, err error) {
 	switch kind {
 	case "", "memory":
-		return memorystore.New(uidGen.Next), func() error { return nil }, nil
+		return memorystore.New(uidGen.Next, initialCredits), func() error { return nil }, nil
 	case "mysql":
 		if dsn == "" {
 			return nil, nil, fmt.Errorf("mysql store requires -dsn")
 		}
-		ms, err := mysqlstore.Open(dsn, uidGen.Next)
+		ms, err := mysqlstore.Open(dsn, uidGen.Next, initialCredits)
 		if err != nil {
 			return nil, nil, err
 		}

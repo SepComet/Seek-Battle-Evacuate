@@ -3,17 +3,18 @@ package protocol
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 )
 
-// 本文件锁死协议 v4 的线上字段名与形状（契约 §7「线上字段」）：
+// 本文件锁死协议 v5 的线上字段名与形状（契约 §7「线上字段」）：
 // 客户端按 JSON 名解析，改名即断代，因此这里逐字断言 wire format，
 // 而不是只断言结构体字段。
 
-// TestVersionIsV4 协议版本（契约 §7：protocol.Version = 4，与客户端 NetMsg.Version 一致）。
-func TestVersionIsV4(t *testing.T) {
-	if Version != 4 {
-		t.Fatalf("Version = %d, want 4", Version)
+// TestVersionIsV5 协议版本（protocol.Version = 5，与客户端 NetMsg.Version 一致）。
+func TestVersionIsV5(t *testing.T) {
+	if Version != 5 {
+		t.Fatalf("Version = %d, want 5", Version)
 	}
 }
 
@@ -37,7 +38,7 @@ func TestStartRunRequestWireFormat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	want := `{"t":"start_run","v":4,"rid":7,"difficulty":2,"resume":true}`
+	want := `{"t":"start_run","v":5,"rid":7,"difficulty":2,"resume":true}`
 	if string(raw) != want {
 		t.Fatalf("start_run request =\n%s\nwant\n%s", raw, want)
 	}
@@ -58,7 +59,7 @@ func TestStartRunResponseWireFormat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	want := `{"t":"ok","v":4,"rid":8,"runId":"abc123","seed":123456789,` +
+	want := `{"t":"ok","v":5,"rid":8,"runId":"abc123","seed":123456789,` +
 		`"spawnPoint":{"x":1,"y":-16},"extractionPoint":{"x":30,"y":-3},"runDifficulty":2,` +
 		`"consumed":["r2"],"looted":[{"pointId":"r2","itemIds":[5001,5003]}]}`
 	if string(raw) != want {
@@ -72,7 +73,7 @@ func TestEncounterWireFormat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal request: %v", err)
 	}
-	wantRequest := `{"t":"encounter","v":4,"rid":9,"runId":"abc123","pointId":"e3"}`
+	wantRequest := `{"t":"encounter","v":5,"rid":9,"runId":"abc123","pointId":"e3"}`
 	if string(raw) != wantRequest {
 		t.Fatalf("encounter request =\n%s\nwant\n%s", raw, wantRequest)
 	}
@@ -81,7 +82,7 @@ func TestEncounterWireFormat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal response: %v", err)
 	}
-	wantResponse := `{"t":"ok","v":4,"rid":9,"enemyPartyId":4101,"threat":2}`
+	wantResponse := `{"t":"ok","v":5,"rid":9,"enemyPartyId":4101,"threat":2}`
 	if string(raw) != wantResponse {
 		t.Fatalf("encounter response =\n%s\nwant\n%s", raw, wantResponse)
 	}
@@ -93,7 +94,7 @@ func TestLootWireFormat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal request: %v", err)
 	}
-	wantRequest := `{"t":"loot","v":4,"rid":10,"runId":"abc123","pointId":"r2"}`
+	wantRequest := `{"t":"loot","v":5,"rid":10,"runId":"abc123","pointId":"r2"}`
 	if string(raw) != wantRequest {
 		t.Fatalf("loot request =\n%s\nwant\n%s", raw, wantRequest)
 	}
@@ -102,7 +103,7 @@ func TestLootWireFormat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal response: %v", err)
 	}
-	wantResponse := `{"t":"ok","v":4,"rid":10,"itemIds":[5001,5003]}`
+	wantResponse := `{"t":"ok","v":5,"rid":10,"itemIds":[5001,5003]}`
 	if string(raw) != wantResponse {
 		t.Fatalf("loot response =\n%s\nwant\n%s", raw, wantResponse)
 	}
@@ -118,26 +119,47 @@ func TestSettleBattleLootWireFormat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	want := `{"t":"settle","v":4,"rid":11,"runId":"abc123","outcome":1,"difficulty":2,"seed":123456789,` +
+	want := `{"t":"settle","v":5,"rid":11,"runId":"abc123","outcome":1,"difficulty":2,"seed":123456789,` +
 		`"startedAt":1000,"endedAt":2000,"battleLoot":[{"itemId":5001,"count":2}]}`
 	if string(raw) != want {
 		t.Fatalf("settle request =\n%s\nwant\n%s", raw, want)
 	}
 }
 
+// TestSnapshotCreditsWireFormat 协议 v5：快照 credits 字段恒在（无 omitempty），
+// 客户端据此区分"余额 0"与"字段缺失"（旧版本断代不依赖该字段）。
+func TestSnapshotCreditsWireFormat(t *testing.T) {
+	raw, err := json.Marshal(Snapshot{Items: []SnapRow{}, Characters: []SnapChar{}, Credits: 1000})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	want := `{"items":[],"characters":[],"initialized":false,"credits":1000}`
+	if string(raw) != want {
+		t.Fatalf("snapshot =\n%s\nwant\n%s", raw, want)
+	}
+
+	raw, err = json.Marshal(Snapshot{Items: []SnapRow{}, Characters: []SnapChar{}})
+	if err != nil {
+		t.Fatalf("marshal zero: %v", err)
+	}
+	if !strings.Contains(string(raw), `"credits":0`) {
+		t.Fatalf("credits must always be present, got %s", raw)
+	}
+}
+
 // TestRunFieldsRoundTrip 新字段反序列化后原样回读（客户端→服务器方向的请求体）。
 func TestRunFieldsRoundTrip(t *testing.T) {
-	body := `{"t":"start_run","v":4,"rid":12,"difficulty":3,"resume":true,"runId":"r-1","pointId":"e2"}`
+	body := `{"t":"start_run","v":5,"rid":12,"difficulty":3,"resume":true,"runId":"r-1","pointId":"e2"}`
 	var env Envelope
 	if err := json.Unmarshal([]byte(body), &env); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if env.T != MsgStartRun || env.V != 4 || env.RID != 12 || env.Difficulty != 3 || !env.Resume ||
+	if env.T != MsgStartRun || env.V != 5 || env.RID != 12 || env.Difficulty != 3 || !env.Resume ||
 		env.RunID != "r-1" || env.PointID != "e2" {
 		t.Fatalf("round trip mismatch: %+v", env)
 	}
 
-	settle := `{"t":"settle","v":4,"rid":13,"runId":"r-1","battleLoot":[{"itemId":5301,"count":3},{"itemId":5001,"count":1}]}`
+	settle := `{"t":"settle","v":5,"rid":13,"runId":"r-1","battleLoot":[{"itemId":5301,"count":3},{"itemId":5001,"count":1}]}`
 	if err := json.Unmarshal([]byte(settle), &env); err != nil {
 		t.Fatalf("unmarshal settle: %v", err)
 	}

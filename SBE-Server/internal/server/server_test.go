@@ -35,6 +35,7 @@ func limits() core.Limits {
 		MaxPlayerPartySize: 4,
 		BackpackSlotCount:  3,
 		Difficulties:       map[int]bool{1: true, 2: true, 3: true},
+		InitialCredits:     1000,
 	}
 }
 
@@ -136,6 +137,10 @@ func TestFullFlowRegisterMigrateSettleIdempotentEquip(t *testing.T) {
 	if reg.Initialized || len(reg.Items) != 0 {
 		t.Fatalf("fresh account not empty: %+v", reg)
 	}
+	// 协议 v5：注册快照携带按 initialCredits 发放的余额
+	if reg.Credits != 1000 {
+		t.Fatalf("fresh account credits = %d, want 1000", reg.Credits)
+	}
 
 	// 2. 首登迁移：上传本地存档（1001 穿着武器 5101）
 	mig := mustOK(c, protocol.Envelope{T: protocol.MsgMigrate, Migrate: &protocol.MigratePayload{
@@ -147,6 +152,9 @@ func TestFullFlowRegisterMigrateSettleIdempotentEquip(t *testing.T) {
 	}})
 	if !mig.Initialized || len(mig.Items) != 2 || len(mig.Characters) != 2 {
 		t.Fatalf("migrate snapshot wrong: %+v", mig)
+	}
+	if mig.Credits != 1000 {
+		t.Fatalf("migrate must not touch credits: %d, want 1000", mig.Credits)
 	}
 
 	// 3. 结算：招募 1003、战利品入库、旧武器销毁、捡到的新武器穿上

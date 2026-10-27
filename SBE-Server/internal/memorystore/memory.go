@@ -36,10 +36,12 @@ type Store struct {
 	settles         map[string]settleRecord      // runId -> 持有者与首次结算后的状态（同用户幂等回放；他人占用拒绝）
 	runs            map[int64][]protocol.SnapRun // userID -> 战绩审计记录（追加序，查询时排序）
 	mintUID         func() (int64, error)        // uid 铸造器（雪花）
+	initialCredits  int64                        // 注册发放的初始信用点（tbglobalconfig.initialCredits）
 }
 
-// New 创建内存存储。mintUID 为 uid 铸造函数（通常注入 snowflake.Node.Next）。
-func New(mintUID func() (int64, error)) *Store {
+// New 创建内存存储。mintUID 为 uid 铸造函数（通常注入 snowflake.Node.Next），
+// initialCredits 为注册账号发放的初始信用点。
+func New(mintUID func() (int64, error), initialCredits int64) *Store {
 	return &Store{
 		usersByID:       make(map[int64]*account),
 		usersByUsername: make(map[string]int64),
@@ -47,6 +49,7 @@ func New(mintUID func() (int64, error)) *Store {
 		settles:         make(map[string]settleRecord),
 		runs:            make(map[int64][]protocol.SnapRun),
 		mintUID:         mintUID,
+		initialCredits:  initialCredits,
 	}
 }
 
@@ -78,7 +81,7 @@ func (s *Store) Register(_ context.Context, username, password string) (int64, s
 		return 0, "", store.ErrUsernameTaken
 	}
 	s.usersByUsername[name] = uid
-	s.usersByID[uid] = &account{username: name, passwordHash: hash}
+	s.usersByID[uid] = &account{username: name, passwordHash: hash, state: core.State{Credits: s.initialCredits}}
 	s.tokens[token] = uid
 	return uid, token, nil
 }

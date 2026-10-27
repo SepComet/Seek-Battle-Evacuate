@@ -23,10 +23,13 @@ const mysqlErrDupEntry uint16 = 1062
 type Store struct {
 	db      *sql.DB
 	mintUID func() (int64, error) // uid 铸造器（雪花）
+	// initialCredits 注册发放的初始信用点（tbglobalconfig.initialCredits）。
+	initialCredits int64
 }
 
-// Open 打开数据库连接池。mintUID 为 uid 铸造函数（通常注入 snowflake.Node.Next）。
-func Open(dsn string, mintUID func() (int64, error)) (*Store, error) {
+// Open 打开数据库连接池。mintUID 为 uid 铸造函数（通常注入 snowflake.Node.Next），
+// initialCredits 为注册账号发放的初始信用点。
+func Open(dsn string, mintUID func() (int64, error), initialCredits int64) (*Store, error) {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, err
@@ -37,7 +40,7 @@ func Open(dsn string, mintUID func() (int64, error)) (*Store, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("mysql ping: %w", err)
 	}
-	return &Store{db: db, mintUID: mintUID}, nil
+	return &Store{db: db, mintUID: mintUID, initialCredits: initialCredits}, nil
 }
 
 // Close 关闭连接池。
@@ -73,7 +76,7 @@ func (s *Store) Register(ctx context.Context, username, password string) (int64,
 	defer func() { _ = tx.Rollback() }()
 
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO users (uid, username, password_hash) VALUES (?,?,?)`, uid, name, hash); err != nil {
+		`INSERT INTO users (uid, username, password_hash, credits) VALUES (?,?,?,?)`, uid, name, hash, s.initialCredits); err != nil {
 		var me *mysql.MySQLError
 		if errors.As(err, &me) && me.Number == mysqlErrDupEntry {
 			return 0, "", store.ErrUsernameTaken
@@ -154,8 +157,8 @@ func (s *Store) load(ctx context.Context, q queryer, userID int64, forUpdate boo
 		lock = " FOR UPDATE"
 	}
 	if err := q.QueryRowContext(ctx,
-		`SELECT initialized, COALESCE((SELECT MAX(uid) FROM warehouse_items WHERE user_id = ?), 0) FROM users WHERE uid = ?`+lock,
-		userID, userID).Scan(&state.Initialized, &state.NextUID); err != nil {
+		`SELECT initialized, credits, COALESCE((SELECT MAX(uid) FROM warehouse_items WHERE user_id = ?), 0) FROM users WHERE uid = ?`+lock,
+		userID, userID).Scan(&state.Initialized, &state.Credits, &state.NextUID); err != nil {
 		return core.State{}, fmt.Errorf("load user: %w", err)
 	}
 
@@ -436,7 +439,7 @@ type queryer interface {
 }
 
 func snapshotToState(snap protocol.Snapshot) core.State {
-	state := core.State{Initialized: snap.Initialized}
+	state := core.State{Initialized: snap.Initialized, Credits: snap.Credits}
 	for _, r := range snap.Items {
 		state.Rows = append(state.Rows, core.Row{
 			UID: r.UID, ItemID: r.ItemID, Count: r.Count,

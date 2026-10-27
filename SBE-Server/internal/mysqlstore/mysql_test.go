@@ -19,7 +19,7 @@ type testItems map[int]core.ItemDef
 
 func (items testItems) Get(id int) (core.ItemDef, bool) { d, ok := items[id]; return d, ok }
 
-// Requires an explicitly supplied test database with migrations 0001~0004 applied.
+// Requires an explicitly supplied test database with migrations 0001~0005 applied.
 // Only rows belonging to this test's new accounts are removed by cleanup.
 func TestMySQLLoadoutSettlementHistory(t *testing.T) {
 	dsn := os.Getenv("SBE_TEST_MYSQL_DSN")
@@ -30,7 +30,7 @@ func TestMySQLLoadoutSettlementHistory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s, err := Open(dsn, uidGen.Next)
+	s, err := Open(dsn, uidGen.Next, 1000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestMySQLSettleOwnershipAndPerUserUID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s, err := Open(dsn, uidGen.Next)
+	s, err := Open(dsn, uidGen.Next, 1000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,11 +148,20 @@ func TestMySQLSettleOwnershipAndPerUserUID(t *testing.T) {
 	ops := []protocol.Op{{K: protocol.OpAdd, TID: 1, ItemID: 5001, Count: 1, X: 0, Y: 0}}
 	runID := suffix + "-run"
 
-	if _, replay, err := s.ApplySettle(ctx, userA, runID, core.SettleMeta{}, ops, items, limits); err != nil || replay {
+	first, replay, err := s.ApplySettle(ctx, userA, runID, core.SettleMeta{}, ops, items, limits)
+	if err != nil || replay {
 		t.Fatalf("userA settle: replay=%v err=%v", replay, err)
 	}
-	if _, replay, err := s.ApplySettle(ctx, userA, runID, core.SettleMeta{}, ops, items, limits); err != nil || !replay {
+	if first.Credits != 1000 {
+		t.Fatalf("settle state credits = %d, want granted 1000", first.Credits)
+	}
+	again, replay, err := s.ApplySettle(ctx, userA, runID, core.SettleMeta{}, ops, items, limits)
+	if err != nil || !replay {
 		t.Fatalf("userA replay: replay=%v err=%v", replay, err)
+	}
+	// 幂等回放从 settlements.snapshot_json 重建状态，credits 必须随之往返
+	if again.Credits != 1000 {
+		t.Fatalf("replay state credits = %d, want 1000", again.Credits)
 	}
 	if _, _, err := s.ApplySettle(ctx, userB, runID, core.SettleMeta{}, ops, items, limits); err == nil {
 		t.Fatal("cross-user runId must be rejected")
@@ -173,5 +182,8 @@ func TestMySQLSettleOwnershipAndPerUserUID(t *testing.T) {
 	}
 	if len(stateA.Rows) != 1 || len(stateB.Rows) != 1 || stateA.Rows[0].UID != stateB.Rows[0].UID {
 		t.Fatalf("per-user uid coexistence broken: A=%+v B=%+v", stateA.Rows, stateB.Rows)
+	}
+	if stateA.Credits != 1000 || stateB.Credits != 1000 {
+		t.Fatalf("reload credits = %d/%d, want 1000/1000", stateA.Credits, stateB.Credits)
 	}
 }

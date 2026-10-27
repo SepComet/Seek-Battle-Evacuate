@@ -9,7 +9,9 @@ package protocol
 // 用户主键改为雪花 uid；register 不再携带 device，旧版本互连直接 bad_message 断代。
 // v4：探索内容上云——新增 start_run/encounter/loot 三条消息，settle 增补 battleLoot 并做
 // 开箱对账；Envelope 增加 run 会话相关字段（见 contracts.md §7）。
-const Version = 4
+// v5：经济余额上云——Snapshot 增加 credits，注册时由服务器按 tbglobalconfig.initialCredits
+// 发放；客户端不上传余额，商城买卖随 P1-M3 接入。
+const Version = 5
 
 // 消息类型。
 const (
@@ -155,6 +157,8 @@ type Snapshot struct {
 	Items       []SnapRow  `json:"items"`
 	Characters  []SnapChar `json:"characters"`
 	Initialized bool       `json:"initialized"`
+	// Credits 账号信用点余额：注册时按 initialCredits 发放，P1-M3 前无其他变动路径。
+	Credits int64 `json:"credits"`
 	// 战备配置：出战队列（空=未配置）、难度（0=未配置）、携带计划。
 	Party      []int   `json:"party,omitempty"`
 	Difficulty int     `json:"difficulty,omitempty"`

@@ -41,7 +41,7 @@ func New(items core.ItemTable, limits core.Limits) *Server {
 	if err != nil {
 		panic(fmt.Sprintf("server: snowflake init: %v", err))
 	}
-	return &Server{Store: memorystore.New(node.Next), Items: items, Limits: limits}
+	return &Server{Store: memorystore.New(node.Next, limits.InitialCredits), Items: items, Limits: limits}
 }
 
 // Handler 返回挂载在指定路径的 WebSocket http.Handler。

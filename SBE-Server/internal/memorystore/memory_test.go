@@ -22,7 +22,7 @@ func testLimits() core.Limits {
 
 func newTestStore() *Store {
 	var seq atomic.Int64
-	return New(func() (int64, error) { return seq.Add(1), nil })
+	return New(func() (int64, error) { return seq.Add(1), nil }, 1000)
 }
 
 // 注册/登录：重名冲突、错密拒绝、uid 稳定。
@@ -96,5 +96,52 @@ func TestSettleOwnershipAndReplay(t *testing.T) {
 	// 被占用不波及他人正常结算
 	if _, replay, err := s.ApplySettle(ctx, userB, "run-own", core.SettleMeta{}, ops, items, limits); err != nil || replay {
 		t.Fatalf("other user own settle: replay=%v err=%v", replay, err)
+	}
+}
+
+// 协议 v5：注册即发放初始信用点，且迁移/结算/操作批次均不改变余额。
+func TestRegisterGrantsInitialCreditsAndPersists(t *testing.T) {
+	s := newTestStore()
+	ctx := context.Background()
+	uid, _, err := s.Register(ctx, "credit-player", "secret-123")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	state, err := s.Load(ctx, uid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Credits != 1000 {
+		t.Fatalf("fresh account credits = %d, want 1000", state.Credits)
+	}
+
+	// 迁移（客户端上传初始内容）不得覆盖余额
+	if _, err := s.Migrate(ctx, uid, protocol.MigratePayload{
+		Items:      []protocol.MigrateItem{{ItemID: 5001, Count: 1, X: 0, Y: 0}},
+		Characters: []protocol.MigrateChar{{CID: 1001}},
+	}, testItems{5001: {StackLimit: 99}}, testLimits()); err != nil {
+		t.Fatal(err)
+	}
+	if state, err = s.Load(ctx, uid); err != nil {
+		t.Fatal(err)
+	}
+	if state.Credits != 1000 {
+		t.Fatalf("credits changed after migrate: %d, want 1000", state.Credits)
+	}
+
+	// 结算只动物品行，余额保持
+	if _, _, err := s.ApplySettle(ctx, uid, "run-credits", core.SettleMeta{}, nil, testItems{5001: {StackLimit: 99}}, testLimits()); err != nil {
+		t.Fatal(err)
+	}
+	ops := []protocol.Op{{K: protocol.OpAdd, TID: 1, ItemID: 5001, Count: 1, X: 1, Y: 0}}
+	if _, err := s.ApplyOps(ctx, uid, ops, testItems{5001: {StackLimit: 99}}, testLimits()); err != nil {
+		t.Fatal(err)
+	}
+	if state, err = s.Load(ctx, uid); err != nil {
+		t.Fatal(err)
+	}
+	if state.Credits != 1000 {
+		t.Fatalf("credits changed after settle/ops: %d, want 1000", state.Credits)
 	}
 }

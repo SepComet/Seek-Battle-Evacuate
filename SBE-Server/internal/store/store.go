@@ -36,6 +36,7 @@ func NewToken() (string, error) {
 // Store 经济状态存储接口。所有方法须线程安全。
 type Store interface {
 	// Register 以用户名+密码注册新账号，返回新铸造的 uid 与 token。
+	// 注册即按实现方构造时注入的初始信用点（tbglobalconfig.initialCredits）发放余额。
 	// 用户名格式非法返回 ErrRejected（core），已被占用返回 ErrUsernameTaken。
 	Register(ctx context.Context, username, password string) (uid int64, token string, err error)
 

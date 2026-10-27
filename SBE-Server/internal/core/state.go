@@ -32,12 +32,15 @@ type ItemTable interface {
 	Get(itemID int) (ItemDef, bool)
 }
 
-// Limits 校验所需的全局约束与难度枚举，由配置加载层组装
-// （MaxPlayerPartySize/BackpackSlotCount 取自 tbglobalconfig，Difficulties 取自 tbdifficultyconfig）。
+// Limits 校验与发放所需的全局约束与难度枚举，由配置加载层组装
+// （MaxPlayerPartySize/BackpackSlotCount/InitialCredits 取自 tbglobalconfig，
+// Difficulties 取自 tbdifficultyconfig）。
 type Limits struct {
 	MaxPlayerPartySize int
 	BackpackSlotCount  int
 	Difficulties       map[int]bool
+	// InitialCredits 新账号注册时发放的信用点余额。
+	InitialCredits int64
 }
 
 // Stack 无实例身份的物品堆（携带计划条目）。
@@ -79,6 +82,7 @@ type State struct {
 	Party       []int   // 出战角色 ID 及顺序
 	Difficulty  int     // 难度枚举，0=未配置
 	Carried     []Stack // 携带计划
+	Credits     int64   // 信用点余额：注册发放（Limits.InitialCredits），P1-M3 前无其他变动路径
 	NextUID     int64
 	Initialized bool
 }
@@ -92,6 +96,7 @@ func (s State) ToSnapshot() protocol.Snapshot {
 		Items:       make([]protocol.SnapRow, 0, len(s.Rows)),
 		Characters:  make([]protocol.SnapChar, 0, len(s.Characters)),
 		Initialized: s.Initialized,
+		Credits:     s.Credits,
 	}
 	for _, r := range s.Rows {
 		snap.Items = append(snap.Items, protocol.SnapRow{
@@ -120,6 +125,7 @@ func (s State) Clone() State {
 		Party:       make([]int, len(s.Party)),
 		Difficulty:  s.Difficulty,
 		Carried:     make([]Stack, len(s.Carried)),
+		Credits:     s.Credits,
 		NextUID:     s.NextUID,
 		Initialized: s.Initialized,
 	}

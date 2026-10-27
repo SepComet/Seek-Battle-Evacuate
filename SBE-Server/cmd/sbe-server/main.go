@@ -4,8 +4,7 @@
 //
 //	go run ./cmd/sbe-server -addr 127.0.0.1:7777
 //
-// 生产（MySQL，先依次执行 migrations/0001_init.sql、0002_loadout.sql、
-// 0003_warehouse_uid_per_user.sql、0004_account_auth.sql）：
+// 生产（MySQL，先依次执行 migrations/ 下的全部迁移脚本）：
 //
 //	go build -o bin/sbe-server ./cmd/sbe-server
 //	./bin/sbe-server -store mysql -dsn "user:pass@tcp(127.0.0.1:3306)/sbe?charset=utf8mb4&parseTime=true"
@@ -48,7 +47,7 @@ func main() {
 		log.Fatalf("snowflake: %v", err)
 	}
 
-	st, closeStore, err := boot.OpenStore(*storeKind, *dsn, uidGen)
+	st, closeStore, err := boot.OpenStore(*storeKind, *dsn, uidGen, cfg.Limits.InitialCredits)
 	if err != nil {
 		log.Fatalf("open store: %v", err)
 	}
@@ -60,8 +59,8 @@ func main() {
 	stopSweeper := app.Run.StartSweeper(0)
 	defer stopSweeper()
 
-	log.Printf("sbe-server listening on ws://%s%s (store=%s, items=%d, maxParty=%d, worker=%d)",
-		*addr, *path, *storeKind, len(table), cfg.Limits.MaxPlayerPartySize, *workerID)
+	log.Printf("sbe-server listening on ws://%s%s (store=%s, items=%d, maxParty=%d, initCredits=%d, worker=%d)",
+		*addr, *path, *storeKind, len(table), cfg.Limits.MaxPlayerPartySize, cfg.Limits.InitialCredits, *workerID)
 	log.Printf("exploration content: rooms=%d resourcePoints=%d enemySpawnPoints=%d playerSpawns=%d extractions=%d",
 		len(cfg.Layout.Rooms), len(cfg.Layout.ResourcePoints), len(cfg.Layout.EnemySpawnPoints),
 		len(cfg.Layout.PlayerSpawnPoints), len(cfg.Layout.ExtractionPoints))

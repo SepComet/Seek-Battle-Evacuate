@@ -15,6 +15,7 @@ type rawGlobal struct {
 	MinPlayerPartySize int `json:"minPlayerPartySize"`
 	MaxPlayerPartySize int `json:"maxPlayerPartySize"`
 	BackpackSlotCount  int `json:"backpackSlotCount"`
+	InitialCredits     int64 `json:"initialCredits"`
 }
 
 type rawDifficulty struct {
@@ -46,8 +47,12 @@ func Load(globalPath, difficultyPath string) (core.Limits, error) {
 	if g.BackpackSlotCount <= 0 {
 		return limits, fmt.Errorf("global table %s: invalid backpackSlotCount %d", globalPath, g.BackpackSlotCount)
 	}
+	if g.InitialCredits <= 0 {
+		return limits, fmt.Errorf("global table %s: invalid initialCredits %d", globalPath, g.InitialCredits)
+	}
 	limits.MaxPlayerPartySize = g.MaxPlayerPartySize
 	limits.BackpackSlotCount = g.BackpackSlotCount
+	limits.InitialCredits = g.InitialCredits
 
 	data, err = os.ReadFile(difficultyPath)
 	if err != nil {

@@ -67,7 +67,11 @@ func run() error {
 	if reg.T != protocol.MsgOK || reg.Token == "" || reg.UserID <= 0 || reg.Snapshot == nil {
 		return fmt.Errorf("register rejected: %+v", reg)
 	}
-	fmt.Printf("register ok: uid=%d username=%s\n", reg.UserID, username)
+	// 协议 v5：注册快照必须携带按 initialCredits 发放的余额
+	if reg.Snapshot.Credits <= 0 {
+		return fmt.Errorf("register snapshot credits = %d, want > 0 (initialCredits)", reg.Snapshot.Credits)
+	}
+	fmt.Printf("register ok: uid=%d username=%s credits=%d\n", reg.UserID, username, reg.Snapshot.Credits)
 
 	// 2. ping：已登录会话往返
 	ping, err := call(protocol.Envelope{T: protocol.MsgPing})
