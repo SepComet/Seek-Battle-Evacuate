@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -135,14 +136,17 @@ func resolveUnityExe(clientDir, explicit string) (string, string, error) {
 }
 
 // runUnityCapture 执行 Unity 并返回合并输出与退出码；超时时退出码为 -1。
-func runUnityCapture(unityExe string, args []string, timeoutSec float64) (string, int, error) {
+// doneFile 非空时启用「结果即收工」：该文件出现（测试/检查结论已落盘）后给 graceSec
+// 秒宽限，进程仍未自然退出则主动 Kill 并照常返回——退出码不再代表结论，以落盘文件为准。
+// earlyReap 标记本次是否因收尾挂起被 Kill。
+func runUnityCapture(unityExe string, args []string, timeoutSec float64, doneFile string, graceSec float64) (output string, exitCode int, runErr error, earlyReap bool) {
 	ctxDone := make(chan struct{})
 	cmd := exec.Command(unityExe, args...)
 	var buf strings.Builder
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf
 	if err := cmd.Start(); err != nil {
-		return buf.String(), -1, err
+		return buf.String(), -1, err, false
 	}
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
@@ -151,22 +155,90 @@ func runUnityCapture(unityExe string, args []string, timeoutSec float64) (string
 		close(ctxDone)
 	})
 	defer timer.Stop()
+
+	reaped := make(chan struct{})
+	if doneFile != "" {
+		go func() {
+			ticker := time.NewTicker(500 * time.Millisecond)
+			defer ticker.Stop()
+			for {
+				if _, err := os.Stat(doneFile); err == nil {
+					select {
+					case <-time.After(time.Duration(graceSec * float64(time.Second))):
+						// Kill 失败说明进程已在宽限窗口内自然退出，不算提前收工。
+						if killErr := cmd.Process.Kill(); killErr == nil {
+							close(reaped)
+						}
+						return
+					case <-ctxDone:
+						return
+					}
+				}
+				select {
+				case <-ticker.C:
+				case <-ctxDone:
+					return
+				}
+			}
+		}()
+	}
+
 	err := <-done
-	exitCode := 0
+	exitCode = 0
 	if err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
 			exitCode = exitErr.ExitCode()
 		} else {
-			return buf.String(), -1, err
+			return buf.String(), -1, err, false
 		}
 	}
+	// 超时优先于提前收工报告：若全局超时先触发，结论按超时算。
 	select {
 	case <-ctxDone:
-		return buf.String(), exitCode, fmt.Errorf("Unity 超时被终止（%.0f 秒）", timeoutSec)
+		return buf.String(), exitCode, fmt.Errorf("Unity 超时被终止（%.0f 秒）", timeoutSec), false
 	default:
 	}
-	return buf.String(), exitCode, nil
+	select {
+	case <-reaped:
+		return buf.String(), exitCode, nil, true
+	default:
+	}
+	return buf.String(), exitCode, nil, false
+}
+
+// verifyVerdict 写入 SBE-Client/Temp/last-unity-verify.json 的结论快照。
+// MCP 客户端超时丢响应时，调用方可直接读该文件取回最近一次 compile/tests 结论。
+type verifyVerdict struct {
+	Mode        string   `json:"mode"`
+	FinishedAt  string   `json:"finishedAt"`
+	DurationSec float64  `json:"durationSec"`
+	Status      string   `json:"status"` // ok / test-failed / compile-error / timeout / inconclusive
+	Summary     string   `json:"summary"`
+	Total       string   `json:"total,omitempty"`
+	Passed      string   `json:"passed,omitempty"`
+	Failed      string   `json:"failed,omitempty"`
+	Skipped     string   `json:"skipped,omitempty"`
+	Failures    []string `json:"failures,omitempty"` // 失败用例 fullname（上限 50 个）
+	EarlyReap   bool     `json:"earlyReap,omitempty"`
+	LogPath     string   `json:"logPath"`
+	ResultsPath string   `json:"resultsPath,omitempty"`
+}
+
+// writeVerifyVerdict 结论落盘到固定路径；返回路径，失败返回空串（不影响主输出）。
+func writeVerifyVerdict(clientDir string, v verifyVerdict) string {
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return ""
+	}
+	path := filepath.Join(clientDir, "Temp", "last-unity-verify.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return ""
+	}
+	if err := os.WriteFile(path, append(data, '\n'), 0o644); err != nil {
+		return ""
+	}
+	return path
 }
 
 // grepCompileErrors 从 batchmode 日志中摘出编译错误行（去重保序）。
@@ -312,7 +384,7 @@ func toolUnityVerify(args map[string]any) (string, error) {
 		}
 		fmt.Fprintf(&sb, "项目版本: %s\nUnity 路径: %s\n正在以 batchmode 编译检查（热 Library 约 1~3 分钟）...\n", version, unityExe)
 		start := time.Now()
-		output, exitCode, runErr := runUnityCapture(unityExe, unityArgs, timeoutSec)
+		output, exitCode, runErr, _ := runUnityCapture(unityExe, unityArgs, timeoutSec, "", 0)
 		elapsed := time.Since(start).Seconds()
 		logText := output
 		if data, err := os.ReadFile(logPath); err == nil {
@@ -323,8 +395,20 @@ func toolUnityVerify(args map[string]any) (string, error) {
 		if runErr != nil {
 			fmt.Fprintf(&sb, "进程级错误: %v\n", runErr)
 		}
+		verdictStatus, verdictSummary := "inconclusive", "未发现 error CS，但退出码异常——请人工查看日志确认。"
+		switch {
+		case len(errLines) > 0:
+			verdictStatus, verdictSummary = "compile-error", fmt.Sprintf("编译失败（日志命中 %d 处错误标记）。", len(errLines))
+		case runErr == nil && exitCode == 0:
+			verdictStatus, verdictSummary = "ok", "编译通过（日志无 error CS）。"
+		}
+		if runErr != nil {
+			verdictStatus = "timeout"
+			verdictSummary = "编译检查超时被终止。"
+		}
+		fmt.Fprintf(&sb, "结论: %s\n", verdictSummary)
 		if len(errLines) > 0 {
-			fmt.Fprintf(&sb, "结论: 编译失败（日志命中 %d 处错误标记）\n== 编译错误（前 40 行）==\n", len(errLines))
+			sb.WriteString("== 编译错误（前 40 行）==\n")
 			for i, l := range errLines {
 				if i >= 40 {
 					fmt.Fprintf(&sb, "...（其余 %d 行见日志）\n", len(errLines)-40)
@@ -332,13 +416,16 @@ func toolUnityVerify(args map[string]any) (string, error) {
 				}
 				sb.WriteString(l + "\n")
 			}
-		} else if runErr == nil && exitCode == 0 {
-			sb.WriteString("结论: 编译通过（日志无 error CS）。\n")
-		} else {
-			sb.WriteString("结论: 未发现 error CS，但退出码异常——请人工查看日志确认。\n")
 		}
 		cleanStaleLockfileAfterRun(&sb, lockPath)
+		verdictPath := writeVerifyVerdict(clientDir, verifyVerdict{
+			Mode: mode, FinishedAt: time.Now().Format(time.RFC3339), DurationSec: elapsed,
+			Status: verdictStatus, Summary: verdictSummary, LogPath: logPath,
+		})
 		fmt.Fprintf(&sb, "日志: %s\n", logPath)
+		if verdictPath != "" {
+			fmt.Fprintf(&sb, "结论快照: %s（MCP 响应超时可直接读该文件取回结论）\n", verdictPath)
+		}
 		return sb.String(), nil
 
 	case "tests":
@@ -363,11 +450,14 @@ func toolUnityVerify(args map[string]any) (string, error) {
 		}
 		fmt.Fprintf(&sb, "项目版本: %s\nUnity 路径: %s\n正在以 batchmode 编译并跑 EditMode 测试（一次启动同时得出编译与测试结论，热 Library 约 1~3 分钟）...\n", version, unityExe)
 		start := time.Now()
-		output, exitCode, runErr := runUnityCapture(unityExe, unityArgs, timeoutSec)
+		output, exitCode, runErr, earlyReap := runUnityCapture(unityExe, unityArgs, timeoutSec, xmlPath, 10)
 		elapsed := time.Since(start).Seconds()
 		fmt.Fprintf(&sb, "退出码: %d | 耗时 %.1fs\n", exitCode, elapsed)
 		if runErr != nil {
 			fmt.Fprintf(&sb, "进程级错误: %v\n", runErr)
+		}
+		if earlyReap {
+			fmt.Fprintf(&sb, "注意: 结果 XML 已写出但 Unity 收尾挂起，进程已被提前收工（退出码不代表测试结论，以结果 XML 为准）。\n")
 		}
 
 		logText := output
@@ -385,6 +475,7 @@ func toolUnityVerify(args map[string]any) (string, error) {
 
 		// -runTests 隐含编译：能跑出测试 XML 即编译已通过；日志命中错误标记则测试必然没跑。
 		errLines := grepCompileErrors(logText)
+		verdictFailures := []string{}
 		if len(errLines) > 0 {
 			verdict := "——测试未运行"
 			if xmlOK {
@@ -408,6 +499,9 @@ func toolUnityVerify(args map[string]any) (string, error) {
 			for _, tc := range run.allCases() {
 				if tc.Result == "Failed" {
 					failedCases = append(failedCases, tc)
+					if len(verdictFailures) < 50 {
+						verdictFailures = append(verdictFailures, tc.FullName)
+					}
 				}
 			}
 			if len(failedCases) > 0 {
@@ -443,7 +537,31 @@ func toolUnityVerify(args map[string]any) (string, error) {
 			sb.WriteString(tailLines(logText, 40) + "\n")
 		}
 		cleanStaleLockfileAfterRun(&sb, lockPath)
+		verdictStatus, verdictSummary := "inconclusive", "测试没跑起来（未拿到结果 XML，日志也未见编译错误）。"
+		switch {
+		case len(errLines) > 0 && !xmlOK:
+			verdictStatus, verdictSummary = "compile-error", fmt.Sprintf("编译失败，测试未运行（日志命中 %d 处错误标记）。", len(errLines))
+		case xmlOK && run.Failed != "0":
+			verdictStatus = "test-failed"
+			verdictSummary = fmt.Sprintf("%s 执行, %s 通过, %s 失败。", run.Total, run.Passed, run.Failed)
+		case xmlOK:
+			verdictStatus = "ok"
+			verdictSummary = fmt.Sprintf("%s 执行全部通过。", run.Total)
+		case runErr != nil:
+			verdictStatus = "timeout"
+			verdictSummary = "测试超时被终止，未拿到结果 XML。"
+		}
+		verdictPath := writeVerifyVerdict(clientDir, verifyVerdict{
+			Mode: mode, FinishedAt: time.Now().Format(time.RFC3339), DurationSec: elapsed,
+			Status: verdictStatus, Summary: verdictSummary,
+			Total: run.Total, Passed: run.Passed, Failed: run.Failed, Skipped: run.Skipped,
+			Failures: verdictFailures, EarlyReap: earlyReap,
+			LogPath: logPath, ResultsPath: xmlPath,
+		})
 		fmt.Fprintf(&sb, "日志: %s\n结果 XML: %s\n", logPath, xmlPath)
+		if verdictPath != "" {
+			fmt.Fprintf(&sb, "结论快照: %s（MCP 响应超时可直接读该文件取回结论）\n", verdictPath)
+		}
 		return sb.String(), nil
 	}
 	return "", fmt.Errorf("unreachable mode: %s", mode)

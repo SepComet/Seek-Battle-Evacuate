@@ -18,7 +18,7 @@ import (
 )
 
 const serverName = "sbe-dev"
-const serverVersion = "0.3.0"
+const serverVersion = "0.4.0"
 
 const maxContentChars = 48000
 

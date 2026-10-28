@@ -5,7 +5,7 @@
 ## 验证纪律（最重要）
 
 - **不要进入 Play Mode**，不执行 `dotnet build` / `msbuild` 等编译命令（`Docs/Tech/04` 里程碑记录里出现的 `dotnet build SepCore.Runtime.csproj` 是历史做法，现不再由 agent 执行）。
-- **Unity 编译检查与 EditMode 测试按 Editor 状态分流**：先用 sbe-dev 的 `unity_verify` `mode=check` 查 `Temp/UnityLockfile`——**Editor 未运行**时，用 `mode=tests` 一条命令完成编译检查+EditMode 测试（无需人工回填；只想快速查编译用 `mode=compile`）；**Editor 运行中**时禁止另起 batchmode 实例（项目锁互斥），EditMode 测试改走 **mcp-for-unity**，编译结果同样可经 mcp-for-unity 的 read_console 查询。**任何情况下不跑 Play Mode**（验收需人工判断，留给用户）。batchmode 全程约 15s~3 分钟（测试执行本身仅 1~2 秒，大头是 domain reload），适合收尾门禁，不适合每改一个文件跑一次。lockfile 残留（无 Unity 进程）由工具自动清理，无需人工处理。
+- **Unity 编译检查与 EditMode 测试按 Editor 状态分流**：先用 sbe-dev 的 `unity_verify` `mode=check` 查 `Temp/UnityLockfile`——**Editor 未运行**时，用 `mode=tests` 一条命令完成编译检查+EditMode 测试（无需人工回填；只想快速查编译用 `mode=compile`）；**Editor 运行中**时禁止另起 batchmode 实例（项目锁互斥），EditMode 测试改走 **mcp-for-unity**，编译结果同样可经 mcp-for-unity 的 read_console 查询。**任何情况下不跑 Play Mode**（验收需人工判断，留给用户）。batchmode 全程约 15s~3 分钟（测试执行本身仅 1~2 秒，大头是 domain reload），适合收尾门禁，不适合每改一个文件跑一次。lockfile 残留（无 Unity 进程）由工具自动清理，无需人工处理。MCP 客户端对单次调用若在 30~60 秒级超时，调用仍会在后台跑完：结果 XML 落盘后收尾挂起的进程会被工具宽限 10 秒收工（earlyReap 标注，结论以 XML 为准），compile/tests 的结论同时落 `SBE-Client/Temp/last-unity-verify.json`，超时丢响应时直接读该文件取回结论即可，不要重复发起跑测。
 - 静态检查照旧：通读代码、grep 交叉引用、推演逻辑边界，在交付说明中列出潜在逻辑问题。不要在文档中替用户勾选完成状态。
 
 ## Agent 工具（MCP）
